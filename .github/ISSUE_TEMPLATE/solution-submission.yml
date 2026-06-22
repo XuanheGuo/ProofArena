@@ -1,0 +1,80 @@
+name: 解法投稿
+description: 提交一条可学习、可比较、可验证的高中数学解法
+title: "[解法投稿] "
+labels:
+  - solution-submission
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢投稿。原创整理与解法内容将按 CC BY-SA 4.0 协议共享。
+  - type: textarea
+    id: source
+    attributes:
+      label: 题目来源
+      description: 请写明年份、卷别、题号，并附完整题干或可核对链接。
+    validations:
+      required: true
+  - type: input
+    id: title
+    attributes:
+      label: 解法标题
+      placeholder: 例如：直接设斜率消元法
+    validations:
+      required: true
+  - type: textarea
+    id: origin
+    attributes:
+      label: 思路来源
+      description: 你从哪些条件或结构想到这条路线？
+    validations:
+      required: true
+  - type: textarea
+    id: transform
+    attributes:
+      label: 关键转化
+    validations:
+      required: true
+  - type: textarea
+    id: process
+    attributes:
+      label: 完整过程
+      description: 支持 Markdown 和 LaTeX。
+    validations:
+      required: true
+  - type: textarea
+    id: pitfalls
+    attributes:
+      label: 易错点
+    validations:
+      required: true
+  - type: textarea
+    id: scores
+    attributes:
+      label: 五维自评
+      description: 请分别给出正确性、考场性、优雅度、计算量、讲解友好及理由。
+    validations:
+      required: true
+  - type: textarea
+    id: verification
+    attributes:
+      label: 可验证步骤
+      description: 写明可通过代入、数值、作图、CAS 或独立复算检查的步骤。
+    validations:
+      required: true
+  - type: dropdown
+    id: advanced
+    attributes:
+      label: 是否使用超纲工具
+      options:
+        - 否
+        - 是，已在完整过程中明确标注
+    validations:
+      required: true
+  - type: checkboxes
+    id: license
+    attributes:
+      label: 内容授权
+      options:
+        - label: 我确认有权以 CC BY-SA 4.0 提交并共享以上内容。
+          required: true

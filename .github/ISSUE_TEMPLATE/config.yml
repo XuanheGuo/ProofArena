@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: 解法投稿说明
+    url: https://github.com/XuanheGuo/ProofArena/blob/main/docs/CONTENT_GUIDE.md
+    about: 投稿前请先阅读内容与数据规范。
