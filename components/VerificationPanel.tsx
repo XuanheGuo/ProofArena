@@ -42,6 +42,28 @@ export function VerificationPanel({ verification }: { verification: Verification
           </span>
         ))}
       </div>
+      <div className="mt-4 grid gap-3 text-xs leading-5 text-zinc-300">
+        <div className="border border-white/10 bg-black/15 p-3">
+          <h4 className="font-bold text-emerald-300">已验证什么</h4>
+          <ul className="mt-2 space-y-1.5">
+            {verification.verifiedScope.map((item) => (
+              <li key={item}>· {item}</li>
+            ))}
+          </ul>
+        </div>
+        <div className="border border-white/10 bg-black/15 p-3">
+          <h4 className="font-bold text-amber-300">未验证什么</h4>
+          <ul className="mt-2 space-y-1.5">
+            {verification.unverifiedScope.map((item) => (
+              <li key={item}>· {item}</li>
+            ))}
+          </ul>
+        </div>
+        <div className="border border-white/10 bg-black/15 p-3">
+          <h4 className="font-bold text-cyan-300">为什么仍需人工审核</h4>
+          <p className="mt-2">{verification.reviewNote}</p>
+        </div>
+      </div>
     </div>
   );
 }

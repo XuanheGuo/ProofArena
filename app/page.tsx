@@ -37,7 +37,7 @@ export default function HomePage() {
               同一道题，把标准解、神仙解、暴力解、老师讲法放在一起比较。
             </p>
             <p className="mt-4 max-w-xl text-sm leading-7 text-zinc-400 md:text-base">
-              不只判断对错。我们比较考场可行性、推理优雅度、计算负担与讲解质量，让真正值得记住的解法站上榜首。
+              我们不只给解法打分，更关心每个解法带来的启发。比较考场可行性、结构美感、计算负担与讲解质量，是为了帮助你选择最适合当前目标的路线。
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Link
@@ -82,8 +82,8 @@ export default function HomePage() {
         <div className="mx-auto max-w-7xl px-4 md:px-6">
           <div className="mb-8 flex items-end justify-between gap-4">
             <div>
-              <span className="font-mono text-xs uppercase tracking-widest text-red-400">Live leaderboard</span>
-              <h2 className="mt-2 text-3xl font-black text-white md:text-4xl">当前热门擂台</h2>
+              <span className="font-mono text-xs uppercase tracking-widest text-red-400">Solution routes</span>
+              <h2 className="mt-2 text-3xl font-black text-white md:text-4xl">当前解法导航</h2>
             </div>
             <Link href="/problems" className="hidden items-center gap-2 text-sm text-zinc-400 hover:text-white sm:flex">
               查看全部 <ArrowRight className="size-4" />
@@ -110,7 +110,7 @@ export default function HomePage() {
             {[
               [CheckCircle2, "正确性", "推理链完整、边界无遗漏"],
               [Swords, "考场性", "时间可控、路径容易识别"],
-              [Trophy, "优雅度", "转化自然、结构简洁"],
+              [Trophy, "结构美感", "转化自然、结构简洁"],
               [ArrowRight, "计算量", "更少展开与重复运算"],
               [ChevronRight, "讲解友好", "便于复盘与迁移"],
             ].map(([Icon, title, description]) => {

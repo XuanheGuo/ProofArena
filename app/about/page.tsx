@@ -11,7 +11,7 @@ export default function AboutPage() {
   return (
     <main className="grid-surface min-h-screen">
       <section className="border-b border-white/10 bg-zinc-950/90">
-        <div className="mx-auto max-w-5xl px-4 py-10 md:px-6 md:py-16">
+        <div className="mx-auto max-w-5xl px-5 py-10 sm:px-6 md:py-16 lg:px-8">
           <Link href="/" className="inline-flex items-center gap-2 text-sm text-zinc-500 hover:text-white">
             <ArrowLeft className="size-4" />
             返回首页
@@ -26,10 +26,10 @@ export default function AboutPage() {
         </div>
       </section>
 
-      <div className="mx-auto max-w-5xl px-4 py-10 md:px-6 md:py-14">
+      <div className="mx-auto max-w-5xl px-5 py-10 sm:px-6 md:py-14 lg:px-8">
         <section className="grid gap-px bg-white/10 md:grid-cols-3">
           {[
-            [Swords, "比较解法", "用正确性、考场性、优雅度、计算量与讲解友好度建立共同坐标。"],
+            [Swords, "比较解法", "用正确性、考场性、结构美感、计算量与讲解友好度建立共同坐标。"],
             [BookOpenCheck, "学习思路", "保留观察入口、思路来源与关键转化，让“怎么想到”可以被复盘。"],
             [GitBranch, "沉淀题解", "通过公开投稿、校订和验证，逐步形成可引用、可改进的高质量内容。"],
           ].map(([Icon, title, description]) => {

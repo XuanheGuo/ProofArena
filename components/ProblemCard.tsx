@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { ArrowUpRight, BookOpenCheck, Flame, Layers3, Sparkles, Swords, TimerReset } from "lucide-react";
+import { ArrowUpRight, BookOpenCheck, Compass, Flame, Layers3, Sparkles, TimerReset } from "lucide-react";
 import type { Problem } from "@/lib/types";
-import { getAverageScore, getBestSolution, getLearningIndex, getSolutionAverage } from "@/data/problems";
+import { getBestSolution, getLearningIndex } from "@/data/problems";
 import { MathBlock } from "@/components/MathBlock";
 
 const difficultyStyles = {
@@ -28,7 +28,7 @@ export function ProblemCard({ problem, rank }: { problem: Problem; rank?: number
       className="group grid min-h-72 border border-white/10 bg-zinc-950/75 transition hover:border-cyan-400/45 hover:bg-zinc-900 md:grid-cols-[5.25rem_1fr]"
     >
       <div className="flex items-center justify-between border-b border-white/10 px-5 py-4 md:flex-col md:border-r md:border-b-0 md:px-3">
-        <span className="font-mono text-xs uppercase text-zinc-500">Rank</span>
+        <span className="font-mono text-xs uppercase text-zinc-500">Case</span>
         <span className="font-display text-4xl font-black text-zinc-100">
           {String(rank ?? 1).padStart(2, "0")}
         </span>
@@ -54,34 +54,29 @@ export function ProblemCard({ problem, rank }: { problem: Problem; rank?: number
         <div className="mt-6 border border-white/10 bg-zinc-950/90">
           <div className="flex items-center justify-between border-b border-white/10 px-3 py-2.5">
             <span className="flex items-center gap-2 text-xs font-bold text-white">
-              <Swords className="size-3.5 text-red-400" />
-              解法对决
+              <Compass className="size-3.5 text-cyan-300" />
+              解法速览
             </span>
-            <span className="font-mono text-[10px] uppercase tracking-widest text-zinc-600">Arena scores</span>
+            <span className="font-mono text-[10px] uppercase tracking-widest text-zinc-600">Choose a route</span>
           </div>
-          <div className="grid grid-cols-[1fr_3rem_1fr] items-stretch gap-px bg-white/10 sm:grid-cols-[1fr_3.5rem_1fr_7rem]">
+          <div className="grid items-stretch gap-px bg-white/10 sm:grid-cols-[1fr_1fr_7rem]">
             <div className="min-w-0 bg-zinc-950 p-3">
               <span className="flex items-center gap-1.5 text-[11px] text-zinc-500">
                 <TimerReset className="size-3.5 text-red-400" />
-                最适合考场解
+                考场路线
               </span>
               <strong className="mt-1.5 block truncate text-xs text-zinc-200">{examSolution.title}</strong>
-              <span className="mt-2 block font-display text-xl text-red-300">
-                {getSolutionAverage(examSolution).toFixed(1)}
-              </span>
+              <p className="mt-2 line-clamp-2 text-[11px] leading-5 text-zinc-500">{examSolution.inspiration}</p>
             </div>
-            <div className="grid place-items-center bg-zinc-950 font-display text-sm text-zinc-600">VS</div>
             <div className="min-w-0 bg-zinc-950 p-3">
               <span className="flex items-center gap-1.5 text-[11px] text-zinc-500">
                 <Sparkles className="size-3.5 text-amber-300" />
-                最优雅解
+                启发路线
               </span>
               <strong className="mt-1.5 block truncate text-xs text-zinc-200">{elegantSolution.title}</strong>
-              <span className="mt-2 block font-display text-xl text-amber-300">
-                {getSolutionAverage(elegantSolution).toFixed(1)}
-              </span>
+              <p className="mt-2 line-clamp-2 text-[11px] leading-5 text-zinc-500">{elegantSolution.inspiration}</p>
             </div>
-            <div className="col-span-3 bg-zinc-950 p-3 sm:col-span-1">
+            <div className="bg-zinc-950 p-3">
               <span className="flex items-center gap-1.5 text-[11px] text-zinc-500">
                 <BookOpenCheck className="size-3.5 text-cyan-300" />
                 学习指数
@@ -107,7 +102,6 @@ export function ProblemCard({ problem, rank }: { problem: Problem; rank?: number
               <Flame className="size-3.5 text-red-400" />
               {problem.heat}
             </span>
-            <span className="font-bold text-zinc-100">{getAverageScore(problem).toFixed(1)}</span>
           </div>
         </div>
       </div>

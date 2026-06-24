@@ -1,30 +1,51 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
-import { BookOpen, Clock3, Crown, Focus, Lightbulb, MessageSquareQuote, MoveRight, Trophy } from "lucide-react";
+import {
+  BookOpen,
+  Clock3,
+  Compass,
+  Focus,
+  Lightbulb,
+  MessageSquareQuote,
+  MoveRight,
+  Repeat2,
+  Scale,
+  Tags,
+} from "lucide-react";
 import type { Solution } from "@/lib/types";
 import { MathBlock } from "@/components/MathBlock";
 import { ScoreBar } from "@/components/ScoreBar";
 import { VerificationPanel } from "@/components/VerificationPanel";
 import { getSolutionAverage } from "@/data/problems";
+import { getInsightNode } from "@/data/insights";
+import { getKnowledgeNode } from "@/data/knowledge";
 
 const scoreLabels: Array<[keyof Solution["scores"], string]> = [
   ["correctness", "正确性"],
   ["examReady", "考场性"],
-  ["elegance", "优雅度"],
+  ["elegance", "结构美感"],
   ["calculation", "计算量"],
   ["explanation", "讲解友好"],
 ];
 
 export function SolutionCard({ solution, rank }: { solution: Solution; rank: number }) {
   const [view, setView] = useState<"idea" | "transform" | "full">("transform");
+  const knowledgeNodes = (solution.knowledgeIds ?? [])
+    .map(getKnowledgeNode)
+    .filter((node): node is NonNullable<ReturnType<typeof getKnowledgeNode>> => Boolean(node));
+  const insightNodes = (solution.insightIds ?? [])
+    .map(getInsightNode)
+    .filter((node): node is NonNullable<ReturnType<typeof getInsightNode>> => Boolean(node));
 
   return (
     <article id={solution.id} className="scroll-mt-24 border border-white/10 bg-zinc-950">
       <header className="grid border-b border-white/10 lg:grid-cols-[7rem_1fr_auto]">
         <div className="flex items-center gap-3 border-b border-white/10 p-5 lg:flex-col lg:justify-center lg:border-r lg:border-b-0">
-          {rank === 1 ? <Crown className="size-5 text-amber-300" /> : <Trophy className="size-5 text-zinc-500" />}
-          <span className="font-display text-4xl font-black text-white">#{rank}</span>
+          <Compass className="size-5 text-cyan-300" />
+          <span className="font-mono text-xs uppercase tracking-widest text-zinc-500">方案</span>
+          <span className="font-display text-3xl font-black text-white">{String(rank).padStart(2, "0")}</span>
         </div>
         <div className="p-5 lg:p-7">
           <div className="flex flex-wrap items-center gap-2">
@@ -41,10 +62,11 @@ export function SolutionCard({ solution, rank }: { solution: Solution; rank: num
           </p>
         </div>
         <div className="flex items-center justify-between border-t border-white/10 px-5 py-4 lg:min-w-44 lg:flex-col lg:justify-center lg:border-t-0 lg:border-l">
-          <span className="font-mono text-xs uppercase text-zinc-500">Arena score</span>
-          <strong className="font-display text-4xl font-black text-cyan-300">
+          <span className="font-mono text-xs uppercase text-zinc-500">参考均分</span>
+          <strong className="font-display text-2xl font-black text-zinc-300">
             {getSolutionAverage(solution).toFixed(1)}
           </strong>
+          <span className="hidden text-center text-[11px] leading-5 text-zinc-600 lg:block">用于辅助比较，不代表唯一价值</span>
         </div>
       </header>
 
@@ -77,7 +99,100 @@ export function SolutionCard({ solution, rank }: { solution: Solution; rank: num
 
       <div className={view === "full" ? "grid lg:grid-cols-[1fr_21rem]" : "block"}>
         <div className={`p-5 md:p-7 ${view === "full" ? "lg:border-r lg:border-white/10" : ""}`}>
-          <div className={`grid gap-4 ${view !== "idea" ? "md:grid-cols-2" : ""}`}>
+          {view !== "idea" && <section className="mt-6 border border-cyan-400/20 bg-cyan-400/[0.04]">
+            <div className="flex items-center gap-2 border-b border-white/10 px-4 py-3">
+              <Compass className="size-4 text-cyan-300" />
+              <h3 className="text-sm font-bold text-white">解法画像</h3>
+              <span className="font-mono text-[10px] uppercase tracking-widest text-zinc-600">Why it matters</span>
+            </div>
+            <div className="grid gap-px bg-white/10 md:grid-cols-2">
+              <div className="bg-zinc-950 p-4">
+                <div className="flex items-center gap-2 text-xs font-bold text-cyan-300">
+                  <Lightbulb className="size-4" />
+                  启发点
+                </div>
+                <p className="mt-3 text-sm leading-7 text-zinc-300">
+                  <MathBlock>{solution.inspiration}</MathBlock>
+                </p>
+              </div>
+              <div className="bg-zinc-950 p-4">
+                <div className="flex items-center gap-2 text-xs font-bold text-amber-300">
+                  <Repeat2 className="size-4" />
+                  迁移价值
+                </div>
+                <p className="mt-3 text-sm leading-7 text-zinc-300">
+                  <MathBlock>{solution.transferValue}</MathBlock>
+                </p>
+              </div>
+              <div className="bg-zinc-950 p-4">
+                <div className="flex items-center gap-2 text-xs font-bold text-emerald-300">
+                  <Tags className="size-4" />
+                  适合场景
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {solution.suitableFor.map((item) => (
+                    <span key={item} className="border border-emerald-400/20 bg-emerald-400/5 px-2.5 py-1.5 text-xs text-zinc-300">
+                      {item}
+                    </span>
+                  ))}
+                </div>
+              </div>
+              <div className="bg-zinc-950 p-4">
+                <div className="flex items-center gap-2 text-xs font-bold text-red-300">
+                  <Scale className="size-4" />
+                  代价与局限
+                </div>
+                <ul className="mt-3 space-y-2 text-sm leading-6 text-zinc-300">
+                  {[...solution.tradeoffs, ...solution.limitations].map((item) => (
+                    <li key={item} className="border-l border-red-400/35 pl-3">
+                      <MathBlock>{item}</MathBlock>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </section>}
+
+          {view !== "idea" && (knowledgeNodes.length > 0 || insightNodes.length > 0) && (
+            <section className="mt-6 border border-white/10 bg-black/20 p-4">
+              <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-zinc-400">
+                <Compass className="size-4 text-amber-300" />
+                本解法用到的思路
+              </div>
+              <div className="mt-4 grid gap-3 md:grid-cols-2">
+                <div>
+                  <h4 className="text-xs font-bold text-cyan-300">知识点</h4>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {knowledgeNodes.map((node) => (
+                      <Link
+                        key={node.id}
+                        href={`/library/${node.id}`}
+                        className="border border-cyan-400/20 bg-cyan-400/5 px-2.5 py-1.5 text-xs text-zinc-300 transition hover:border-cyan-400/50 hover:text-cyan-200"
+                      >
+                        {node.title}
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-amber-300">思路触发</h4>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {insightNodes.map((node) => (
+                      <Link
+                        key={node.id}
+                        href={`/library/${node.id}`}
+                        className="border border-amber-400/20 bg-amber-400/5 px-2.5 py-1.5 text-xs text-zinc-300 transition hover:border-amber-400/50 hover:text-amber-200"
+                      >
+                        {node.title}
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </section>
+          )}
+
+          <div className={`mt-6 grid gap-4 ${view !== "idea" ? "md:grid-cols-2" : ""}`}>
             {(view === "idea" || view === "transform" || view === "full") && (
             <div className="border-l-2 border-cyan-400 bg-cyan-400/5 p-4">
               <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-cyan-300">
@@ -123,7 +238,8 @@ export function SolutionCard({ solution, rank }: { solution: Solution; rank: num
 
         {view === "full" && <aside className="space-y-6 border-t border-white/10 p-5 md:p-7 lg:border-t-0">
           <div>
-            <h3 className="mb-4 font-mono text-xs uppercase tracking-widest text-zinc-500">五维评分</h3>
+            <h3 className="mb-1 font-mono text-xs uppercase tracking-widest text-zinc-500">五维参考</h3>
+            <p className="mb-4 text-xs leading-5 text-zinc-600">分数用于辅助讨论，重点仍是画像、场景和局限。</p>
             <div className="space-y-3.5">
               {scoreLabels.map(([key, label], index) => (
                 <ScoreBar

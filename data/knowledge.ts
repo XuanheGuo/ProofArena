@@ -1,0 +1,122 @@
+import type { KnowledgeNode } from "@/lib/types";
+
+export const knowledgeNodes: KnowledgeNode[] = [
+  {
+    id: "k-phase-transform",
+    title: "三角函数整体相位",
+    category: "通用方法",
+    summary: "把 $\\omega x+\\varphi$ 作为整体变量处理周期、单调区间与最值，减少不必要展开。",
+    aliases: ["整体换元", "相位换元", "三角函数图像"],
+    prerequisites: ["三角函数图像", "诱导公式", "二倍角公式"],
+    relatedIds: ["k-function-extremum"],
+    examples: ["看到 $\\sin(2x+\\varphi)$ 先令 $t=2x+\\varphi$。", "限制区间求最值时先映射相位范围。"],
+  },
+  {
+    id: "k-space-vector",
+    title: "空间向量坐标法",
+    category: "通用方法",
+    summary: "在长方体、棱柱等规则空间图形中建立坐标系，用点积、叉积和法向量统一处理垂直、夹角与体积。",
+    aliases: ["空间向量", "法向量", "混合积"],
+    prerequisites: ["空间直角坐标系", "向量点积", "向量叉积"],
+    relatedIds: ["k-geometric-reduction"],
+    examples: ["长方体三棱长已知时，优先考虑坐标化。", "面面角可转化为两个平面法向量夹角。"],
+  },
+  {
+    id: "k-function-extremum",
+    title: "函数区间最值",
+    category: "函数与导数",
+    summary: "先确认变量范围和函数形态，再用单调性、端点值或导数判断闭区间最值。",
+    aliases: ["区间最值", "单调性", "端点值"],
+    prerequisites: ["函数图像", "单调性", "导数基础"],
+    relatedIds: ["k-phase-transform", "k-derivative-inequality"],
+    examples: ["限制区间求最值时，先把原变量区间映射到真正参与函数变化的变量。", "闭区间最值需要同时比较端点和内部临界点。"],
+  },
+  {
+    id: "k-geometric-reduction",
+    title: "空间问题降维",
+    category: "通用方法",
+    summary: "通过投影、辅助点或截面，把空间垂直、距离和面积关系压回平面几何。",
+    aliases: ["辅助点", "截面法", "面积距离法"],
+    prerequisites: ["线面垂直判定", "平面几何相似", "点到直线距离"],
+    relatedIds: ["k-space-vector"],
+    examples: ["把空间中的垂直关系投影到底面。", "用等体积把高或距离换成可算的平面量。"],
+  },
+  {
+    id: "k-conic-parameter",
+    title: "圆锥曲线参数确定",
+    category: "圆锥曲线",
+    summary: "利用离心率、弦长、焦距、顶点等条件联立确定标准方程中的参数。",
+    aliases: ["椭圆参数", "离心率", "标准方程"],
+    prerequisites: ["椭圆定义", "离心率公式", "弦长计算"],
+    relatedIds: ["k-line-conic"],
+    examples: ["离心率给出 $c/a$，再用截弦长度补第二个方程。", "竖直弦可直接代 $x=x_0$ 求上下端点。"],
+  },
+  {
+    id: "k-line-conic",
+    title: "直线与圆锥曲线联立",
+    category: "圆锥曲线",
+    summary: "把直线代入曲线得到二次方程，用根、交点顺序和目标量完成计算或消元。",
+    aliases: ["直线与椭圆", "斜率参数", "根与系数"],
+    prerequisites: ["二次方程", "斜率公式", "根与系数关系"],
+    relatedIds: ["k-conic-parameter"],
+    examples: ["最终问斜率比时，可以直接设过定点直线斜率。", "交点坐标复杂时优先观察目标量能否消元。"],
+  },
+  {
+    id: "k-sequence-counting",
+    title: "数列集合计数",
+    category: "数列",
+    summary: "把数列元素集合拆成若干来源，处理重合、取整、阈值与分块求和。",
+    aliases: ["并集计数", "取整函数", "指示函数"],
+    prerequisites: ["等差数列", "等比数列", "集合元素个数"],
+    relatedIds: ["k-block-summation"],
+    examples: ["先判断两个数列是否有重合元素。", "不超过 $m$ 的元素个数常出现 $\\lfloor m/2\\rfloor$ 或对数取整。"],
+  },
+  {
+    id: "k-block-summation",
+    title: "分块求和与差分递推",
+    category: "数列",
+    summary: "当取整或阈值函数在某些区间恒定时，按边界分块或研究增量。",
+    aliases: ["分块", "差分", "递推增量", "奇偶配对"],
+    prerequisites: ["求和公式", "等比数列", "奇偶配对"],
+    relatedIds: ["k-sequence-counting"],
+    examples: ["看到 $\\lfloor\\log_3 m\\rfloor$，按 $3^t$ 分块。", "交错和遇到偶数上限，尝试相邻奇偶项配对。"],
+  },
+  {
+    id: "k-derivative-inequality",
+    title: "导数证明函数不等式",
+    category: "函数与导数",
+    summary: "构造差函数，用导数、单调性和切线下界证明函数不等式。",
+    aliases: ["差函数", "切线不等式", "单调性"],
+    prerequisites: ["导数", "单调性", "切线方程"],
+    relatedIds: ["k-product-estimation"],
+    examples: ["证明函数在切线上方时，构造 $f(x)-l(x)$。", "区间跨过特殊点时注意分段讨论导数符号。"],
+  },
+  {
+    id: "k-product-estimation",
+    title: "连乘积放缩",
+    category: "函数与导数",
+    summary: "把每一项放缩成可望远镜或可转对数的形式，用增长阶判断最优常数。",
+    aliases: ["望远镜乘积", "乘积转对数", "最佳指数"],
+    prerequisites: ["不等式放缩", "对数", "数列极限直觉"],
+    relatedIds: ["k-derivative-inequality"],
+    examples: ["把 $1+\\dfrac1{3k}$ 和 $((k+1)/k)^{1/3}$ 比较。", "求最大指数时既要证可行，也要证不能更大。"],
+  },
+  {
+    id: "k-probability-modeling",
+    title: "概率统计建模",
+    category: "概率统计",
+    summary: "把随机事件、条件概率和统计量转成可枚举、可计算、可解释的模型。",
+    aliases: ["概率模型", "条件概率", "统计图表"],
+    prerequisites: ["古典概型", "条件概率", "均值方差"],
+    relatedIds: [],
+    examples: ["先明确样本空间，再讨论事件关系。", "统计图表题优先核对单位、总量和比例。"],
+  },
+];
+
+export function getKnowledgeNode(id: string) {
+  return knowledgeNodes.find((node) => node.id === id);
+}
+
+export function getKnowledgeByCategory(category: string) {
+  return knowledgeNodes.filter((node) => node.category === category);
+}

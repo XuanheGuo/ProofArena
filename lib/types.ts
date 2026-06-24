@@ -6,6 +6,46 @@ export type QuestionType = "单选" | "多选" | "填空" | "解答";
 
 export type VerificationStatus = "verified" | "partial" | "manual";
 
+export type TagMatchSource = "auto" | "manual";
+
+export interface KnowledgeNode {
+  id: string;
+  title: string;
+  category: string;
+  summary: string;
+  aliases: string[];
+  prerequisites: string[];
+  relatedIds: string[];
+  examples: string[];
+}
+
+export interface InsightNode {
+  id: string;
+  title: string;
+  trigger: string;
+  idea: string;
+  appliesTo: string[];
+  relatedKnowledgeIds: string[];
+  relatedProblemIds: string[];
+  difficulty: Difficulty;
+}
+
+export interface TagMatch {
+  tag: string;
+  matchedKnowledgeIds: string[];
+  matchedInsightIds: string[];
+  confidence: number;
+  source: TagMatchSource;
+}
+
+export interface QualityReport {
+  completenessScore: number;
+  warnings: string[];
+  suggestions: string[];
+  missingFields: string[];
+  strengths: string[];
+}
+
 export interface SolutionScores {
   correctness: number;
   examReady: number;
@@ -19,6 +59,9 @@ export interface Verification {
   engine: string;
   statement: string;
   checks: string[];
+  verifiedScope: string[];
+  unverifiedScope: string[];
+  reviewNote: string;
 }
 
 export interface Solution {
@@ -30,16 +73,27 @@ export interface Solution {
   badge: string;
   origin: string;
   keyTransform: string;
+  inspiration: string;
+  transferValue: string;
+  suitableFor: string[];
+  tradeoffs: string[];
+  limitations: string[];
   summary: string[];
   scores: SolutionScores;
   scoringReason: string;
   verification: Verification;
   estimatedMinutes: number;
+  knowledgeIds?: string[];
+  insightIds?: string[];
+  autoMatches?: TagMatch[];
+  manualMatches?: TagMatch[];
 }
 
 export interface LearningGuide {
   observation: string[];
   triggers: string[];
+  pitfalls: string[];
+  readingPath: string[];
   recommendation: string;
 }
 
@@ -61,4 +115,8 @@ export interface Problem {
   answerPdf?: string;
   learningGuide: LearningGuide;
   solutions: Solution[];
+  knowledgeIds?: string[];
+  insightIds?: string[];
+  autoMatches?: TagMatch[];
+  manualMatches?: TagMatch[];
 }

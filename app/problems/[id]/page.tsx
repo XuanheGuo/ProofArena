@@ -4,7 +4,11 @@ import { ArrowLeft, ArrowUpRight, BrainCircuit, ExternalLink, Eye, FileCheck2, F
 import { MathBlock } from "@/components/MathBlock";
 import { SolutionCard } from "@/components/SolutionCard";
 import { MathVisualization } from "@/components/MathVisualization";
-import { getBestSolution, getProblem, getSolutionAverage, problems } from "@/data/problems";
+import { ShareCard } from "@/components/ShareCard";
+import { CopyLinkButton } from "@/components/CopyLinkButton";
+import { getBestSolution, getProblem, problems } from "@/data/problems";
+import { getInsightNode } from "@/data/insights";
+import { getKnowledgeNode } from "@/data/knowledge";
 
 export function generateStaticParams() {
   return problems.map((problem) => ({ id: problem.id }));
@@ -20,16 +24,34 @@ export default async function ProblemDetailPage({
 
   if (!problem) notFound();
 
-  const rankedSolutions = [...problem.solutions].sort(
-    (a, b) => getSolutionAverage(b) - getSolutionAverage(a),
-  );
   const examSolution = getBestSolution(problem, "examReady");
-  const elegantSolution = getBestSolution(problem, "elegance");
+  const inspiringSolution = getBestSolution(problem, "elegance");
   const teachingSolution = getBestSolution(problem, "explanation");
+  const lightCalculationSolution = getBestSolution(problem, "calculation");
+  const solutionNavigation = [
+    { label: "最适合考场", tone: "text-red-300", solution: examSolution, note: "稳定、评分点清楚，适合作为第一遍主线。" },
+    { label: "最有启发", tone: "text-amber-300", solution: inspiringSolution, note: inspiringSolution.inspiration },
+    { label: "最适合讲解", tone: "text-cyan-300", solution: teachingSolution, note: "便于复述关键观察和推导层次。" },
+    { label: "最少计算", tone: "text-emerald-300", solution: lightCalculationSolution, note: "优先减少展开、联立和重复化简。" },
+  ];
   const hasVisualization = new Set([
     "tj-2026-18",
     "tj-2026-20",
   ]).has(problem.id);
+  const autoMatches = problem.autoMatches ?? [];
+  const manualMatches = problem.manualMatches ?? [];
+  const autoKnowledgeNodes = [...new Set(autoMatches.flatMap((match) => match.matchedKnowledgeIds))]
+    .map(getKnowledgeNode)
+    .filter((node): node is NonNullable<ReturnType<typeof getKnowledgeNode>> => Boolean(node));
+  const autoInsightNodes = [...new Set(autoMatches.flatMap((match) => match.matchedInsightIds))]
+    .map(getInsightNode)
+    .filter((node): node is NonNullable<ReturnType<typeof getInsightNode>> => Boolean(node));
+  const manualKnowledgeNodes = [...new Set(manualMatches.flatMap((match) => match.matchedKnowledgeIds))]
+    .map(getKnowledgeNode)
+    .filter((node): node is NonNullable<ReturnType<typeof getKnowledgeNode>> => Boolean(node));
+  const manualInsightNodes = [...new Set(manualMatches.flatMap((match) => match.matchedInsightIds))]
+    .map(getInsightNode)
+    .filter((node): node is NonNullable<ReturnType<typeof getInsightNode>> => Boolean(node));
 
   return (
     <main className="grid-surface min-h-screen">
@@ -78,11 +100,11 @@ export default async function ProblemDetailPage({
       >
         <div className="mx-auto flex max-w-7xl gap-1 overflow-x-auto px-4 py-2 md:px-6">
           {[
-            ["题目", "problem"],
-            ["这题怎么想到", "thinking"],
-            ...(hasVisualization ? [["图像实验", "visualization"]] : []),
+            ["看题", "problem"],
+            ["观察入口", "thinking"],
             ["选择解法", "choose"],
-            ["解法排行", "ranking"],
+            ["解法画像", "profiles"],
+            ["完整过程", "full-process"],
             ["投稿挑战", "challenge"],
           ].map(([label, target], index) => (
             <a
@@ -144,11 +166,11 @@ export default async function ProblemDetailPage({
               <span className="font-mono text-[10px] uppercase tracking-widest text-zinc-600">Before the solution</span>
             </div>
           </div>
-          <div className="grid gap-px bg-white/10 lg:grid-cols-[1fr_1.2fr_1fr]">
+          <div className="grid gap-px bg-white/10 md:grid-cols-2 xl:grid-cols-4">
             <div className="bg-zinc-950 p-5">
               <div className="flex items-center gap-2 text-xs font-bold text-cyan-300">
                 <Eye className="size-4" />
-                观察入口
+                题目特征
               </div>
               <ul className="mt-4 space-y-3">
                 {problem.learningGuide.observation.map((item) => (
@@ -174,11 +196,96 @@ export default async function ProblemDetailPage({
             <div className="bg-zinc-950 p-5">
               <div className="flex items-center gap-2 text-xs font-bold text-red-300">
                 <Flag className="size-4" />
-                推荐先看
+                常见误区
               </div>
-              <p className="mt-4 text-sm leading-7 text-zinc-300">
-                <MathBlock>{problem.learningGuide.recommendation}</MathBlock>
+              <ul className="mt-4 space-y-3">
+                {problem.learningGuide.pitfalls.map((item) => (
+                  <li key={item} className="border-l border-red-400/40 pl-3 text-sm leading-6 text-zinc-300">
+                    <MathBlock>{item}</MathBlock>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="bg-zinc-950 p-5">
+              <div className="flex items-center gap-2 text-xs font-bold text-emerald-300">
+                <Target className="size-4" />
+                推荐阅读路径
+              </div>
+              <ol className="mt-4 space-y-3">
+                {problem.learningGuide.readingPath.map((item, index) => (
+                  <li key={item} className="grid grid-cols-[1.5rem_1fr] gap-2 text-sm leading-6 text-zinc-300">
+                    <span className="font-mono text-xs text-emerald-300">{index + 1}</span>
+                    <span><MathBlock>{item}</MathBlock></span>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          </div>
+        </section>
+
+        <section id="related-library" className="mt-5 scroll-mt-32 border border-amber-400/25 bg-zinc-950">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-5 py-4">
+            <div className="flex items-center gap-2">
+              <BrainCircuit className="size-4 text-amber-300" />
+              <div>
+                <h2 className="text-sm font-bold text-white">相关知识与思路</h2>
+                <span className="font-mono text-[10px] uppercase tracking-widest text-zinc-600">Tag matcher preview</span>
+              </div>
+            </div>
+            <Link href="/library" className="inline-flex h-9 items-center gap-2 border border-white/10 px-3 text-xs font-bold text-zinc-400 transition hover:border-amber-400/40 hover:text-amber-200">
+              打开思路库
+              <ArrowUpRight className="size-3.5" />
+            </Link>
+          </div>
+          <div className="grid gap-px bg-white/10 lg:grid-cols-[1.1fr_1.1fr_.9fr]">
+            <div className="bg-zinc-950 p-5">
+              <h3 className="text-xs font-bold text-cyan-300">自动匹配的知识点</h3>
+              <div className="mt-4 flex flex-wrap gap-2">
+                {autoKnowledgeNodes.map((node) => (
+                  <Link key={node.id} href={`/library/${node.id}`} className="border border-cyan-400/20 bg-cyan-400/5 px-3 py-2 text-xs text-zinc-300 transition hover:border-cyan-400/50 hover:text-cyan-200">
+                    {node.title}
+                  </Link>
+                ))}
+              </div>
+              <h3 className="mt-5 text-xs font-bold text-amber-300">自动匹配的思路触发</h3>
+              <div className="mt-4 flex flex-wrap gap-2">
+                {autoInsightNodes.map((node) => (
+                  <Link key={node.id} href={`/library/${node.id}`} className="border border-amber-400/20 bg-amber-400/5 px-3 py-2 text-xs text-zinc-300 transition hover:border-amber-400/50 hover:text-amber-200">
+                    {node.title}
+                  </Link>
+                ))}
+              </div>
+            </div>
+            <div className="bg-zinc-950 p-5">
+              <h3 className="text-xs font-bold text-emerald-300">手动补充的关联</h3>
+              <div className="mt-4 flex flex-wrap gap-2">
+                {[...manualKnowledgeNodes, ...manualInsightNodes].map((node) => (
+                  <Link key={node.id} href={`/library/${node.id}`} className="border border-emerald-400/20 bg-emerald-400/5 px-3 py-2 text-xs text-zinc-300 transition hover:border-emerald-400/50 hover:text-emerald-200">
+                    {node.title}
+                  </Link>
+                ))}
+              </div>
+              <p className="mt-4 text-xs leading-6 text-zinc-600">
+                手动关联用于覆盖规则匹配看不出的“本题关键观察”，后续维护者可以继续补充。
               </p>
+            </div>
+            <div className="bg-zinc-950 p-5">
+              <h3 className="text-xs font-bold text-red-300">匹配来源与置信度</h3>
+              <div className="mt-4 space-y-2">
+                {[...autoMatches, ...manualMatches].map((match) => (
+                  <div key={`${match.source}-${match.tag}`} className="border border-white/10 bg-black/20 p-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-xs font-bold text-zinc-300">#{match.tag}</span>
+                      <span className={match.source === "manual" ? "text-xs text-emerald-300" : "text-xs text-cyan-300"}>
+                        {match.source === "manual" ? "manual" : "auto"} · {(match.confidence * 100).toFixed(0)}%
+                      </span>
+                    </div>
+                    <p className="mt-2 text-[11px] leading-5 text-zinc-600">
+                      K {match.matchedKnowledgeIds.length} · I {match.matchedInsightIds.length}
+                    </p>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </section>
@@ -193,7 +300,7 @@ export default async function ProblemDetailPage({
           <div className="grid gap-2 md:grid-cols-3">
             {[
               { audience: "想拿分", action: "先看标准解", advice: "先建立稳定得分主线，再补充其他视角。", solution: examSolution },
-              { audience: "想提思维", action: "看最优雅解", advice: "重点体会参数消去、结构识别和关键构造。", solution: elegantSolution },
+              { audience: "想提思维", action: "看最有启发的解法", advice: "重点体会参数消去、结构识别和关键构造。", solution: inspiringSolution },
               { audience: "想讲给别人", action: "看讲解友好最高的解法", advice: "沿着可复述的步骤组织语言与板书。", solution: teachingSolution },
             ].map(({ audience, action, advice, solution: targetSolution }) => {
               return (
@@ -216,44 +323,74 @@ export default async function ProblemDetailPage({
           </div>
         </section>
 
-        <section id="ranking" className="my-8 scroll-mt-32 border border-white/10 bg-zinc-950">
+        <section id="navigation" className="my-8 scroll-mt-32 border border-white/10 bg-zinc-950">
           <div className="flex items-center gap-2 border-b border-white/10 p-4 text-sm font-bold text-white">
             <Swords className="size-4 text-red-400" />
-            解法排行榜
+            解法导航
+            <span className="ml-auto hidden text-xs font-normal text-zinc-600 sm:block">按学习用途选择路线，而不是只看总分</span>
           </div>
-          <div className="divide-y divide-white/10">
-            {rankedSolutions.map((solution, index) => (
+          <div className="grid gap-px bg-white/10 md:grid-cols-2">
+            {solutionNavigation.map(({ label, tone, solution, note }) => (
               <a
-                key={solution.id}
+                key={`${label}-${solution.id}`}
                 href={`#${solution.id}`}
-                className="grid grid-cols-[3rem_1fr_auto] items-center gap-3 p-4 transition hover:bg-white/[0.03] md:grid-cols-[4rem_1fr_10rem_5rem]"
+                className="group bg-zinc-950 p-4 transition hover:bg-white/[0.03]"
               >
-                <span className="font-display text-2xl font-black text-zinc-500">#{index + 1}</span>
-                <span>
-                  <strong className="block text-sm text-white">{solution.title}</strong>
-                  <span className="mt-1 block text-xs text-zinc-600">{solution.author}</span>
-                </span>
-                <span className="hidden text-xs text-zinc-500 md:block">{solution.badge}</span>
-                <span className="flex items-center justify-end gap-2 font-display text-xl font-black text-cyan-300">
-                  {getSolutionAverage(solution).toFixed(1)}
-                  <ArrowUpRight className="size-4" />
-                </span>
+                <span className={`text-xs font-bold ${tone}`}>{label}</span>
+                <strong className="mt-2 flex items-center justify-between gap-3 text-sm text-white">
+                  {solution.title}
+                  <ArrowUpRight className="size-4 shrink-0 text-zinc-600 group-hover:text-cyan-300" />
+                </strong>
+                <p className="mt-2 line-clamp-2 text-xs leading-6 text-zinc-500">
+                  <MathBlock>{note}</MathBlock>
+                </p>
               </a>
             ))}
           </div>
         </section>
 
-        <div className="space-y-8">
-          {rankedSolutions.map((solution, index) => (
-            <SolutionCard key={solution.id} solution={solution} rank={index + 1} />
-          ))}
-        </div>
+        <section id="profiles" className="scroll-mt-32">
+          <div className="mb-4 border border-white/10 bg-zinc-950 p-4 md:p-5">
+            <div className="flex flex-wrap items-center gap-2 text-sm font-bold text-white">
+              <BrainCircuit className="size-4 text-cyan-300" />
+              解法画像
+              <span className="font-mono text-[10px] uppercase tracking-widest text-zinc-600">Profile first, proof after</span>
+            </div>
+            <p className="mt-2 text-sm leading-6 text-zinc-500">
+              默认先看每条路线的启发点、迁移价值、适用场景和局限。需要完整推导时，再点击卡片里的“展开完整解法”。
+            </p>
+          </div>
+          <div id="full-process" className="scroll-mt-32 space-y-8">
+            {problem.solutions.map((solution, index) => (
+              <SolutionCard key={solution.id} solution={solution} rank={index + 1} />
+            ))}
+          </div>
+        </section>
+
+        <section className="mt-8 border border-white/10 bg-zinc-950 p-5 md:p-8">
+          <div className="grid gap-8 lg:grid-cols-[.8fr_1.2fr] lg:items-center">
+            <div>
+              <div className="flex items-center gap-2 text-sm font-bold text-cyan-300">
+                <Sparkles className="size-4" />
+                分享这道题
+              </div>
+              <h2 className="mt-3 text-2xl font-black text-white md:text-3xl">截图这张卡片</h2>
+              <p className="mt-3 text-sm leading-7 text-zinc-400">
+                发给同学，或者发到小红书 / B站动态。一眼看到这道题为什么值得多解法比较。
+              </p>
+              <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+                <CopyLinkButton path={`/problems/${problem.id}`} problem={problem} />
+              </div>
+            </div>
+            <ShareCard problem={problem} />
+          </div>
+        </section>
 
         <section id="challenge" className="mt-8 scroll-mt-32 border border-cyan-400/30 bg-cyan-400/[0.06] p-6 md:flex md:items-center md:justify-between md:p-8">
           <div>
             <div className="flex items-center gap-2 text-sm font-bold text-cyan-300">
               <ShieldCheck className="size-4" />
-              挑战当前榜单
+              补充解法视角
             </div>
             <h2 className="mt-3 text-2xl font-black text-white">你有更好的解法？</h2>
             <p className="mt-2 text-sm text-zinc-400">按统一模板整理思路、完整过程、易错点与自评分。</p>

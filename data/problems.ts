@@ -1,10 +1,17 @@
 import type { Problem, Solution } from "@/lib/types";
+import { matchTagsToKnowledge } from "@/data/tag-matcher";
 
 const sourcePdf = "/papers/2026-tianjin-math.pdf";
 const answerPdf = "/papers/2026-tianjin-math-answers.pdf";
 
 function solution(input: Solution): Solution {
-  return input;
+  const autoMatches = matchTagsToKnowledge(input.tags);
+  return {
+    ...input,
+    autoMatches,
+    knowledgeIds: input.knowledgeIds ?? [...new Set(autoMatches.flatMap((match) => match.matchedKnowledgeIds))],
+    insightIds: input.insightIds ?? [...new Set(autoMatches.flatMap((match) => match.matchedInsightIds))],
+  };
 }
 
 const verified = (checks: string[]) => ({
@@ -12,9 +19,12 @@ const verified = (checks: string[]) => ({
   engine: "原卷与官方答案人工复核",
   statement: "题面、关键推导和最终结论已对照用户提供的天津卷及参考答案。",
   checks,
+  verifiedScope: ["题面与参考答案结论", "关键代数变形", "最终数值或表达式"],
+  unverifiedScope: ["每一种等价变形的完整形式化证明", "考场书写是否覆盖所有隐含条件", "读者按该路径独立书写时的表达完整性"],
+  reviewNote: "CAS 或人工复算只能检查关键节点是否一致，不能替代对定义域、分类讨论、文字论证和评分点完整性的人工审核。",
 });
 
-export const problems: Problem[] = [
+const rawProblems: Problem[] = [
   {
     id: "tj-2026-16",
     year: 2026,
@@ -36,6 +46,9 @@ export const problems: Problem[] = [
     sourcePdf,
     sourcePage: 3,
     answerPdf,
+    manualMatches: [
+      { tag: "整体相位", matchedKnowledgeIds: ["k-phase-transform"], matchedInsightIds: ["i-phase-first"], confidence: 0.95, source: "manual" },
+    ],
     learningGuide: {
       observation: [
         "函数已经是 $y=\\sin(\\omega x+\\varphi)$ 的标准形，周期可直接读出。",
@@ -46,6 +59,15 @@ export const problems: Problem[] = [
         "$\\sin(\\omega x+\\varphi)$ → 周期 $\\dfrac{2\\pi}{|\\omega|}$",
         "限制区间求最值 → 先做相位换元",
         "$\\sin\\alpha$ + 象限 → 补 $\\cos\\alpha$，再算 $\\sin2\\alpha,\\cos2\\alpha$",
+      ],
+      pitfalls: [
+        "把振幅为 $1$ 误当成给定小区间内一定能取到 $1$ 和 $-1$。",
+        "求 $\\cos\\alpha$ 时忽略第一象限条件，导致符号出错。",
+        "第（3）问直接代 $\\alpha$，却没有把 $2\\alpha+\\dfrac\\pi6$ 拆成可计算的二倍角。",
+      ],
+      readingPath: [
+        "先看整体相位换元法，建立最短考场路线。",
+        "再看展开式与导数法，用来复盘辅助角和二倍角公式。",
       ],
       recommendation: "先看“整体换元法”建立最短主线；第二种展开法适合复习二倍角求值，但不必在考场把函数完全展开。",
     },
@@ -59,6 +81,11 @@ export const problems: Problem[] = [
         badge: "稳健得分",
         origin: "把 $2x+\\dfrac\\pi6$ 看成一个整体相位。周期、单调性和最值都回到最熟悉的 $\\sin t$。",
         keyTransform: "令 $t=2x+\\dfrac\\pi6$。当 $x\\in[-\\dfrac\\pi6,\\dfrac\\pi{12}]$ 时，$t\\in[-\\dfrac\\pi6,\\dfrac\\pi3]$。",
+        inspiration: "把复合三角函数先看成整体相位，而不是急着展开。",
+        transferValue: "可迁移到三角函数图像变换、区间最值、单调性判断和相位参数题。",
+        suitableFor: ["考场拿分", "基础复盘", "课堂讲解"],
+        tradeoffs: ["结构比较常规", "对辅助角展开训练较少"],
+        limitations: ["若相位区间跨过多个极值点，还需要再分段讨论。"],
         summary: [
           "由角频率为 $2$，最小正周期 $T=\\dfrac{2\\pi}{2}=\\pi$。",
           "令 $t=2x+\\dfrac\\pi6$。题设区间对应 $t\\in[-\\dfrac\\pi6,\\dfrac\\pi3]$；$\\sin t$ 在该区间单调递增。",
@@ -81,6 +108,11 @@ export const problems: Problem[] = [
         badge: "复盘友好",
         origin: "把原函数展开为 $\\sin2x$ 与 $\\cos2x$ 的线性组合，并用导数统一判断区间单调性。",
         keyTransform: "$f(x)=\\dfrac{\\sqrt3}{2}\\sin2x+\\dfrac12\\cos2x$，且 $f'(x)=2\\cos(2x+\\dfrac\\pi6)$。",
+        inspiration: "同一个函数可以在整体相位和展开式之间切换，选择更适合当前小问的形态。",
+        transferValue: "适合迁移到辅助角公式、二倍角求值、三角函数与导数结合的问题。",
+        suitableFor: ["公式复盘", "课堂讲解", "查漏补缺"],
+        tradeoffs: ["第（2）问引入导数略重", "计算符号比整体换元多"],
+        limitations: ["不适合追求最短考场书写的场景。"],
         summary: [
           "展开得 $f(x)=\\dfrac{\\sqrt3}{2}\\sin2x+\\dfrac12\\cos2x$，仍可直接看出最小正周期为 $\\pi$。",
           "在给定区间内，$2x+\\dfrac\\pi6\\in[-\\dfrac\\pi6,\\dfrac\\pi3]$，故 $f'(x)=2\\cos(2x+\\dfrac\\pi6)>0$。",
@@ -116,6 +148,10 @@ export const problems: Problem[] = [
     sourcePdf,
     sourcePage: 3,
     answerPdf,
+    manualMatches: [
+      { tag: "坐标一线到底", matchedKnowledgeIds: ["k-space-vector"], matchedInsightIds: ["i-coordinate-on-box"], confidence: 0.94, source: "manual" },
+      { tag: "空间降维", matchedKnowledgeIds: ["k-geometric-reduction"], matchedInsightIds: ["i-project-to-plane"], confidence: 0.88, source: "manual" },
+    ],
     learningGuide: {
       observation: [
         "分点比例都落在长方体的棱上，坐标可以直接写出，向量路线非常稳定。",
@@ -127,6 +163,15 @@ export const problems: Problem[] = [
         "线面垂直 → 垂直于平面内两条相交直线",
         "面面夹角 → 法向量夹角",
         "三棱锥体积 → 混合积或底面积 × 高",
+      ],
+      pitfalls: [
+        "分点比例方向读反，尤其是 $A_1E=3ED_1$ 与 $2C_1F=FC$。",
+        "只证 $BD$ 垂直一条平面内直线，就误判为线面垂直。",
+        "二面角余弦忘记取法向量夹角的绝对值或补角关系。",
+      ],
+      readingPath: [
+        "先看空间直角坐标系一线到底，保证三问都能复算。",
+        "再看辅助点几何路线，理解为什么垂直关系会藏在底面里。",
       ],
       recommendation: "想稳定拿满三问，先看坐标向量法；想训练几何直觉，再看“辅助点 + 面积距离法”。",
     },
@@ -140,6 +185,11 @@ export const problems: Problem[] = [
         badge: "一线到底",
         origin: "长方体三条棱两两垂直，最适合直接坐标化；三个小问都能复用同一组点和向量。",
         keyTransform: "以 $D$ 为原点，取 $A(4,0,0)$、$B(4,2,0)$、$C(0,2,0)$，由分点比得 $E(1,0,3)$、$F(0,2,2)$。",
+        inspiration: "空间几何遇到多问计算时，先寻找能贯穿证明、夹角和体积的统一坐标系。",
+        transferValue: "可迁移到长方体、棱柱、二面角、线面垂直和三棱锥体积问题。",
+        suitableFor: ["考场拿分", "稳定复算", "标准板书"],
+        tradeoffs: ["叉积与点积计算较多", "几何直观不如辅助线法鲜明"],
+        limitations: ["若题目要求纯几何证明，需要额外转译为几何语言。"],
         summary: [
           "建立坐标系：$D(0,0,0)$，$A(4,0,0)$，$B(4,2,0)$，$C(0,2,0)$，$E(1,0,3)$，$F(0,2,2)$。",
           "$\\overrightarrow{DB}=(4,2,0)$，$\\overrightarrow{CE}=(1,-2,3)$，$\\overrightarrow{CF}=(0,0,2)$。两组点积均为 $0$，故 $BD\\perp CE$ 且 $BD\\perp CF$。",
@@ -162,6 +212,11 @@ export const problems: Problem[] = [
         badge: "几何视角",
         origin: "把点 $E$ 竖直投影到底面，先在底面找到与 $BD$ 垂直的直线，再把空间问题降维。",
         keyTransform: "过 $E$ 作 $EG\\parallel CC_1$ 交 $AD$ 于 $G$，则 $GD=1$；在底面内可证 $CG\\perp BD$。",
+        inspiration: "把空间垂直关系压回底面，用辅助点暴露隐藏的平面直角结构。",
+        transferValue: "适合迁移到立体几何中的降维证明、辅助截面、面积距离法和等体积问题。",
+        suitableFor: ["拓展思维", "课堂讲解", "技巧欣赏"],
+        tradeoffs: ["辅助点不容易第一时间想到", "夹角部分仍需借助向量"],
+        limitations: ["对图形观察依赖较强，考场上若图感不足容易卡住。"],
         summary: [
           "过 $E$ 作 $EG\\parallel CC_1$，交 $AD$ 于 $G$。由 $A_1E=3ED_1$ 得 $AG=3,GD=1$，且 $C,C_1,E,G$ 共面。",
           "在底面中，$\\dfrac{GD}{CD}=\\dfrac{CD}{BC}=\\dfrac12$，结合两个直角可由相似关系推出 $CG\\perp BD$。",
@@ -197,6 +252,10 @@ export const problems: Problem[] = [
     sourcePdf,
     sourcePage: 4,
     answerPdf,
+    manualMatches: [
+      { tag: "目标量消元", matchedKnowledgeIds: ["k-line-conic"], matchedInsightIds: ["i-target-variable"], confidence: 0.93, source: "manual" },
+      { tag: "切线距离", matchedKnowledgeIds: ["k-line-conic"], matchedInsightIds: ["i-tangent-condition"], confidence: 0.9, source: "manual" },
+    ],
     learningGuide: {
       observation: [
         "离心率给出 $c/a$，竖直弦长给出 $a,b$ 的第二个关系。",
@@ -207,6 +266,15 @@ export const problems: Problem[] = [
         "离心率 + 弦长 → 联立确定 $a,b$",
         "直线与圆相切 → 圆心到直线距离 = 半径",
         "求过定点的两条弦斜率 → 设斜率反代交点",
+      ],
+      pitfalls: [
+        "由直线 $x=b$ 截弦时忘记弦长是上下两段合起来。",
+        "圆切线截距有正负两种，需结合与椭圆相交及点序核对。",
+        "求 $k_1/k_2$ 时把 $P,Q$ 的上下顺序和斜率对应关系弄反。",
+      ],
+      readingPath: [
+        "先看直接求交点法，确认参数、切线和点序。",
+        "再看直接设过顶点斜率，体会目标量驱动的消元。",
       ],
       recommendation: "先看直接求交点法，最容易核对；再看“直接设 $AP,AQ$ 斜率”的消元法，体会如何绕开坐标。",
     },
@@ -220,6 +288,11 @@ export const problems: Problem[] = [
         badge: "稳健得分",
         origin: "先把椭圆和切线都完全确定，再求两个交点，最后按斜率定义直接计算。",
         keyTransform: "由 $e=\\dfrac12$ 得 $b^2=\\dfrac34a^2$；直线 $x=b$ 截得的弦长恰为 $b$。",
+        inspiration: "解析几何不必一开始追求巧法，先把对象定死，后面的斜率比自然浮现。",
+        transferValue: "可迁移到椭圆参数确定、直线与圆相切、直线与椭圆联立求交点的问题。",
+        suitableFor: ["考场拿分", "稳定复算", "基础训练"],
+        tradeoffs: ["联立方程计算偏硬", "对最终目标的结构利用不充分"],
+        limitations: ["若交点表达式复杂，计算量会迅速上升。"],
         summary: [
           "$c^2=a^2-b^2$ 且 $c/a=1/2$，所以 $b^2=\\dfrac34a^2$。",
           "令 $x=b$ 代入椭圆，得 $y=\\pm\\dfrac b2$，弦长为 $b$。由题设 $b=\\sqrt3$，进而 $a=2$。",
@@ -239,9 +312,14 @@ export const problems: Problem[] = [
         author: "ProofArena 编辑部",
         authorRole: "结构消元路线",
         tags: ["设斜率", "消元", "避免求点"],
-        badge: "最优雅",
+        badge: "结构路线",
         origin: "题目最终只问 $k_1/k_2$，不必把 $P,Q$ 坐标全部求出；直接把过 $A$ 的弦斜率 $k$ 当作未知量。",
         keyTransform: "直线 $y=\\sqrt3+kx$ 与椭圆除去交点 $A$ 后，另一交点横坐标为 $x=-\\dfrac{8\\sqrt3k}{3+4k^2}$。",
+        inspiration: "目标是斜率比，就直接把斜率当主变量，减少无关坐标的存在感。",
+        transferValue: "可迁移到圆锥曲线中过定点弦、斜率参数、根与系数关系和目标量消元题。",
+        suitableFor: ["拓展思维", "技巧欣赏", "竞赛式复盘"],
+        tradeoffs: ["起手不如直接联立自然", "消元过程需要较强代数控制"],
+        limitations: ["不适合基础薄弱或时间紧张时作为首选路线。"],
         summary: [
           "第（1）问同标准解，得椭圆 $\\dfrac{x^2}{4}+\\dfrac{y^2}{3}=1$，$A(0,\\sqrt3)$，有效切线为 $y=-\\sqrt3x+2\\sqrt3$。",
           "设过 $A$ 的直线为 $y=\\sqrt3+kx$。代入椭圆后提出已知根 $x=0$，另一交点横坐标为 $x=-\\dfrac{8\\sqrt3k}{3+4k^2}$。",
@@ -279,6 +357,10 @@ export const problems: Problem[] = [
     sourcePdf,
     sourcePage: 4,
     answerPdf,
+    manualMatches: [
+      { tag: "集合不是多重集", matchedKnowledgeIds: ["k-sequence-counting"], matchedInsightIds: ["i-count-by-sources"], confidence: 0.92, source: "manual" },
+      { tag: "幂边界分块", matchedKnowledgeIds: ["k-block-summation"], matchedInsightIds: ["i-block-at-powers"], confidence: 0.95, source: "manual" },
+    ],
     learningGuide: {
       observation: [
         "$a_n$ 最终是全体正偶数，$b_n$ 是全体 $3$ 的非负整数次幂；一偶一奇，两个集合没有重合。",
@@ -290,6 +372,15 @@ export const problems: Problem[] = [
         "不超过 $m$ 的元素个数 → 取整函数",
         "$(-1)^m$ + 偶数上限 → 奇偶配对",
         "$\\lfloor\\log_3m\\rfloor$ → 按 $3$ 的幂分块",
+      ],
+      pitfalls: [
+        "$E_n$ 是集合不是多重集，必须先判断两个数列是否有重合元素。",
+        "把 $3^0=1$ 漏掉，会让 $c_m$ 的常数项偏差。",
+        "交错和配对时区间端点奇偶错一位，后面整段都会错。",
+      ],
+      readingPath: [
+        "先看计数公式 + 指示函数拆分，弄清每一项从哪里来。",
+        "再看按 $3$ 的幂分块递推，学习压轴题如何组织长求和。",
       ],
       recommendation: "先看“计数拆分 + 指示函数法”理解公式从哪里来；再看分块递推法，它更像压轴题考场中的组织方式。",
     },
@@ -303,6 +394,11 @@ export const problems: Problem[] = [
         badge: "讲解最佳",
         origin: "先把 $c_m$ 写成可计算的显式计数，再把“有多少个 3 的幂不超过 $m$”改写成若干阈值事件之和。",
         keyTransform: "$c_m=\\lfloor m/2\\rfloor+\\lfloor\\log_3m\\rfloor+1$，且 $\\lfloor\\log_3m\\rfloor+1=\\sum_{t=0}^{n-1}[m\\ge3^t]$。",
+        inspiration: "把集合计数拆成两个独立来源，再用指示函数解释取整项的含义。",
+        transferValue: "可迁移到数列并集计数、取整函数求和、指示函数换序和离散分层问题。",
+        suitableFor: ["课堂讲解", "系统复盘", "查漏补缺"],
+        tradeoffs: ["公式拆分较长", "代数化简压力大"],
+        limitations: ["考场上若时间不足，完整写完换序推导并不轻松。"],
         summary: [
           "设等差公差为 $d$、等比公比为 $q$。由条件得 $d=q-1$ 与 $2+3d=q^2-1$，故 $q=3,d=2$。",
           "因此 $a_n=2n$，$b_n=3^{n-1}$。前者全为偶数，后者全为奇数，二者没有重复元素。",
@@ -326,6 +422,11 @@ export const problems: Problem[] = [
         badge: "考场优选",
         origin: "$c_m$ 只有在经过偶数或 $3$ 的幂时才变化；对固定区间 $3^{s-1}\\le m\\le3^s-1$，对数取整项是常数。",
         keyTransform: "研究增量 $S_n-S_{n-1}$，只需处理新区间 $[3^{n-1},3^n-1]$；该区间恰好从奇数开始、在偶数结束。",
+        inspiration: "不要硬处理全局取整函数，观察它在哪些区间内保持不变。",
+        transferValue: "可迁移到分块求和、递推差分、指数分层和交错和配对问题。",
+        suitableFor: ["考场拿分", "拓展思维", "结构训练"],
+        tradeoffs: ["需要看出按 $3$ 的幂分块", "末尾仍有等差乘等比求和"],
+        limitations: ["如果分块边界选错，后续配对会整体偏移。"],
         summary: [
           "先同样求得 $a_n=2n$、$b_n=3^{n-1}$，以及 $c_m=\\lfloor m/2\\rfloor+\\lfloor\\log_3m\\rfloor+1$。",
           "当 $3^{n-1}\\le m\\le3^n-1$ 时，$\\lfloor\\log_3m\\rfloor+1=n$，所以新区间内 $c_m=\\lfloor m/2\\rfloor+n$。",
@@ -362,6 +463,10 @@ export const problems: Problem[] = [
     sourcePdf,
     sourcePage: 4,
     answerPdf,
+    manualMatches: [
+      { tag: "切线下界", matchedKnowledgeIds: ["k-derivative-inequality"], matchedInsightIds: ["i-tangent-lower-bound"], confidence: 0.95, source: "manual" },
+      { tag: "望远镜乘积", matchedKnowledgeIds: ["k-product-estimation"], matchedInsightIds: ["i-product-to-telescope"], confidence: 0.94, source: "manual" },
+    ],
     learningGuide: {
       observation: [
         "第（1）问的切线正是第（2）问要证明的直线下界，说明应研究函数与切线的差。",
@@ -373,6 +478,15 @@ export const problems: Problem[] = [
         "连乘积下界 → 每一项放缩",
         "$1+\\dfrac1{3k}$ → 与 $((k+1)/k)^{1/3}$ 比较",
         "求最大指数 → 既证可行，也证不能更大",
+      ],
+      pitfalls: [
+        "只证明 $a=\\dfrac13$ 可行，却忘记证明比它更大的指数不可能。",
+        "差函数在负区间的单调性方向容易看反。",
+        "把渐近解释直接写成高考证明，可能缺少可接受的初等上界。",
+      ],
+      readingPath: [
+        "先看差函数导数法 + 望远镜乘积，掌握可交卷的主线。",
+        "再看分段初等放缩 + 渐近阶判断，理解最佳指数为什么由一阶项决定。",
       ],
       recommendation: "先看导数法掌握官方可接受的完整论证；第二条路线更适合理解为什么最佳指数必然是 $1/3$。",
     },
@@ -386,6 +500,11 @@ export const problems: Problem[] = [
         badge: "稳健主线",
         origin: "切线给出了候选下界 $1+x/3$。构造差函数证明它非负，再逐项代入乘积。",
         keyTransform: "令 $g(x)=f(x)-1-\\dfrac x3$；对乘积使用 $1+\\dfrac1{3k}\\ge\\left(\\dfrac{k+1}{k}\\right)^{1/3}$。",
+        inspiration: "切线不是孤立小问，它暗示了后两问需要使用的全局下界。",
+        transferValue: "可迁移到导数证明切线不等式、连乘积放缩、望远镜乘积和最优指数估计。",
+        suitableFor: ["考场拿分", "标准证明", "课堂讲解"],
+        tradeoffs: ["不能更大的证明较长", "差函数负区间论证需要细致"],
+        limitations: ["若只记结论不理解切线下界来源，迁移时容易套错。"],
         summary: [
           "$f(0)=1$，$f'(0)=1-\\dfrac23=\\dfrac13$，故切线为 $y=1+\\dfrac x3$，即 $x-3y+3=0$。",
           "令 $g(x)=e^x-\\dfrac23\\sin x-1-\\dfrac x3$。有 $g(0)=g'(0)=0$，$g''(x)=e^x+\\dfrac23\\sin x$。",
@@ -410,6 +529,11 @@ export const problems: Problem[] = [
         badge: "思维路线",
         origin: "正半轴直接用 $e^x\\ge1+x$、$\\sin x\\le x$；负小区间用更精细的多项式下界。最佳指数则由 $x\\to0$ 时的一阶项决定。",
         keyTransform: "$f(x)=1+\\dfrac x3+O(x^2)$，所以 $\\ln f(1/k)=\\dfrac1{3k}+O(1/k^2)$。",
+        inspiration: "最佳指数由 $x\\to0$ 的一阶增长决定，乘积问题可以转成对数增长阶。",
+        transferValue: "可迁移到渐近估计、乘积转对数、泰勒型不等式和最优常数判断。",
+        suitableFor: ["拓展思维", "技巧欣赏", "课后理解"],
+        tradeoffs: ["渐近记号不适合高考标准答卷", "对基础读者门槛较高"],
+        limitations: ["正式考试中需要改写为可接受的初等上界证明。"],
         summary: [
           "第（1）问同标准解，切线为 $x-3y+3=0$。",
           "当 $x\\ge0$ 时，$e^x\\ge1+x$ 且 $\\sin x\\le x$，故 $f(x)\\ge1+x-\\dfrac23x=1+\\dfrac x3$。",
@@ -428,6 +552,18 @@ export const problems: Problem[] = [
     ],
   },
 ];
+
+export const problems: Problem[] = rawProblems.map((problem) => {
+  const autoMatches = matchTagsToKnowledge(problem.tags);
+  const allMatches = [...autoMatches, ...(problem.manualMatches ?? [])];
+
+  return {
+    ...problem,
+    autoMatches,
+    knowledgeIds: problem.knowledgeIds ?? [...new Set(allMatches.flatMap((match) => match.matchedKnowledgeIds))],
+    insightIds: problem.insightIds ?? [...new Set(allMatches.flatMap((match) => match.matchedInsightIds))],
+  };
+});
 
 export function getProblem(id: string) {
   return problems.find((problem) => problem.id === id);
