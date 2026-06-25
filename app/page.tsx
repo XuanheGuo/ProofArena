@@ -34,7 +34,7 @@ export default function HomePage() {
               同一道题，多种解法，正面交锋。
             </p>
             <p className="mt-3 max-w-2xl border-l-2 border-red-500 pl-4 text-sm font-semibold leading-7 text-zinc-200 md:text-base">
-              同一道题，把标准解、神仙解、暴力解、老师讲法放在一起比较。
+              同一道题，把标准解、启发解、稳健解、教学解放在一起比较。
             </p>
             <p className="mt-4 max-w-xl text-sm leading-7 text-zinc-400 md:text-base">
               我们不只给解法打分，更关心每个解法带来的启发。比较考场可行性、结构美感、计算负担与讲解质量，是为了帮助你选择最适合当前目标的路线。

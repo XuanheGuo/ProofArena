@@ -2,10 +2,11 @@
 
 import { Check, ClipboardCopy, MessageSquareText } from "lucide-react";
 import { useState } from "react";
-import type { Problem } from "@/lib/types";
-import { getShareRoutes, getShareTags } from "@/components/ShareCard";
+import type { Problem, Solution } from "@/lib/types";
+import { getShareRoutes, getShareTags, getSolutionShareTags } from "@/components/ShareCard";
+import { getSolutionKindMeta } from "@/lib/solution-kinds";
 
-export function CopyLinkButton({ path, problem }: { path: string; problem?: Problem }) {
+export function CopyLinkButton({ path, problem, solution }: { path: string; problem?: Problem; solution?: Solution }) {
   const [copiedTarget, setCopiedTarget] = useState<"link" | "text" | null>(null);
 
   function fallbackCopy(value: string) {
@@ -29,6 +30,37 @@ export function CopyLinkButton({ path, problem }: { path: string; problem?: Prob
   function buildShareText() {
     if (!problem) return getUrl();
 
+    if (solution) {
+      const kindMeta = getSolutionKindMeta(solution.kind);
+      const tags = getSolutionShareTags(problem, solution).slice(0, 5);
+      const scenarios = solution.suitableFor.slice(0, 3).join("、") || "待补充";
+      const costs = [...solution.tradeoffs, ...solution.limitations].slice(0, 2).join("；") || "待补充";
+
+      return `【ProofArena 解法分享】
+题目：${problem.title}
+来源：${problem.year}${problem.region} · ${problem.number}
+
+解法：${solution.title}
+类型：${kindMeta.label}（${kindMeta.description}）
+作者：${solution.author}
+
+这个解法值得看：
+${solution.inspiration}
+
+关键转化：
+${solution.keyTransform}
+
+迁移价值：
+${solution.transferValue}
+
+适合：${scenarios}
+代价与局限：${costs}
+相关思路：${tags.length ? tags.join("、") : "待补充"}
+
+不是搜答案，是比较思路。
+完整解法：${getUrl()}#${solution.id}`;
+    }
+
     const routes = getShareRoutes(problem);
     const routeByLabel = new Map(routes.map((route) => [route.label, route.solution?.title ?? "待补充解法"]));
     const tags = getShareTags(problem).slice(0, 5);
@@ -38,9 +70,10 @@ export function CopyLinkButton({ path, problem }: { path: string; problem?: Prob
 来源：${problem.year}${problem.region} · ${problem.number}
 
 这道题目前收录了 ${problem.solutions.length} 种解法：
-- 最适合考场：${routeByLabel.get("最适合考场") ?? "待补充解法"}
-- 最有启发：${routeByLabel.get("最有启发") ?? "待补充解法"}
-- 最适合讲解：${routeByLabel.get("最适合讲解") ?? "待补充解法"}
+- 标准解：${routeByLabel.get("标准解") ?? "待补充解法"}
+- 启发解：${routeByLabel.get("启发解") ?? "待补充解法"}
+- 教学解：${routeByLabel.get("教学解") ?? "待补充解法"}
+- 稳健解：${routeByLabel.get("稳健解") ?? "待补充解法"}
 
 相关思路：${tags.length ? tags.join("、") : "待补充"}
 

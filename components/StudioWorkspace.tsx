@@ -40,7 +40,7 @@ const initialState: StudioState = {
   statement: "已知 $f(x)=e^x-\\dfrac23\\sin x$，证明相关不等式并求最佳指数。",
   solutionTitle: "差函数导数法 + 望远镜乘积",
   author: "ProofArena Studio",
-  solutionTags: "差函数、导数、望远镜",
+  solutionTags: "标准解、差函数、导数、望远镜",
   origin: "切线给出了候选下界，后续乘积问题可以逐项放缩。",
   keyTransform: "令 $g(x)=f(x)-1-\\dfrac x3$，再使用 $1+\\dfrac1{3k}\\ge((k+1)/k)^{1/3}$。",
   fullProcess: "1. 求切线。\\n2. 构造差函数并证明非负。\\n3. 逐项代入连乘积。\\n4. 证明更大的指数不可能。",
@@ -157,11 +157,12 @@ export function StudioWorkspace() {
       solutions: [
         {
           id: solutionId,
+          kind: "standard",
           title: state.solutionTitle,
           author: state.author,
-          authorRole: "Studio 草稿",
+          authorRole: "标准解",
           tags: solutionTags,
-          badge: "待审核",
+          badge: "标准解",
           origin: state.origin,
           keyTransform: state.keyTransform,
           inspiration: state.inspiration,

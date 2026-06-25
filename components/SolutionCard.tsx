@@ -21,6 +21,7 @@ import { VerificationPanel } from "@/components/VerificationPanel";
 import { getSolutionAverage } from "@/data/problems";
 import { getInsightNode } from "@/data/insights";
 import { getKnowledgeNode } from "@/data/knowledge";
+import { getSolutionKindMeta } from "@/lib/solution-kinds";
 
 const scoreLabels: Array<[keyof Solution["scores"], string]> = [
   ["correctness", "正确性"],
@@ -32,6 +33,7 @@ const scoreLabels: Array<[keyof Solution["scores"], string]> = [
 
 export function SolutionCard({ solution, rank }: { solution: Solution; rank: number }) {
   const [view, setView] = useState<"idea" | "transform" | "full">("transform");
+  const kindMeta = getSolutionKindMeta(solution.kind);
   const knowledgeNodes = (solution.knowledgeIds ?? [])
     .map(getKnowledgeNode)
     .filter((node): node is NonNullable<ReturnType<typeof getKnowledgeNode>> => Boolean(node));
@@ -49,7 +51,8 @@ export function SolutionCard({ solution, rank }: { solution: Solution; rank: num
         </div>
         <div className="p-5 lg:p-7">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="bg-red-500 px-2 py-1 text-xs font-bold text-white">{solution.badge}</span>
+            <span className={`border px-2 py-1 text-xs font-bold ${kindMeta.className}`}>{kindMeta.label}</span>
+            <span className="border border-white/10 px-2 py-1 text-xs text-zinc-500">{kindMeta.description}</span>
             {solution.tags.map((tag) => (
               <span key={tag} className="border border-white/10 px-2 py-1 text-xs text-zinc-400">
                 {tag}

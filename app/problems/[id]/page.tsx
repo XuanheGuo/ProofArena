@@ -4,8 +4,7 @@ import { ArrowLeft, ArrowUpRight, BrainCircuit, ExternalLink, Eye, FileCheck2, F
 import { MathBlock } from "@/components/MathBlock";
 import { SolutionCard } from "@/components/SolutionCard";
 import { MathVisualization } from "@/components/MathVisualization";
-import { ShareCard } from "@/components/ShareCard";
-import { CopyLinkButton } from "@/components/CopyLinkButton";
+import { SolutionSharePanel } from "@/components/SolutionSharePanel";
 import { getBestSolution, getProblem, problems } from "@/data/problems";
 import { getInsightNode } from "@/data/insights";
 import { getKnowledgeNode } from "@/data/knowledge";
@@ -27,12 +26,16 @@ export default async function ProblemDetailPage({
   const examSolution = getBestSolution(problem, "examReady");
   const inspiringSolution = getBestSolution(problem, "elegance");
   const teachingSolution = getBestSolution(problem, "explanation");
-  const lightCalculationSolution = getBestSolution(problem, "calculation");
+  const robustSolution = [...problem.solutions].sort((a, b) => {
+    const aRobust = a.kind === "robust" ? 2 : 0;
+    const bRobust = b.kind === "robust" ? 2 : 0;
+    return b.scores.correctness + b.scores.examReady + bRobust - (a.scores.correctness + a.scores.examReady + aRobust);
+  })[0] ?? examSolution;
   const solutionNavigation = [
-    { label: "最适合考场", tone: "text-red-300", solution: examSolution, note: "稳定、评分点清楚，适合作为第一遍主线。" },
-    { label: "最有启发", tone: "text-amber-300", solution: inspiringSolution, note: inspiringSolution.inspiration },
-    { label: "最适合讲解", tone: "text-cyan-300", solution: teachingSolution, note: "便于复述关键观察和推导层次。" },
-    { label: "最少计算", tone: "text-emerald-300", solution: lightCalculationSolution, note: "优先减少展开、联立和重复化简。" },
+    { label: "标准解", tone: "text-cyan-300", solution: examSolution, note: "考场主线，稳定拿分。" },
+    { label: "启发解", tone: "text-amber-300", solution: inspiringSolution, note: inspiringSolution.inspiration },
+    { label: "教学解", tone: "text-red-300", solution: teachingSolution, note: "层次清楚，适合讲解。" },
+    { label: "稳健解", tone: "text-emerald-300", solution: robustSolution, note: "计算较多，但容错高。" },
   ];
   const hasVisualization = new Set([
     "tj-2026-18",
@@ -300,8 +303,8 @@ export default async function ProblemDetailPage({
           <div className="grid gap-2 md:grid-cols-3">
             {[
               { audience: "想拿分", action: "先看标准解", advice: "先建立稳定得分主线，再补充其他视角。", solution: examSolution },
-              { audience: "想提思维", action: "看最有启发的解法", advice: "重点体会参数消去、结构识别和关键构造。", solution: inspiringSolution },
-              { audience: "想讲给别人", action: "看讲解友好最高的解法", advice: "沿着可复述的步骤组织语言与板书。", solution: teachingSolution },
+              { audience: "想提思维", action: "看启发解", advice: "重点体会参数消去、结构识别和关键构造。", solution: inspiringSolution },
+              { audience: "想讲给别人", action: "看教学解", advice: "沿着可复述的步骤组织语言与板书。", solution: teachingSolution },
             ].map(({ audience, action, advice, solution: targetSolution }) => {
               return (
                 <a
@@ -367,24 +370,7 @@ export default async function ProblemDetailPage({
           </div>
         </section>
 
-        <section className="mt-8 border border-white/10 bg-zinc-950 p-5 md:p-8">
-          <div className="grid gap-8 lg:grid-cols-[.8fr_1.2fr] lg:items-center">
-            <div>
-              <div className="flex items-center gap-2 text-sm font-bold text-cyan-300">
-                <Sparkles className="size-4" />
-                分享这道题
-              </div>
-              <h2 className="mt-3 text-2xl font-black text-white md:text-3xl">截图这张卡片</h2>
-              <p className="mt-3 text-sm leading-7 text-zinc-400">
-                发给同学，或者发到小红书 / B站动态。一眼看到这道题为什么值得多解法比较。
-              </p>
-              <div className="mt-5 flex flex-col gap-3 sm:flex-row">
-                <CopyLinkButton path={`/problems/${problem.id}`} problem={problem} />
-              </div>
-            </div>
-            <ShareCard problem={problem} />
-          </div>
-        </section>
+        <SolutionSharePanel problem={problem} />
 
         <section id="challenge" className="mt-8 scroll-mt-32 border border-cyan-400/30 bg-cyan-400/[0.06] p-6 md:flex md:items-center md:justify-between md:p-8">
           <div>

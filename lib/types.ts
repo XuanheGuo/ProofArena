@@ -8,6 +8,8 @@ export type VerificationStatus = "verified" | "partial" | "manual";
 
 export type TagMatchSource = "auto" | "manual";
 
+export type SolutionKind = "standard" | "insight" | "robust" | "teaching";
+
 export interface KnowledgeNode {
   id: string;
   title: string;
@@ -66,6 +68,7 @@ export interface Verification {
 
 export interface Solution {
   id: string;
+  kind: SolutionKind;
   title: string;
   author: string;
   authorRole: string;

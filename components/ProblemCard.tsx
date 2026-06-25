@@ -63,7 +63,7 @@ export function ProblemCard({ problem, rank }: { problem: Problem; rank?: number
             <div className="min-w-0 bg-zinc-950 p-3">
               <span className="flex items-center gap-1.5 text-[11px] text-zinc-500">
                 <TimerReset className="size-3.5 text-red-400" />
-                考场路线
+                标准解
               </span>
               <strong className="mt-1.5 block truncate text-xs text-zinc-200">{examSolution.title}</strong>
               <p className="mt-2 line-clamp-2 text-[11px] leading-5 text-zinc-500">{examSolution.inspiration}</p>
@@ -71,7 +71,7 @@ export function ProblemCard({ problem, rank }: { problem: Problem; rank?: number
             <div className="min-w-0 bg-zinc-950 p-3">
               <span className="flex items-center gap-1.5 text-[11px] text-zinc-500">
                 <Sparkles className="size-3.5 text-amber-300" />
-                启发路线
+                启发解
               </span>
               <strong className="mt-1.5 block truncate text-xs text-zinc-200">{elegantSolution.title}</strong>
               <p className="mt-2 line-clamp-2 text-[11px] leading-5 text-zinc-500">{elegantSolution.inspiration}</p>
