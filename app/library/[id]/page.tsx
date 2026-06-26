@@ -65,7 +65,7 @@ export default async function LibraryDetailPage({
           <div className="mt-8">
             <div className="flex items-center gap-2 font-mono text-xs uppercase tracking-widest text-cyan-300">
               {isKnowledge ? <BookOpenCheck className="size-4" /> : <BrainCircuit className="size-4" />}
-              {isKnowledge ? "Knowledge node" : "Insight node"}
+              {isKnowledge ? "知识点节点" : "思路触发节点"}
             </div>
             <h1 className="mt-4 text-4xl font-black text-white md:text-6xl">{title}</h1>
             <div className="mt-5 flex flex-wrap gap-2">

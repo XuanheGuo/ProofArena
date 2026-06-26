@@ -17,7 +17,7 @@ export default function AboutPage() {
             返回首页
           </Link>
           <div className="mt-10">
-            <span className="font-mono text-xs uppercase tracking-widest text-cyan-300">About the arena</span>
+            <span className="font-mono text-xs uppercase tracking-widest text-cyan-300">关于 ProofArena</span>
             <h1 className="mt-4 text-4xl font-black text-white md:text-6xl">ProofArena 不是搜题网站</h1>
             <p className="mt-5 max-w-3xl text-base leading-8 text-zinc-300 md:text-lg">
               我们不追求把答案堆得更多，而是把同一道题的不同解法放在一起，认真比较它们为什么成立、何时好用，以及学生能从中带走什么。
@@ -45,7 +45,7 @@ export default function AboutPage() {
         </section>
 
         <section className="mt-6 border border-amber-400/25 bg-amber-400/5 p-6 md:p-8">
-          <span className="font-mono text-xs uppercase tracking-widest text-amber-300">Demo status</span>
+          <span className="font-mono text-xs uppercase tracking-widest text-amber-300">Demo 状态</span>
           <h2 className="mt-3 text-2xl font-black text-white">现在仍是一个可运行的样板</h2>
           <p className="mt-3 text-sm leading-7 text-zinc-400">
             当前为 ProofArena Demo，题目与解法数据仍在整理中。现阶段重点是验证阅读路径、评分体系、交互图像和投稿规范，而不是追求题目数量。
@@ -60,13 +60,13 @@ export default function AboutPage() {
           <div className="grid gap-px bg-white/10 sm:grid-cols-2">
             <div className="bg-zinc-950 p-6">
               <Code2 className="size-5 text-cyan-300" />
-              <span className="mt-5 block font-mono text-xs uppercase text-zinc-500">Code</span>
+              <span className="mt-5 block font-mono text-xs uppercase text-zinc-500">代码</span>
               <strong className="mt-2 block text-2xl text-white">AGPL-3.0</strong>
               <p className="mt-3 text-sm leading-6 text-zinc-500">应用代码以 AGPL-3.0 协议开放。</p>
             </div>
             <div className="bg-zinc-950 p-6">
               <BookOpenCheck className="size-5 text-amber-300" />
-              <span className="mt-5 block font-mono text-xs uppercase text-zinc-500">Content</span>
+              <span className="mt-5 block font-mono text-xs uppercase text-zinc-500">内容</span>
               <strong className="mt-2 block text-2xl text-white">CC BY-SA 4.0</strong>
               <p className="mt-3 text-sm leading-6 text-zinc-500">原创题解与编辑内容采用署名、相同方式共享协议。</p>
             </div>

@@ -106,7 +106,7 @@ export function SolutionCard({ solution, rank }: { solution: Solution; rank: num
             <div className="flex items-center gap-2 border-b border-white/10 px-4 py-3">
               <Compass className="size-4 text-cyan-300" />
               <h3 className="text-sm font-bold text-white">解法画像</h3>
-              <span className="font-mono text-[10px] uppercase tracking-widest text-zinc-600">Why it matters</span>
+              <span className="font-mono text-[10px] uppercase tracking-widest text-zinc-600">为什么值得学</span>
             </div>
             <div className="grid gap-px bg-white/10 md:grid-cols-2">
               <div className="bg-zinc-950 p-4">

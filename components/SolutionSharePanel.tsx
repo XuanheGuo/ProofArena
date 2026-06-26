@@ -120,8 +120,8 @@ export function SolutionSharePanel({ problem }: { problem: Problem }) {
             </div>
             <div className="mx-auto w-full max-w-[520px] border border-white/10 bg-black/20 p-2 sm:p-3 xl:max-w-[940px]">
               <div className="mb-2 flex items-center justify-between gap-3 px-1 text-[11px] font-bold uppercase tracking-widest text-zinc-500">
-                <span>Screenshot Area</span>
-                <span>{shareMode === "full" ? "Full Process" : shareMode === "transform" ? "Key Transform" : "Idea Only"}</span>
+                <span>截图区域</span>
+                <span>{shareMode === "full" ? "完整过程" : shareMode === "transform" ? "关键转化" : "只看思路"}</span>
               </div>
               <ShareCard problem={problem} solution={selectedSolution} mode={shareMode} />
             </div>

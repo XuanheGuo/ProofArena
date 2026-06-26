@@ -8,6 +8,7 @@ import { SolutionSharePanel } from "@/components/SolutionSharePanel";
 import { getBestSolution, getProblem, problems } from "@/data/problems";
 import { getInsightNode } from "@/data/insights";
 import { getKnowledgeNode } from "@/data/knowledge";
+import { difficultyBadgeClass } from "@/lib/problem-presentation";
 
 export function generateStaticParams() {
   return problems.map((problem) => ({ id: problem.id }));
@@ -72,7 +73,7 @@ export default async function ProblemDetailPage({
                   {problem.year} · {problem.paper} · {problem.number}
                 </span>
                 <span className="border border-cyan-400/30 px-2 py-1 text-cyan-300">{problem.questionType}</span>
-                <span className="border border-red-400/30 px-2 py-1 text-red-300">{problem.difficulty}</span>
+                <span className={`border px-2 py-1 ${difficultyBadgeClass[problem.difficulty]}`}>{problem.difficulty}</span>
               </div>
               <h1 className="mt-5 text-3xl font-black text-white md:text-5xl">{problem.title}</h1>
               <div className="mt-5 flex flex-wrap gap-2">
@@ -83,11 +84,11 @@ export default async function ProblemDetailPage({
             </div>
             <div className="grid grid-cols-2 border border-white/10 bg-black/20 lg:grid-cols-1">
               <div className="border-r border-white/10 p-4 lg:border-r-0 lg:border-b">
-                <span className="font-mono text-[11px] uppercase text-zinc-600">Heat</span>
+                <span className="font-mono text-[11px] uppercase text-zinc-600">热度</span>
                 <strong className="mt-1 block font-display text-3xl text-red-400">{problem.heat}</strong>
               </div>
               <div className="p-4">
-                <span className="font-mono text-[11px] uppercase text-zinc-600">Solutions</span>
+                <span className="font-mono text-[11px] uppercase text-zinc-600">解法</span>
                 <strong className="mt-1 block font-display text-3xl text-cyan-300">
                   {String(problem.solutions.length).padStart(2, "0")}
                 </strong>
@@ -125,7 +126,7 @@ export default async function ProblemDetailPage({
       <div className="mx-auto max-w-7xl px-4 py-8 md:px-6">
         <section id="problem" className="scroll-mt-32 border border-white/10 bg-zinc-950">
           <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
-            <span className="font-mono text-xs uppercase tracking-widest text-zinc-500">Problem statement</span>
+            <span className="font-mono text-xs uppercase tracking-widest text-zinc-500">题干</span>
             <span className="text-xs text-zinc-600">2026 真题 · 扫描页核对</span>
           </div>
           <div className="space-y-4 p-5 text-base leading-8 text-zinc-200 md:p-8 md:text-lg">
@@ -166,7 +167,7 @@ export default async function ProblemDetailPage({
             <BrainCircuit className="size-4 text-cyan-300" />
             <div>
               <h2 className="text-sm font-bold text-white">这题怎么想到？</h2>
-              <span className="font-mono text-[10px] uppercase tracking-widest text-zinc-600">Before the solution</span>
+              <span className="font-mono text-[10px] uppercase tracking-widest text-zinc-600">先找观察入口</span>
             </div>
           </div>
           <div className="grid gap-px bg-white/10 md:grid-cols-2 xl:grid-cols-4">
@@ -232,7 +233,7 @@ export default async function ProblemDetailPage({
               <BrainCircuit className="size-4 text-amber-300" />
               <div>
                 <h2 className="text-sm font-bold text-white">相关知识与思路</h2>
-                <span className="font-mono text-[10px] uppercase tracking-widest text-zinc-600">Tag matcher preview</span>
+                <span className="font-mono text-[10px] uppercase tracking-widest text-zinc-600">标签关联结果</span>
               </div>
             </div>
             <Link href="/library" className="inline-flex h-9 items-center gap-2 border border-white/10 px-3 text-xs font-bold text-zinc-400 transition hover:border-amber-400/40 hover:text-amber-200">
@@ -280,11 +281,11 @@ export default async function ProblemDetailPage({
                     <div className="flex items-center justify-between gap-3">
                       <span className="text-xs font-bold text-zinc-300">#{match.tag}</span>
                       <span className={match.source === "manual" ? "text-xs text-emerald-300" : "text-xs text-cyan-300"}>
-                        {match.source === "manual" ? "manual" : "auto"} · {(match.confidence * 100).toFixed(0)}%
+                        {match.source === "manual" ? "手动" : "自动"} · {(match.confidence * 100).toFixed(0)}%
                       </span>
                     </div>
                     <p className="mt-2 text-[11px] leading-5 text-zinc-600">
-                      K {match.matchedKnowledgeIds.length} · I {match.matchedInsightIds.length}
+                      知识点 {match.matchedKnowledgeIds.length} · 思路 {match.matchedInsightIds.length}
                     </p>
                   </div>
                 ))}
@@ -357,7 +358,7 @@ export default async function ProblemDetailPage({
             <div className="flex flex-wrap items-center gap-2 text-sm font-bold text-white">
               <BrainCircuit className="size-4 text-cyan-300" />
               解法画像
-              <span className="font-mono text-[10px] uppercase tracking-widest text-zinc-600">Profile first, proof after</span>
+              <span className="font-mono text-[10px] uppercase tracking-widest text-zinc-600">先看画像，再看过程</span>
             </div>
             <p className="mt-2 text-sm leading-6 text-zinc-500">
               默认先看每条路线的启发点、迁移价值、适用场景和局限。需要完整推导时，再点击卡片里的“展开完整解法”。

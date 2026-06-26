@@ -2,16 +2,18 @@
 
 import { useMemo, useState } from "react";
 import { Search, SlidersHorizontal, X } from "lucide-react";
-import type { ExamRegion, Problem, QuestionType } from "@/lib/types";
+import type { Difficulty, ExamRegion, Problem, QuestionType } from "@/lib/types";
 import { ProblemCard } from "@/components/ProblemCard";
 
 const regions: Array<"全部卷别" | ExamRegion> = ["全部卷别", "天津卷"];
 const types: Array<"全部题型" | QuestionType> = ["全部题型", "单选", "多选", "填空", "解答"];
+const difficulties: Array<"全部难度" | Difficulty> = ["全部难度", "基础", "中档", "压轴"];
 
 export function ProblemExplorer({ problems }: { problems: Problem[] }) {
   const [query, setQuery] = useState("");
   const [region, setRegion] = useState<(typeof regions)[number]>("全部卷别");
   const [type, setType] = useState<(typeof types)[number]>("全部题型");
+  const [difficulty, setDifficulty] = useState<(typeof difficulties)[number]>("全部难度");
   const [topic, setTopic] = useState("全部专题");
 
   const topics = useMemo(
@@ -30,17 +32,19 @@ export function ProblemExplorer({ problems }: { problems: Problem[] }) {
           .includes(keyword);
       const matchesRegion = region === "全部卷别" || problem.region === region;
       const matchesType = type === "全部题型" || problem.questionType === type;
+      const matchesDifficulty = difficulty === "全部难度" || problem.difficulty === difficulty;
       const matchesTopic = topic === "全部专题" || problem.tags.includes(topic);
-      return matchesQuery && matchesRegion && matchesType && matchesTopic;
+      return matchesQuery && matchesRegion && matchesType && matchesDifficulty && matchesTopic;
     });
-  }, [problems, query, region, type, topic]);
+  }, [difficulty, problems, query, region, type, topic]);
 
-  const hasFilters = query || region !== "全部卷别" || type !== "全部题型" || topic !== "全部专题";
+  const hasFilters = query || region !== "全部卷别" || type !== "全部题型" || difficulty !== "全部难度" || topic !== "全部专题";
 
   function resetFilters() {
     setQuery("");
     setRegion("全部卷别");
     setType("全部题型");
+    setDifficulty("全部难度");
     setTopic("全部专题");
   }
 
@@ -81,21 +85,43 @@ export function ProblemExplorer({ problems }: { problems: Problem[] }) {
             </select>
           </div>
 
-          <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
-            {types.map((item) => (
-              <button
-                key={item}
-                type="button"
-                onClick={() => setType(item)}
-                className={`h-9 shrink-0 border px-3 text-xs font-semibold transition ${
-                  type === item
-                    ? "border-cyan-400 bg-cyan-400 text-zinc-950"
-                    : "border-white/10 text-zinc-400 hover:border-white/25 hover:text-white"
-                }`}
-              >
-                {item}
-              </button>
-            ))}
+          <div className="mt-3 flex gap-4 overflow-x-auto pb-1">
+            <div className="flex shrink-0 items-center gap-2">
+              <span className="font-mono text-[10px] uppercase tracking-widest text-zinc-600">题型</span>
+              {types.map((item) => (
+                <button
+                  key={item}
+                  type="button"
+                  onClick={() => setType(item)}
+                  className={`h-9 shrink-0 border px-3 text-xs font-semibold transition ${
+                    type === item
+                      ? "border-cyan-400 bg-cyan-400 text-zinc-950"
+                      : "border-white/10 text-zinc-400 hover:border-white/25 hover:text-white"
+                  }`}
+                >
+                  {item}
+                </button>
+              ))}
+            </div>
+            <div className="flex shrink-0 items-center gap-2 border-l border-white/10 pl-4">
+              <span className="font-mono text-[10px] uppercase tracking-widest text-zinc-600">难度</span>
+              {difficulties.map((item) => (
+                <button
+                  key={item}
+                  type="button"
+                  data-testid={`difficulty-filter-${item}`}
+                  aria-pressed={difficulty === item}
+                  onClick={() => setDifficulty(item)}
+                  className={`h-9 shrink-0 border px-3 text-xs font-semibold transition ${
+                    difficulty === item
+                      ? "border-cyan-400 bg-cyan-400 text-zinc-950"
+                      : "border-white/10 text-zinc-400 hover:border-white/25 hover:text-white"
+                  }`}
+                >
+                  {item}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       </section>
@@ -103,7 +129,7 @@ export function ProblemExplorer({ problems }: { problems: Problem[] }) {
       <section className="mx-auto max-w-7xl px-4 py-10 md:px-6">
         <div className="mb-5 flex items-center justify-between border-b border-white/10 pb-4">
           <span className="font-mono text-xs uppercase tracking-wider text-zinc-500">
-            {filtered.length} / {problems.length} problems
+            {filtered.length} / {problems.length} 道题
           </span>
           {hasFilters ? (
             <button type="button" onClick={resetFilters} className="flex items-center gap-1.5 text-xs text-zinc-500 hover:text-white">
@@ -113,7 +139,7 @@ export function ProblemExplorer({ problems }: { problems: Problem[] }) {
           ) : (
             <span className="flex items-center gap-1.5 text-xs text-zinc-600">
               <SlidersHorizontal className="size-3.5" />
-              按卷别与题号排序
+              可按卷别、题型、难度与专题筛选
             </span>
           )}
         </div>

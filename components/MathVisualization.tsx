@@ -105,7 +105,7 @@ export function MathVisualization({ problemId }: { problemId: string }) {
           </span>
           <div>
             <h2 className="text-sm font-bold text-white">{spec.title}</h2>
-            <span className="font-mono text-[10px] uppercase tracking-widest text-zinc-600">Interactive graph</span>
+            <span className="font-mono text-[10px] uppercase tracking-widest text-zinc-600">交互图像</span>
           </div>
         </div>
         <button

@@ -120,7 +120,7 @@ export function ShareCard({
             </div>
           </div>
           <span className="shrink-0 font-mono text-[10px] uppercase tracking-widest text-zinc-500">
-            Solution note
+            解法卡
           </span>
         </div>
 
@@ -149,14 +149,14 @@ export function ShareCard({
 
             <div className="mt-5 flex items-end justify-between gap-4 border-y border-white/10 py-3">
               <div className="min-w-0">
-                <span className="font-mono text-[10px] uppercase tracking-widest text-zinc-600">Type</span>
+                <span className="font-mono text-[10px] uppercase tracking-widest text-zinc-600">解法类型</span>
                 <strong className={`mt-1.5 inline-flex border px-2 py-1 text-xs ${kindMeta.className}`}>
                   {kindMeta.label}
                 </strong>
                 <p className="mt-1.5 text-xs text-zinc-500">{kindMeta.description}</p>
               </div>
               <div className="shrink-0 border-l border-white/10 pl-4 text-right">
-                <span className="font-mono text-[10px] uppercase tracking-widest text-zinc-600">Score</span>
+                <span className="font-mono text-[10px] uppercase tracking-widest text-zinc-600">参考分</span>
                 <strong className="mt-1 block font-display text-2xl text-cyan-300">
                   {((solution.scores.correctness + solution.scores.examReady + solution.scores.explanation) / 3).toFixed(1)}
                 </strong>

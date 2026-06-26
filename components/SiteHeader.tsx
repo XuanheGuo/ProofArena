@@ -5,7 +5,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 const navigation = [
   { href: "/problems", label: "题目", icon: Swords },
   { href: "/library", label: "思路库", icon: BookOpenCheck },
-  { href: "/studio", label: "Studio", icon: Hammer, badge: "Internal" },
+  { href: "/studio", label: "Studio", icon: Hammer, badge: "内部" },
   { href: "/submit", label: "投稿", icon: Send },
   { href: "/about", label: "关于", icon: Info },
 ];

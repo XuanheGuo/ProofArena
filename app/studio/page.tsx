@@ -14,7 +14,7 @@ export default function StudioPage() {
         <div className="mx-auto max-w-7xl px-4 py-12 md:px-6 md:py-16">
           <div className="flex items-center gap-2 font-mono text-xs uppercase tracking-widest text-cyan-300">
             <Hammer className="size-4" />
-            Internal / Demo
+            内部工具 / Demo
           </div>
           <h1 className="mt-4 text-4xl font-black text-white md:text-6xl">ProofArena Studio</h1>
           <p className="mt-5 max-w-3xl text-base font-bold leading-8 text-zinc-200 md:text-lg">
@@ -25,7 +25,7 @@ export default function StudioPage() {
           </p>
           <div className="mt-6 inline-flex items-center gap-2 border border-emerald-400/25 bg-emerald-400/5 px-3 py-2 text-xs font-bold text-emerald-300">
             <ShieldCheck className="size-4" />
-            Local only · Static demo
+            仅本地使用 · 静态 Demo
           </div>
         </div>
       </section>

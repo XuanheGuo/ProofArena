@@ -272,7 +272,7 @@ ${splitList(state.verifiableSteps).length ? splitList(state.verifiableSteps).map
     <div className="mx-auto max-w-7xl px-4 py-8 md:px-6 md:py-12">
       <div className="grid gap-6 xl:grid-cols-[1fr_.9fr]">
         <div className="space-y-6">
-          <StudioSection title="题目信息" label="Problem forge">
+          <StudioSection title="题目信息" label="题目录入">
             <div className="grid gap-4 md:grid-cols-2">
               <TextField label="题目标题" value={state.problemTitle} onChange={(value) => updateField("problemTitle", value)} />
               <TextField label="来源" value={state.source} onChange={(value) => updateField("source", value)} placeholder="例如 2026 天津卷" />
@@ -294,7 +294,7 @@ ${splitList(state.verifiableSteps).length ? splitList(state.verifiableSteps).map
             </div>
           </StudioSection>
 
-          <StudioSection title="解法信息" label="Solution refinery">
+          <StudioSection title="解法信息" label="解法整理">
             <div className="grid gap-4 md:grid-cols-2">
               <TextField label="解法标题" value={state.solutionTitle} onChange={(value) => updateField("solutionTitle", value)} />
               <TextField label="作者" value={state.author} onChange={(value) => updateField("author", value)} />
@@ -314,7 +314,7 @@ ${splitList(state.verifiableSteps).length ? splitList(state.verifiableSteps).map
         </div>
 
         <aside className="space-y-6">
-          <StudioSection title="内容质量检查" label="Quality gate">
+          <StudioSection title="内容质量检查" label="收录检查">
             <div className="border border-white/10 bg-black/20 p-4">
               <div className="flex items-center justify-between gap-4">
                 <div className="flex items-center gap-2 text-sm font-bold text-white">
@@ -359,7 +359,7 @@ ${splitList(state.verifiableSteps).length ? splitList(state.verifiableSteps).map
                   {matches.length ? matches.map((match) => (
                     <div key={match.tag} className="flex items-center justify-between gap-3 border border-white/10 px-3 py-2 text-xs">
                       <span className="text-zinc-300">#{match.tag}</span>
-                      <span className="font-mono text-cyan-300">{match.source} · {confidenceLabel(match.confidence)}</span>
+                      <span className="font-mono text-cyan-300">{match.source === "auto" ? "自动" : "手动"} · {confidenceLabel(match.confidence)}</span>
                     </div>
                   )) : (
                     <p className="text-xs leading-6 text-zinc-600">暂无匹配。试试输入“导数、圆锥曲线、数列、分块求和”等标签。</p>

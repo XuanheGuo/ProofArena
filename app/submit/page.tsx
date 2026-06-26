@@ -108,7 +108,7 @@ export default function SubmitPage() {
           <div className="mt-10 max-w-3xl">
             <div className="flex items-center gap-2 font-mono text-xs uppercase tracking-widest text-cyan-300">
               <GitPullRequestArrow className="size-4" />
-              Community submission
+              共建投稿
             </div>
             <h1 className="mt-4 text-4xl font-black text-white md:text-6xl">提交你的解法</h1>
             <p className="mt-5 text-base font-bold leading-8 text-zinc-200 md:text-lg">
@@ -171,7 +171,7 @@ export default function SubmitPage() {
               <Sparkles className="size-4 text-amber-300" />
               <h2 className="font-bold text-white">Markdown 投稿模板</h2>
             </div>
-            <span className="font-mono text-[10px] uppercase tracking-widest text-zinc-600">Ready to copy</span>
+            <span className="font-mono text-[10px] uppercase tracking-widest text-zinc-600">可直接复制</span>
           </div>
           <pre className="math-scroll p-5 text-sm leading-8 text-zinc-300 md:p-7">
             <code>{submissionTemplate}</code>

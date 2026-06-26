@@ -23,7 +23,7 @@ export default function LibraryPage() {
         <div className="mx-auto max-w-7xl px-4 py-12 md:px-6 md:py-16">
           <div className="flex items-center gap-2 font-mono text-xs uppercase tracking-widest text-cyan-300">
             <BookOpenCheck className="size-4" />
-            Knowledge / insight library
+            知识与思路库
           </div>
           <h1 className="mt-4 text-4xl font-black text-white md:text-6xl">知识点 / 思路库</h1>
           <p className="mt-5 max-w-3xl text-sm leading-7 text-zinc-400 md:text-base">
@@ -42,7 +42,7 @@ export default function LibraryPage() {
               <section key={category} className="border border-white/10 bg-zinc-950">
                 <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-5 py-4">
                   <div>
-                    <span className="font-mono text-[10px] uppercase tracking-widest text-zinc-600">Category</span>
+                    <span className="font-mono text-[10px] uppercase tracking-widest text-zinc-600">分类</span>
                     <h2 className="mt-1 text-xl font-black text-white">{category}</h2>
                   </div>
                   <span className="text-xs text-zinc-500">

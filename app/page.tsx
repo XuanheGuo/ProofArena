@@ -82,7 +82,7 @@ export default function HomePage() {
         <div className="mx-auto max-w-7xl px-4 md:px-6">
           <div className="mb-8 flex items-end justify-between gap-4">
             <div>
-              <span className="font-mono text-xs uppercase tracking-widest text-red-400">Solution routes</span>
+              <span className="font-mono text-xs uppercase tracking-widest text-red-400">解法路线</span>
               <h2 className="mt-2 text-3xl font-black text-white md:text-4xl">当前解法导航</h2>
             </div>
             <Link href="/problems" className="hidden items-center gap-2 text-sm text-zinc-400 hover:text-white sm:flex">
@@ -100,7 +100,7 @@ export default function HomePage() {
       <section className="border-b border-white/10 py-20">
         <div className="mx-auto grid max-w-7xl gap-12 px-4 md:grid-cols-[.8fr_1.2fr] md:px-6">
           <div>
-            <span className="font-mono text-xs uppercase tracking-widest text-cyan-300">Scoring system</span>
+            <span className="font-mono text-xs uppercase tracking-widest text-cyan-300">解法评价维度</span>
             <h2 className="mt-3 text-3xl font-black text-white">解法不只分对错</h2>
             <p className="mt-4 text-sm leading-7 text-zinc-400">
               一个正确但考场上写不完的解法，和一个短、稳、能迁移的解法，不该得到相同评价。
@@ -134,7 +134,7 @@ export default function HomePage() {
           <span className="flex gap-4">
             <Link href="/about" className="hover:text-white">关于</Link>
             <Link href="/submit" className="hover:text-white">投稿</Link>
-            <span>Demo season / 2026</span>
+            <span>Demo · 2026</span>
           </span>
         </div>
       </footer>

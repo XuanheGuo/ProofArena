@@ -9,7 +9,7 @@ export default function ProblemsPage() {
         <div className="mx-auto max-w-7xl px-4 py-12 md:px-6 md:py-16">
           <div className="flex items-center gap-2 font-mono text-xs uppercase tracking-widest text-cyan-300">
             <Target className="size-4" />
-            2026 season
+            2026 赛季
           </div>
           <div className="mt-4 flex flex-col justify-between gap-6 md:flex-row md:items-end">
             <div>
