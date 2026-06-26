@@ -56,6 +56,14 @@ body {
   font-size: 1.04em;
 }
 
+.share-card .katex {
+  font-size: 0.96em;
+}
+
+.share-card .katex-html {
+  white-space: normal;
+}
+
 .jxgbox {
   touch-action: none;
 }
@@ -73,6 +81,7 @@ body {
 [data-theme="light"] [class~="bg-zinc-950"],
 [data-theme="light"] [class~="bg-zinc-950/75"],
 [data-theme="light"] [class~="bg-zinc-950/80"],
+[data-theme="light"] [class~="bg-zinc-950/85"],
 [data-theme="light"] [class~="bg-zinc-950/90"],
 [data-theme="light"] [class~="bg-zinc-950/95"] {
   background-color: rgba(255, 255, 255, 0.94) !important;
@@ -93,12 +102,18 @@ body {
 }
 
 [data-theme="light"] [class~="bg-white/10"],
-[data-theme="light"] [class~="bg-white/[0.03]"] {
+[data-theme="light"] [class~="bg-white/5"],
+[data-theme="light"] [class~="bg-white/[0.03]"],
+[data-theme="light"] [class~="bg-white/[0.06]"] {
   background-color: rgba(63, 63, 70, 0.12) !important;
 }
 
 [data-theme="light"] [class~="border-white/10"] {
   border-color: rgba(63, 63, 70, 0.18) !important;
+}
+
+[data-theme="light"] [class~="border-white/15"] {
+  border-color: rgba(63, 63, 70, 0.24) !important;
 }
 
 [data-theme="light"] [class~="border-white/20"],
@@ -125,12 +140,40 @@ body {
 }
 
 [data-theme="light"] [class~="text-zinc-500"] {
+  color: #3f3f46 !important;
+}
+
+[data-theme="light"] [class~="text-zinc-600"] {
   color: #52525b !important;
 }
 
-[data-theme="light"] [class~="text-zinc-600"],
 [data-theme="light"] [class~="text-zinc-700"] {
-  color: #71717a !important;
+  color: #3f3f46 !important;
+}
+
+/* Tailwind's 200-400 accents are designed for dark surfaces; use deeper inks on paper. */
+[data-theme="light"] [class~="text-cyan-100"],
+[data-theme="light"] [class~="text-cyan-200"],
+[data-theme="light"] [class~="text-cyan-300"],
+[data-theme="light"] [class~="text-cyan-400"] {
+  color: #0e7490 !important;
+}
+
+[data-theme="light"] [class~="text-amber-200"],
+[data-theme="light"] [class~="text-amber-300"] {
+  color: #a16207 !important;
+}
+
+[data-theme="light"] [class~="text-emerald-200"],
+[data-theme="light"] [class~="text-emerald-300"],
+[data-theme="light"] [class~="text-emerald-400"] {
+  color: #047857 !important;
+}
+
+[data-theme="light"] [class~="text-red-200"],
+[data-theme="light"] [class~="text-red-300"],
+[data-theme="light"] [class~="text-red-400"] {
+  color: #be123c !important;
 }
 
 [data-theme="light"] [class~="bg-red-500"][class~="text-white"] {
@@ -150,4 +193,35 @@ body {
 [data-theme="light"] .hero-arena > img {
   opacity: 0.42 !important;
   filter: saturate(0.8) contrast(0.9);
+}
+
+/* Share cards have their own reading surface, so light mode does not inherit dark gradients. */
+[data-theme="light"] .share-card {
+  border-color: rgba(63, 63, 70, 0.18) !important;
+  border-top-color: #0891b2 !important;
+  background: #ffffff !important;
+  box-shadow: 0 16px 36px rgba(24, 24, 27, 0.08) !important;
+}
+
+[data-theme="light"] .share-card [class*="bg-zinc-950"] {
+  background-color: rgba(255, 255, 255, 0.92) !important;
+}
+
+[data-theme="light"] .share-card [class~="bg-black/20"],
+[data-theme="light"] .share-card [class~="bg-black/25"] {
+  background-color: rgba(226, 232, 240, 0.72) !important;
+}
+
+[data-theme="light"] .share-card .text-cyan-100,
+[data-theme="light"] .share-card .text-cyan-200,
+[data-theme="light"] .share-card .text-cyan-300 {
+  color: #0e7490 !important;
+}
+
+[data-theme="light"] .share-card .text-amber-300 {
+  color: #a16207 !important;
+}
+
+[data-theme="light"] .share-card .text-red-300 {
+  color: #be123c !important;
 }

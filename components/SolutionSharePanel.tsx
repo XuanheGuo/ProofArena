@@ -1,16 +1,17 @@
 "use client";
 
-import { ChevronDown, ChevronUp, Sparkles } from "lucide-react";
+import { Camera, ChevronDown, ChevronUp, Lightbulb, ListChecks, MoveRight, Sparkles } from "lucide-react";
 import { useMemo, useState } from "react";
 import type { Problem } from "@/lib/types";
 import { CopyLinkButton } from "@/components/CopyLinkButton";
-import { getDefaultShareSolution, ShareCard } from "@/components/ShareCard";
+import { getDefaultShareSolution, ShareCard, type ShareCardMode } from "@/components/ShareCard";
 import { getSolutionKindMeta } from "@/lib/solution-kinds";
 
 export function SolutionSharePanel({ problem }: { problem: Problem }) {
   const defaultSolution = useMemo(() => getDefaultShareSolution(problem), [problem]);
   const [expanded, setExpanded] = useState(false);
   const [selectedId, setSelectedId] = useState(defaultSolution?.id ?? problem.solutions[0]?.id ?? "");
+  const [shareMode, setShareMode] = useState<ShareCardMode>("idea");
   const selectedSolution = problem.solutions.find((solution) => solution.id === selectedId) ?? defaultSolution ?? problem.solutions[0];
 
   if (!selectedSolution) return null;
@@ -69,17 +70,61 @@ export function SolutionSharePanel({ problem }: { problem: Problem }) {
             })}
           </div>
 
-          <div className="grid gap-8 lg:grid-cols-[.8fr_1.2fr] lg:items-center">
+          <div className="mb-6">
+            <p className="mb-2 text-xs font-bold uppercase tracking-widest text-zinc-500">截图内容</p>
+            <div className="inline-flex max-w-full overflow-x-auto border border-white/10 bg-black/20 p-1">
+              {[
+                { id: "idea" as const, label: "只看思路", icon: Lightbulb },
+                { id: "transform" as const, label: "关键转化", icon: MoveRight },
+                { id: "full" as const, label: "完整过程", icon: ListChecks },
+              ].map((option) => {
+                const active = shareMode === option.id;
+                const Icon = option.icon;
+                return (
+                  <button
+                    key={option.id}
+                    type="button"
+                    data-testid={`share-mode-${option.id}`}
+                    aria-pressed={active}
+                    onClick={() => setShareMode(option.id)}
+                    className={`inline-flex shrink-0 items-center gap-1.5 px-3 py-2 text-xs font-bold transition ${
+                      active ? "bg-cyan-400 text-zinc-950" : "text-zinc-400 hover:bg-white/[0.06] hover:text-white"
+                    }`}
+                  >
+                    <Icon className="size-3.5" />
+                    {option.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="grid gap-8 xl:grid-cols-[22rem_minmax(0,1fr)] xl:items-center">
             <div>
               <h3 className="text-xl font-black text-white">截图这张解法卡</h3>
               <p className="mt-3 text-sm leading-7 text-zinc-400">
-                适合发给同学或发到小红书 / B站动态：先让人看到“这个解法为什么值得学”，再回到页面看完整过程。
+                先选你想传播的内容：一句思路、关键转化，或带步骤的完整过程。展开后直接截右侧卡片外框，不需要截整个页面。
               </p>
+              <div className="mt-4 border border-cyan-400/20 bg-cyan-400/[0.06] p-3 text-xs leading-6 text-cyan-100">
+                <div className="flex items-center gap-2 font-bold">
+                  <Camera className="size-4" />
+                  截图建议
+                </div>
+                <p className="mt-2 text-zinc-400">
+                  手机端保留竖版卡；宽屏桌面会自动切换为横版卡，直接截卡片边界即可。完整过程仍会按内容自然延展，不会裁步骤。
+                </p>
+              </div>
               <div className="mt-5 flex flex-col gap-3 sm:flex-row">
                 <CopyLinkButton path={`/problems/${problem.id}`} problem={problem} solution={selectedSolution} />
               </div>
             </div>
-            <ShareCard problem={problem} solution={selectedSolution} />
+            <div className="mx-auto w-full max-w-[520px] border border-white/10 bg-black/20 p-2 sm:p-3 xl:max-w-[940px]">
+              <div className="mb-2 flex items-center justify-between gap-3 px-1 text-[11px] font-bold uppercase tracking-widest text-zinc-500">
+                <span>Screenshot Area</span>
+                <span>{shareMode === "full" ? "Full Process" : shareMode === "transform" ? "Key Transform" : "Idea Only"}</span>
+              </div>
+              <ShareCard problem={problem} solution={selectedSolution} mode={shareMode} />
+            </div>
           </div>
         </div>
       )}
