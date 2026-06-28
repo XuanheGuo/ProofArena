@@ -30,6 +30,21 @@ body {
   transition: background-color 160ms ease, color 160ms ease;
 }
 
+button,
+[role="button"],
+a,
+select,
+input {
+  touch-action: manipulation;
+}
+
+button:not(:disabled),
+[role="button"],
+a[href],
+select {
+  cursor: pointer;
+}
+
 ::selection {
   background: #22d3ee;
   color: #09090b;

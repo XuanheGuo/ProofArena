@@ -147,14 +147,18 @@ data/
 
 长期方向是将坐标范围、曲线、点、滑块与说明抽象成数据配置。
 
-## 静态导出约束
+## 部署模式
 
-`next.config.ts` 设置了 `output: "export"`。开发时应避免：
+`next.config.ts` 设置了 `output: "standalone"`，用于在 Node.js 运行环境中部署 Next.js，再由 OpenResty/Nginx 反向代理到 Node 服务。
 
-- 依赖运行时服务端逻辑
-- 使用数据库或服务端 session
-- 引入必须由 Next Image 服务处理的图片
-- 创建没有 `generateStaticParams` 的动态内容路径
+生产构建后可用以下方式启动：
+
+```bash
+npm run build
+HOSTNAME=127.0.0.1 PORT=3000 node .next/standalone/server.js
+```
+
+OpenResty 只需要把请求代理到该 Node 服务。当前应用仍以静态数据为主，但不再依赖 `out/` 静态导出目录。
 
 ## 已知技术债
 

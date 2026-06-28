@@ -5,6 +5,7 @@
 /.next
 /out
 /out.zip
+*.zip
 
 # local tooling
 *.tsbuildinfo

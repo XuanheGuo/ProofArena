@@ -85,6 +85,7 @@ export function SolutionCard({ solution, rank }: { solution: Solution; rank: num
             <button
               key={value as string}
               type="button"
+              data-testid={`solution-view-${value}`}
               onClick={() => setView(value as typeof view)}
               aria-pressed={active}
               className={`inline-flex h-9 items-center gap-2 border px-3 text-xs font-semibold transition ${

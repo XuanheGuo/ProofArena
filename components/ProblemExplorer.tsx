@@ -5,7 +5,7 @@ import { Search, SlidersHorizontal, X } from "lucide-react";
 import type { Difficulty, ExamRegion, Problem, QuestionType } from "@/lib/types";
 import { ProblemCard } from "@/components/ProblemCard";
 
-const regions: Array<"全部卷别" | ExamRegion> = ["全部卷别", "天津卷"];
+const regions: Array<"全部卷别" | ExamRegion> = ["全部卷别", "天津卷", "新高考 I 卷", "新高考 II 卷"];
 const types: Array<"全部题型" | QuestionType> = ["全部题型", "单选", "多选", "填空", "解答"];
 const difficulties: Array<"全部难度" | Difficulty> = ["全部难度", "基础", "中档", "压轴"];
 
@@ -92,6 +92,7 @@ export function ProblemExplorer({ problems }: { problems: Problem[] }) {
                 <button
                   key={item}
                   type="button"
+                  data-testid={`type-filter-${item}`}
                   onClick={() => setType(item)}
                   className={`h-9 shrink-0 border px-3 text-xs font-semibold transition ${
                     type === item

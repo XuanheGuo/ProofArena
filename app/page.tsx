@@ -5,9 +5,15 @@ import { ProblemCard } from "@/components/ProblemCard";
 import { problems } from "@/data/problems";
 
 export default function HomePage() {
-  const featuredProblems = ["tj-2026-20", "tj-2026-19", "tj-2026-18"]
+  const solutionCount = problems.reduce((sum, problem) => sum + problem.solutions.length, 0);
+  const featuredProblems = ["ng2-2026-18", "ng1-2026-18", "tj-2026-09"]
     .map((id) => problems.find((problem) => problem.id === id))
     .filter((problem): problem is (typeof problems)[number] => Boolean(problem));
+  const stats = [
+    [String(problems.length).padStart(2, "0"), "精编真题"],
+    [String(solutionCount).padStart(2, "0"), "完整解法"],
+    ["逐题", "人工校订"],
+  ];
 
   return (
     <main>
@@ -17,10 +23,10 @@ export default function HomePage() {
           alt=""
           fill
           priority
-          className="object-cover object-center opacity-65"
+          className="pointer-events-none object-cover object-center opacity-65"
         />
-        <div className="hero-overlay absolute inset-0 bg-[linear-gradient(90deg,#09090b_5%,rgba(9,9,11,.92)_36%,rgba(9,9,11,.25)_75%,#09090b_100%)]" />
-        <div className="grid-surface absolute inset-0 opacity-40" />
+        <div className="hero-overlay pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,#09090b_5%,rgba(9,9,11,.92)_36%,rgba(9,9,11,.25)_75%,#09090b_100%)]" />
+        <div className="grid-surface pointer-events-none absolute inset-0 opacity-40" />
         <div className="relative mx-auto flex min-h-[68vh] max-w-7xl items-center px-4 py-16 md:px-6">
           <div className="max-w-3xl">
             <div className="mb-5 flex items-center gap-3 font-mono text-xs uppercase tracking-[0.18em] text-cyan-300">
@@ -65,11 +71,7 @@ export default function HomePage() {
           </div>
         </div>
         <div className="relative mx-auto -mt-16 grid max-w-7xl grid-cols-3 border border-white/10 bg-zinc-950/90 backdrop-blur md:w-[calc(100%-3rem)]">
-          {[
-            ["05", "精编真题"],
-            ["10", "完整解法"],
-            ["100%", "公开验证"],
-          ].map(([value, label]) => (
+          {stats.map(([value, label]) => (
             <div key={label} className="border-r border-white/10 p-4 last:border-r-0 md:p-6">
               <strong className="font-display block text-2xl font-black text-white md:text-3xl">{value}</strong>
               <span className="mt-1 block text-xs text-zinc-500">{label}</span>
