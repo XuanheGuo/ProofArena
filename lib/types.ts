@@ -19,6 +19,11 @@ export interface KnowledgeNode {
   prerequisites: string[];
   relatedIds: string[];
   examples: string[];
+  conceptLinks?: ConceptLink[];
+  conceptContrasts?: ConceptContrast[];
+  boundaryNotes?: BoundaryNote[];
+  contrastProblems?: ContrastProblem[];
+  whyNotMethods?: WhyNotMethod[];
 }
 
 export interface InsightNode {
@@ -90,6 +95,11 @@ export interface Solution {
   insightIds?: string[];
   autoMatches?: TagMatch[];
   manualMatches?: TagMatch[];
+  conceptLinks?: ConceptLink[];
+  conceptContrasts?: ConceptContrast[];
+  boundaryNotes?: BoundaryNote[];
+  contrastProblems?: ContrastProblem[];
+  whyNotMethods?: WhyNotMethod[];
 }
 
 export interface LearningGuide {
@@ -122,4 +132,45 @@ export interface Problem {
   insightIds?: string[];
   autoMatches?: TagMatch[];
   manualMatches?: TagMatch[];
+  conceptLinks?: ConceptLink[];
+  conceptContrasts?: ConceptContrast[];
+  boundaryNotes?: BoundaryNote[];
+  contrastProblems?: ContrastProblem[];
+  whyNotMethods?: WhyNotMethod[];
+}
+
+export interface ConceptLink {
+  conceptId?: string;
+  label: string;
+  relation: string;
+  note: string;
+}
+
+export interface ConceptContrast {
+  conceptA: string;
+  conceptB: string;
+  relationship: string;
+  keyDifference: string;
+  commonMistake: string;
+  exampleProblemIds: string[];
+}
+
+export interface BoundaryNote {
+  title: string;
+  note: string;
+  typicalMisuse?: string;
+}
+
+export interface ContrastProblem {
+  problemId: string;
+  role: "相似题" | "反例题" | "边界题" | "迁移题" | "对比题";
+  focus: string;
+  reason: string;
+}
+
+export interface WhyNotMethod {
+  methodName: string;
+  reason: string;
+  whenItWouldWork: string;
+  relatedConcepts: string[];
 }

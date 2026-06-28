@@ -1,5 +1,10 @@
 import type { Problem, Solution } from "@/lib/types";
 import { matchTagsToKnowledge } from "@/data/tag-matcher";
+import {
+  conceptBoundaryDemoByProblemId,
+  conceptBoundaryDemoBySolutionId,
+  mergeConceptBoundaryFields,
+} from "@/data/concept-boundaries";
 
 const sourcePdf = "/papers/2026-tianjin-math.pdf";
 const answerPdf = "/papers/2026-tianjin-math-answers.pdf";
@@ -10,12 +15,12 @@ const newGaokaoIIAnswerPdf = "/papers/2026-new-gaokao-ii-math-answers.pdf";
 
 function solution(input: Solution): Solution {
   const autoMatches = matchTagsToKnowledge(input.tags);
-  return {
+  return mergeConceptBoundaryFields({
     ...input,
     autoMatches,
     knowledgeIds: input.knowledgeIds ?? [...new Set(autoMatches.flatMap((match) => match.matchedKnowledgeIds))],
     insightIds: input.insightIds ?? [...new Set(autoMatches.flatMap((match) => match.matchedInsightIds))],
-  };
+  }, conceptBoundaryDemoBySolutionId[input.id]);
 }
 
 const verified = (checks: string[]) => ({
@@ -1056,12 +1061,12 @@ export const problems: Problem[] = rawProblems.map((problem) => {
   const autoMatches = matchTagsToKnowledge(problem.tags);
   const allMatches = [...autoMatches, ...(problem.manualMatches ?? [])];
 
-  return {
+  return mergeConceptBoundaryFields({
     ...problem,
     autoMatches,
     knowledgeIds: problem.knowledgeIds ?? [...new Set(allMatches.flatMap((match) => match.matchedKnowledgeIds))],
     insightIds: problem.insightIds ?? [...new Set(allMatches.flatMap((match) => match.matchedInsightIds))],
-  };
+  }, conceptBoundaryDemoByProblemId[problem.id]);
 });
 
 export function getProblem(id: string) {

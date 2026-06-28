@@ -11,6 +11,7 @@ import {
   MessageSquareQuote,
   MoveRight,
   Repeat2,
+  RouteOff,
   Scale,
   Tags,
 } from "lucide-react";
@@ -192,6 +193,28 @@ export function SolutionCard({ solution, rank }: { solution: Solution; rank: num
                     ))}
                   </div>
                 </div>
+              </div>
+            </section>
+          )}
+
+          {view !== "idea" && solution.whyNotMethods && solution.whyNotMethods.length > 0 && (
+            <section className="mt-6 border border-red-400/20 bg-red-500/[0.04] p-4">
+              <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-red-300">
+                <RouteOff className="size-4" />
+                方法边界
+              </div>
+              <div className="mt-4 grid gap-3 md:grid-cols-2">
+                {solution.whyNotMethods.map((method) => (
+                  <div key={method.methodName} className="border border-white/10 bg-black/20 p-3">
+                    <h4 className="text-sm font-bold text-white">{method.methodName}</h4>
+                    <p className="mt-2 text-sm leading-6 text-zinc-300">
+                      <MathBlock>{method.reason}</MathBlock>
+                    </p>
+                    <p className="mt-3 text-xs leading-5 text-emerald-300">
+                      可用边界：<MathBlock>{method.whenItWouldWork}</MathBlock>
+                    </p>
+                  </div>
+                ))}
               </div>
             </section>
           )}

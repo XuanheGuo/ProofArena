@@ -1,6 +1,7 @@
 import type { KnowledgeNode } from "@/lib/types";
+import { conceptBoundaryDemoByKnowledgeId, mergeConceptBoundaryFields } from "@/data/concept-boundaries";
 
-export const knowledgeNodes: KnowledgeNode[] = [
+const rawKnowledgeNodes: KnowledgeNode[] = [
   {
     id: "k-phase-transform",
     title: "三角函数整体相位",
@@ -28,7 +29,7 @@ export const knowledgeNodes: KnowledgeNode[] = [
     summary: "先确认变量范围和函数形态，再用单调性、端点值或导数判断闭区间最值。",
     aliases: ["区间最值", "单调性", "端点值"],
     prerequisites: ["函数图像", "单调性", "导数基础"],
-    relatedIds: ["k-phase-transform", "k-derivative-inequality"],
+    relatedIds: ["k-phase-transform", "k-derivative-inequality", "k-local-vs-global-extremum"],
     examples: ["限制区间求最值时，先把原变量区间映射到真正参与函数变化的变量。", "闭区间最值需要同时比较端点和内部临界点。"],
   },
   {
@@ -68,7 +69,7 @@ export const knowledgeNodes: KnowledgeNode[] = [
     summary: "把数列元素集合拆成若干来源，处理重合、取整、阈值与分块求和。",
     aliases: ["并集计数", "取整函数", "指示函数"],
     prerequisites: ["等差数列", "等比数列", "集合元素个数"],
-    relatedIds: ["k-block-summation"],
+    relatedIds: ["k-block-summation", "k-telescoping-sum", "k-offset-subtraction"],
     examples: ["先判断两个数列是否有重合元素。", "不超过 $m$ 的元素个数常出现 $\\lfloor m/2\\rfloor$ 或对数取整。"],
   },
   {
@@ -78,7 +79,7 @@ export const knowledgeNodes: KnowledgeNode[] = [
     summary: "当取整或阈值函数在某些区间恒定时，按边界分块或研究增量。",
     aliases: ["分块", "差分", "递推增量", "奇偶配对"],
     prerequisites: ["求和公式", "等比数列", "奇偶配对"],
-    relatedIds: ["k-sequence-counting"],
+    relatedIds: ["k-sequence-counting", "k-telescoping-sum", "k-offset-subtraction"],
     examples: ["看到 $\\lfloor\\log_3 m\\rfloor$，按 $3^t$ 分块。", "交错和遇到偶数上限，尝试相邻奇偶项配对。"],
   },
   {
@@ -248,10 +249,190 @@ export const knowledgeNodes: KnowledgeNode[] = [
     summary: "把随机事件、条件概率和统计量转成可枚举、可计算、可解释的模型。",
     aliases: ["概率模型", "条件概率", "统计图表"],
     prerequisites: ["古典概型", "条件概率", "均值方差"],
-    relatedIds: [],
+    relatedIds: ["k-event-relation-boundary"],
     examples: ["先明确样本空间，再讨论事件关系。", "统计图表题优先核对单位、总量和比例。"],
   },
+  {
+    id: "k-local-vs-global-extremum",
+    title: "极值与最值边界",
+    category: "函数与导数",
+    summary: "区分局部邻域内的极值与整个定义域上的最值，尤其注意闭区间端点也可能给出最大值或最小值。",
+    aliases: ["极值", "最值", "端点值", "闭区间最值"],
+    prerequisites: ["函数图像", "导数符号", "定义域"],
+    relatedIds: ["k-function-extremum", "k-derivative-zero"],
+    examples: ["导数为零只给候选点，闭区间最值还要比较端点。", "局部最高不一定是全局最高。"],
+    conceptLinks: [
+      {
+        conceptId: "k-function-extremum",
+        label: "函数区间最值",
+        relation: "最值必须在完整给定范围内比较",
+        note: "极值点、端点和不可导点都只是候选者，最后要统一比较函数值。",
+      },
+    ],
+    conceptContrasts: [
+      {
+        conceptA: "极值",
+        conceptB: "最值",
+        relationship: "都描述高低变化，但比较范围不同。",
+        keyDifference: "极值只比较局部邻域；最值比较整个定义域。最值可能出现在端点，极值不一定是最值。",
+        commonMistake: "求出导数零点后直接宣布最大值，漏掉端点或定义域边界。",
+        exampleProblemIds: ["tj-2026-16", "tj-2026-20"],
+      },
+    ],
+    boundaryNotes: [
+      {
+        title: "候选点不是答案",
+        note: "导数只能帮你筛选可能的内部极值点；全局最值还要把端点、边界和所有候选值放在一起比。",
+        typicalMisuse: "把 $f'(x)=0$ 当成最大值或最小值的充分条件。",
+      },
+    ],
+    contrastProblems: [
+      {
+        problemId: "tj-2026-16",
+        role: "相似题",
+        focus: "小区间内的全局最值",
+        reason: "它用相位区间提醒读者不要直接套全局振幅。",
+      },
+      {
+        problemId: "tj-2026-20",
+        role: "边界题",
+        focus: "导数候选点与全局比较",
+        reason: "它更接近导数题里“极值不等于最值”的常见误区。",
+      },
+    ],
+    whyNotMethods: [
+      {
+        methodName: "只看导数零点",
+        reason: "导数零点只说明局部变化可能转折，无法排除端点或边界给出更大、更小的值。",
+        whenItWouldWork: "当题目只问局部极值，或已经证明全局最值只能出现在内部唯一临界点。",
+        relatedConcepts: ["极值", "最值", "端点值"],
+      },
+    ],
+  },
+  {
+    id: "k-telescoping-sum",
+    title: "裂项相消",
+    category: "数列",
+    summary: "把通项拆成相邻两项的差，使中间项在求和时抵消，只留下首尾边界。",
+    aliases: ["望远镜求和", "裂项", "相邻项差"],
+    prerequisites: ["分式拆分", "数列求和", "通项变形"],
+    relatedIds: ["k-block-summation", "k-offset-subtraction"],
+    examples: ["$\\dfrac1{n(n+1)}=\\dfrac1n-\\dfrac1{n+1}$。", "连乘积放缩也常寻找相邻项可抵消的形态。"],
+    conceptContrasts: [
+      {
+        conceptA: "裂项相消",
+        conceptB: "错位相减",
+        relationship: "都是求和压缩技巧，但识别入口不同。",
+        keyDifference: "裂项适合能拆成相邻项差的结构；错位相减适合等差乘等比结构。",
+        commonMistake: "没有相邻差结构时硬拆，导致多出无法控制的余项。",
+        exampleProblemIds: ["tj-2026-19", "tj-2026-20"],
+      },
+    ],
+    boundaryNotes: [
+      {
+        title: "看见首尾，才像裂项",
+        note: "如果变形后求和只剩首项、末项或少量边界项，裂项才是真的在工作。",
+      },
+    ],
+    contrastProblems: [
+      {
+        problemId: "tj-2026-20",
+        role: "迁移题",
+        focus: "望远镜乘积放缩",
+        reason: "同样是让中间结构消失，只是从求和变成连乘积。",
+      },
+    ],
+    whyNotMethods: [
+      {
+        methodName: "错位相减",
+        reason: "裂项结构的关键是相邻差，不需要也通常不应该引入公比平移。",
+        whenItWouldWork: "当通项含等差因子乘等比因子，例如 $nq^n$。",
+        relatedConcepts: ["裂项相消", "错位相减"],
+      },
+    ],
+  },
+  {
+    id: "k-offset-subtraction",
+    title: "错位相减",
+    category: "数列",
+    summary: "针对等差因子乘等比因子的求和，整体乘以公比后与原式相减，让大部分项对齐抵消。",
+    aliases: ["错位相减法", "等差乘等比求和", "等比错位"],
+    prerequisites: ["等比数列", "等差数列", "代数整理"],
+    relatedIds: ["k-telescoping-sum", "k-block-summation"],
+    examples: ["求 $1+2q+3q^2+\\cdots+nq^{n-1}$。", "先确认有固定公比，再考虑乘以公比错位。"],
+    conceptContrasts: [
+      {
+        conceptA: "错位相减",
+        conceptB: "裂项相消",
+        relationship: "都依靠抵消，但抵消来自不同结构。",
+        keyDifference: "错位相减靠固定公比使两串项对齐；裂项相消靠通项自身拆成相邻差。",
+        commonMistake: "题目没有等比结构时仍乘公比，最后只得到更复杂的和式。",
+        exampleProblemIds: ["tj-2026-19"],
+      },
+    ],
+    boundaryNotes: [
+      {
+        title: "公比是错位的发动机",
+        note: "如果找不到统一的 $q$ 让相邻项按比例平移，错位相减通常不是首选。",
+      },
+    ],
+    whyNotMethods: [
+      {
+        methodName: "裂项相消",
+        reason: "等差乘等比结构通常拆不成简洁相邻差，硬裂项会失去公比带来的大面积对齐。",
+        whenItWouldWork: "当通项可化为 $g(n)-g(n+1)$，求和后只留首尾边界。",
+        relatedConcepts: ["错位相减", "裂项相消", "等比数列"],
+      },
+    ],
+  },
+  {
+    id: "k-event-relation-boundary",
+    title: "独立事件与互斥事件边界",
+    category: "概率统计",
+    summary: "先判断两个事件能否同时发生，再判断一个事件发生是否改变另一个事件的概率。",
+    aliases: ["独立事件", "互斥事件", "事件交集", "条件概率"],
+    prerequisites: ["事件", "概率乘法公式", "条件概率"],
+    relatedIds: ["k-probability-modeling", "k-counting-combinatorics"],
+    examples: ["互斥事件满足 $P(A\\cap B)=0$。", "独立事件满足 $P(A\\cap B)=P(A)P(B)$。"],
+    conceptContrasts: [
+      {
+        conceptA: "独立事件",
+        conceptB: "互斥事件",
+        relationship: "都描述事件之间的关系，但一个谈概率影响，一个谈能否同时发生。",
+        keyDifference: "独立表示是否发生互不影响；互斥表示不能同时发生。非零概率事件不可能既互斥又独立。",
+        commonMistake: "把“互不影响”说成“不会同时发生”，或者把“分类互斥”当作“概率独立”。",
+        exampleProblemIds: ["tj-2026-19"],
+      },
+    ],
+    boundaryNotes: [
+      {
+        title: "交集为零不是独立",
+        note: "当 $P(A)$、$P(B)$ 都非零时，互斥意味着 $P(A\\cap B)=0$，而独立要求交集概率等于正数 $P(A)P(B)$。",
+        typicalMisuse: "把两个不同选项、不同类别、不同来源直接当作独立。",
+      },
+    ],
+    contrastProblems: [
+      {
+        problemId: "tj-2026-19",
+        role: "反例题",
+        focus: "集合来源是否重合",
+        reason: "虽然它不是标准概率题，但能训练先看交集、再看拆分的习惯。",
+      },
+    ],
+    whyNotMethods: [
+      {
+        methodName: "直接乘概率",
+        reason: "没有证明独立时，乘概率可能把受同一条件约束的事件错误拆开。",
+        whenItWouldWork: "独立重复试验，或能由条件概率证明 $P(B|A)=P(B)$。",
+        relatedConcepts: ["独立事件", "互斥事件", "条件概率"],
+      },
+    ],
+  },
 ];
+
+export const knowledgeNodes: KnowledgeNode[] = rawKnowledgeNodes.map((node) =>
+  mergeConceptBoundaryFields(node, conceptBoundaryDemoByKnowledgeId[node.id])
+);
 
 export function getKnowledgeNode(id: string) {
   return knowledgeNodes.find((node) => node.id === id);

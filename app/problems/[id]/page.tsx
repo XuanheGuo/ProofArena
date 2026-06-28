@@ -3,12 +3,82 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, ArrowUpRight, BrainCircuit, ExternalLink, Eye, FileCheck2, Flag, Send, ShieldCheck, Sparkles, Swords, Target } from "lucide-react";
 import { MathBlock } from "@/components/MathBlock";
 import { SolutionCard } from "@/components/SolutionCard";
+import { ConceptBoundaryPanel } from "@/components/ConceptBoundaryPanel";
 import { MathVisualization } from "@/components/MathVisualization";
 import { SolutionSharePanel } from "@/components/SolutionSharePanel";
 import { getBestSolution, getProblem, problems } from "@/data/problems";
 import { getInsightNode } from "@/data/insights";
 import { getKnowledgeNode } from "@/data/knowledge";
 import { difficultyBadgeClass } from "@/lib/problem-presentation";
+import type { BoundaryNote, ConceptContrast, ConceptLink, ContrastProblem, KnowledgeNode, Problem, WhyNotMethod } from "@/lib/types";
+
+function uniqueBy<T>(items: T[], getKey: (item: T) => string) {
+  const seen = new Set<string>();
+  return items.filter((item) => {
+    const key = getKey(item);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function buildProblemConceptBoundary(problem: Problem, knowledgeNodes: KnowledgeNode[]) {
+  const knowledgeConceptLinks: ConceptLink[] = knowledgeNodes.map((node) => ({
+    conceptId: node.id,
+    label: node.title,
+    relation: node.category,
+    note: node.summary,
+  }));
+  const solutionConceptLinks = problem.solutions.flatMap((solution) => solution.conceptLinks ?? []);
+  const solutionConceptContrasts = problem.solutions.flatMap((solution) => solution.conceptContrasts ?? []);
+  const solutionBoundaryNotes = problem.solutions.flatMap((solution) => solution.boundaryNotes ?? []);
+  const solutionContrastProblems = problem.solutions.flatMap((solution) => solution.contrastProblems ?? []);
+  const solutionWhyNotMethods = problem.solutions.flatMap((solution) => solution.whyNotMethods ?? []);
+
+  return {
+    conceptLinks: uniqueBy(
+      [
+        ...(problem.conceptLinks ?? []),
+        ...knowledgeConceptLinks,
+        ...knowledgeNodes.flatMap((node) => node.conceptLinks ?? []),
+        ...solutionConceptLinks,
+      ],
+      (item) => `${item.conceptId ?? item.label}-${item.label}-${item.relation}`
+    ),
+    conceptContrasts: uniqueBy<ConceptContrast>(
+      [
+        ...(problem.conceptContrasts ?? []),
+        ...knowledgeNodes.flatMap((node) => node.conceptContrasts ?? []),
+        ...solutionConceptContrasts,
+      ],
+      (item) => `${item.conceptA}-${item.conceptB}-${item.keyDifference}`
+    ),
+    boundaryNotes: uniqueBy<BoundaryNote>(
+      [
+        ...(problem.boundaryNotes ?? []),
+        ...knowledgeNodes.flatMap((node) => node.boundaryNotes ?? []),
+        ...solutionBoundaryNotes,
+      ],
+      (item) => `${item.title}-${item.note}`
+    ),
+    contrastProblems: uniqueBy<ContrastProblem>(
+      [
+        ...(problem.contrastProblems ?? []),
+        ...knowledgeNodes.flatMap((node) => node.contrastProblems ?? []),
+        ...solutionContrastProblems,
+      ],
+      (item) => `${item.problemId}-${item.role}-${item.focus}`
+    ),
+    whyNotMethods: uniqueBy<WhyNotMethod>(
+      [
+        ...(problem.whyNotMethods ?? []),
+        ...knowledgeNodes.flatMap((node) => node.whyNotMethods ?? []),
+        ...solutionWhyNotMethods,
+      ],
+      (item) => `${item.methodName}-${item.reason}`
+    ),
+  };
+}
 
 export function generateStaticParams() {
   return problems.map((problem) => ({ id: problem.id }));
@@ -57,6 +127,13 @@ export default async function ProblemDetailPage({
   const manualInsightNodes = [...new Set(manualMatches.flatMap((match) => match.matchedInsightIds))]
     .map(getInsightNode)
     .filter((node): node is NonNullable<ReturnType<typeof getInsightNode>> => Boolean(node));
+  const problemKnowledgeNodes = (problem.knowledgeIds ?? [])
+    .map(getKnowledgeNode)
+    .filter((node): node is NonNullable<ReturnType<typeof getKnowledgeNode>> => Boolean(node));
+  const conceptBoundary = buildProblemConceptBoundary(problem, problemKnowledgeNodes);
+  const problemLookup = Object.fromEntries(
+    problems.map((item) => [item.id, { number: item.number, title: item.title }])
+  );
 
   return (
     <main className="grid-surface min-h-screen">
@@ -107,6 +184,7 @@ export default async function ProblemDetailPage({
           {[
             ["看题", "problem"],
             ["观察入口", "thinking"],
+            ["概念辨析", "concept-boundary"],
             ["选择解法", "choose"],
             ["解法画像", "profiles"],
             ["完整过程", "full-process"],
@@ -296,6 +374,19 @@ export default async function ProblemDetailPage({
         </section>
 
         {hasVisualization && <MathVisualization problemId={problem.id} />}
+
+        <ConceptBoundaryPanel
+          id="concept-boundary"
+          title="概念辨析"
+          description="用相邻概念、反例题和不用某方法的理由，把解法选择的边界讲清楚。"
+          conceptLinks={conceptBoundary.conceptLinks}
+          conceptContrasts={conceptBoundary.conceptContrasts}
+          boundaryNotes={conceptBoundary.boundaryNotes}
+          contrastProblems={conceptBoundary.contrastProblems}
+          whyNotMethods={conceptBoundary.whyNotMethods}
+          problemLookup={problemLookup}
+          className="mt-5"
+        />
 
         <section id="choose" className="mt-5 scroll-mt-32 border border-white/10 bg-zinc-950 p-4">
           <div className="mb-3 flex items-center gap-2 text-xs font-bold text-zinc-400">

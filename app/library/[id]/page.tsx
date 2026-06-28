@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, ArrowUpRight, BookOpenCheck, BrainCircuit, Link2, Tags } from "lucide-react";
 import { MathBlock } from "@/components/MathBlock";
+import { ConceptBoundaryPanel } from "@/components/ConceptBoundaryPanel";
 import { getInsightNode, insightNodes } from "@/data/insights";
 import { getKnowledgeNode, knowledgeNodes } from "@/data/knowledge";
 import { problems } from "@/data/problems";
@@ -53,6 +54,9 @@ export default async function LibraryDetailPage({
       .map((solution) => ({ problem, solution }))
   );
   const exampleTags = knowledge?.aliases ?? insight?.appliesTo ?? [];
+  const problemLookup = Object.fromEntries(
+    problems.map((problem) => [problem.id, { number: problem.number, title: problem.title }])
+  );
 
   return (
     <main className="grid-surface min-h-screen">
@@ -151,6 +155,22 @@ export default async function LibraryDetailPage({
             </section>
           </aside>
         </div>
+
+        {knowledge && (
+          <ConceptBoundaryPanel
+            title="概念边界"
+            eyebrow="library boundary"
+            description="看清这个知识点常和什么混、哪里不能套用、该用哪些题来校准。"
+            conceptLinks={knowledge.conceptLinks}
+            conceptContrasts={knowledge.conceptContrasts}
+            boundaryNotes={knowledge.boundaryNotes}
+            contrastProblems={knowledge.contrastProblems}
+            whyNotMethods={knowledge.whyNotMethods}
+            problemLookup={problemLookup}
+            compact
+            className="mt-5"
+          />
+        )}
 
         <section className="mt-5 border border-white/10 bg-zinc-950">
           <div className="border-b border-white/10 px-5 py-4">
