@@ -32,6 +32,71 @@ const scoreLabels: Array<[keyof Solution["scores"], string]> = [
   ["explanation", "讲解友好"],
 ];
 
+function ThinkingCuesPanel({ solution }: { solution: Solution }) {
+  const { thinkingCues } = solution;
+
+  return (
+    <section className="border border-amber-300/20 bg-amber-300/[0.035]">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-4 py-3">
+        <div className="flex items-center gap-2">
+          <Lightbulb className="size-4 text-amber-300" />
+          <h3 className="text-sm font-bold text-white">💡 思维线索</h3>
+        </div>
+        {typeof thinkingCues.confidence === "number" && (
+          <span className="font-mono text-[10px] uppercase tracking-widest text-zinc-600">
+            confidence {(thinkingCues.confidence * 100).toFixed(0)}%
+          </span>
+        )}
+      </div>
+
+      <div className="grid gap-px bg-white/10 lg:grid-cols-[1.05fr_1fr]">
+        <div className="bg-zinc-950 p-4">
+          <h4 className="text-xs font-bold text-zinc-500">首先观察</h4>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {thinkingCues.observations.map((item) => (
+              <span key={item} className="border border-white/10 bg-black/20 px-2.5 py-1 text-xs text-zinc-300">
+                {item}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        <div className="bg-zinc-950 p-4">
+          <h4 className="text-xs font-bold text-amber-300">关键线索</h4>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {thinkingCues.keySignals.map((item) => (
+              <span key={item} className="border border-amber-300/30 bg-amber-300/10 px-2.5 py-1 text-xs font-bold text-amber-100">
+                {item}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        <div className="bg-zinc-950 p-4 lg:col-span-2">
+          <div className="grid gap-4 md:grid-cols-[1fr_auto] md:items-start">
+            <div>
+              <h4 className="text-xs font-bold text-zinc-500">为什么想到这种方法</h4>
+              <p className="mt-2 text-sm leading-7 text-zinc-300">
+                <MathBlock>{thinkingCues.reasoning}</MathBlock>
+              </p>
+            </div>
+            <div className="md:min-w-56">
+              <h4 className="text-xs font-bold text-zinc-500">还可能想到</h4>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {thinkingCues.suggestedMethods.map((method) => (
+                  <span key={method} className="border border-cyan-400/20 bg-cyan-400/5 px-2.5 py-1 text-xs text-cyan-100">
+                    {method}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export function SolutionCard({ solution, rank }: { solution: Solution; rank: number }) {
   const [view, setView] = useState<"idea" | "transform" | "full">("transform");
   const kindMeta = getSolutionKindMeta(solution.kind);
@@ -104,6 +169,8 @@ export function SolutionCard({ solution, rank }: { solution: Solution; rank: num
 
       <div className={view === "full" ? "grid lg:grid-cols-[1fr_21rem]" : "block"}>
         <div className={`p-5 md:p-7 ${view === "full" ? "lg:border-r lg:border-white/10" : ""}`}>
+          <ThinkingCuesPanel solution={solution} />
+
           {view !== "idea" && <section className="mt-6 border border-cyan-400/20 bg-cyan-400/[0.04]">
             <div className="flex items-center gap-2 border-b border-white/10 px-4 py-3">
               <Compass className="size-4 text-cyan-300" />

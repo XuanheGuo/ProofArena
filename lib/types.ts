@@ -71,6 +71,14 @@ export interface Verification {
   reviewNote: string;
 }
 
+export interface ThinkingCues {
+  observations: string[];
+  keySignals: string[];
+  reasoning: string;
+  suggestedMethods: string[];
+  confidence?: number;
+}
+
 export interface Solution {
   id: string;
   kind: SolutionKind;
@@ -81,6 +89,7 @@ export interface Solution {
   badge: string;
   origin: string;
   keyTransform: string;
+  thinkingCues: ThinkingCues;
   inspiration: string;
   transferValue: string;
   suitableFor: string[];
@@ -110,6 +119,25 @@ export interface LearningGuide {
   recommendation: string;
 }
 
+export interface SolutionTreeMethod {
+  id: string;
+  title: string;
+  description?: string;
+  solutionIds?: string[];
+  children?: SolutionTreeMethod[];
+}
+
+export interface SolutionTreeRoot {
+  id: string;
+  title: string;
+  description: string;
+  methods: SolutionTreeMethod[];
+}
+
+export interface SolutionTree {
+  roots: SolutionTreeRoot[];
+}
+
 export interface Problem {
   id: string;
   year: number;
@@ -127,6 +155,7 @@ export interface Problem {
   sourcePage: number;
   answerPdf?: string;
   learningGuide: LearningGuide;
+  solutionTree?: SolutionTree;
   solutions: Solution[];
   knowledgeIds?: string[];
   insightIds?: string[];

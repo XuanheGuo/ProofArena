@@ -6,6 +6,7 @@ import { SolutionCard } from "@/components/SolutionCard";
 import { ConceptBoundaryPanel } from "@/components/ConceptBoundaryPanel";
 import { MathVisualization } from "@/components/MathVisualization";
 import { SolutionSharePanel } from "@/components/SolutionSharePanel";
+import { SolutionTreePanel } from "@/components/SolutionTreePanel";
 import { getBestSolution, getProblem, problems } from "@/data/problems";
 import { getInsightNode } from "@/data/insights";
 import { getKnowledgeNode } from "@/data/knowledge";
@@ -184,6 +185,7 @@ export default async function ProblemDetailPage({
           {[
             ["看题", "problem"],
             ["观察入口", "thinking"],
+            ["思路树", "solution-tree"],
             ["概念辨析", "concept-boundary"],
             ["选择解法", "choose"],
             ["解法画像", "profiles"],
@@ -305,6 +307,8 @@ export default async function ProblemDetailPage({
             </div>
           </div>
         </section>
+
+        <SolutionTreePanel problem={problem} />
 
         <section id="related-library" className="mt-5 scroll-mt-32 border border-amber-400/25 bg-zinc-950">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-5 py-4">

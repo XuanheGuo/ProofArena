@@ -1,4 +1,4 @@
-import type { Problem, Solution } from "@/lib/types";
+import type { Problem, Solution, ThinkingCues } from "@/lib/types";
 import { matchTagsToKnowledge } from "@/data/tag-matcher";
 import {
   conceptBoundaryDemoByProblemId,
@@ -13,10 +13,43 @@ const newGaokaoIAnswerPdf = "/papers/2026-new-gaokao-i-math-answers.pdf";
 const newGaokaoIIPdf = "/papers/2026-new-gaokao-ii-math.pdf";
 const newGaokaoIIAnswerPdf = "/papers/2026-new-gaokao-ii-math-answers.pdf";
 
-function solution(input: Solution): Solution {
+type SolutionInput = Omit<Solution, "thinkingCues"> & Partial<Pick<Solution, "thinkingCues">>;
+
+const tagCueRules: Array<{ match: string[]; observations: string[]; keySignals: string[]; methods: string[] }> = [
+  { match: ["导数", "差函数"], observations: ["最值", "可导", "函数不等式"], keySignals: ["可导", "最值"], methods: ["导数", "放缩", "构造函数"] },
+  { match: ["参数", "斜率", "有向距离"], observations: ["动点", "参数", "单变量"], keySignals: ["参数", "单变量"], methods: ["参数法", "根与系数", "坐标法"] },
+  { match: ["焦点", "双曲线", "椭圆", "圆锥曲线"], observations: ["焦点", "定距", "二次曲线"], keySignals: ["焦点", "目标量"], methods: ["坐标法", "焦点定义", "参数法"] },
+  { match: ["轨迹", "曲线分类", "中心"], observations: ["动点", "轨迹", "二次式"], keySignals: ["反解", "二次曲线"], methods: ["反解消元", "参数法", "配方法"] },
+  { match: ["三角", "整体换元", "辅助角"], observations: ["复合角", "区间", "最值"], keySignals: ["整体相位", "区间"], methods: ["整体换元", "辅助角", "导数"] },
+  { match: ["空间向量", "法向量", "立体几何"], observations: ["长方体", "垂直", "夹角"], keySignals: ["坐标可建", "法向量"], methods: ["空间向量", "几何降维", "混合积"] },
+];
+
+function inferThinkingCues(input: SolutionInput): ThinkingCues {
+  const text = [input.title, input.origin, input.keyTransform, ...input.tags].join(" ");
+  const rule = tagCueRules.find((item) => item.match.some((keyword) => text.includes(keyword)));
+
+  if (!rule) {
+    return {
+      observations: input.tags.slice(0, 3),
+      keySignals: input.tags.slice(0, 2),
+      reasoning: `这条路线的入口来自“${input.origin}”，关键是抓住“${input.keyTransform}”。`,
+      suggestedMethods: input.tags.slice(0, 3),
+    };
+  }
+
+  return {
+    observations: rule.observations,
+    keySignals: rule.keySignals,
+    reasoning: `由于题目同时呈现 ${rule.keySignals.join(" + ")}，因此 ${rule.methods[0]} 是最自然的启动方式。`,
+    suggestedMethods: rule.methods,
+  };
+}
+
+function solution(input: SolutionInput): Solution {
   const autoMatches = matchTagsToKnowledge(input.tags);
   return mergeConceptBoundaryFields({
     ...input,
+    thinkingCues: input.thinkingCues ?? inferThinkingCues(input),
     autoMatches,
     knowledgeIds: input.knowledgeIds ?? [...new Set(autoMatches.flatMap((match) => match.matchedKnowledgeIds))],
     insightIds: input.insightIds ?? [...new Set(autoMatches.flatMap((match) => match.matchedInsightIds))],
@@ -81,6 +114,50 @@ const rawProblems: Problem[] = [
       ],
       recommendation: "这题的核心不是硬算双曲线，而是把“等距离 + 固定角”转成一个焦点三角形。ChatGPT 给出的向量法与坐标法重复，反射法不适用；真正值得保留的是坐标核算、焦点三角形和射线参数三条路线。",
     },
+    solutionTree: {
+      roots: [
+        {
+          id: "tj09-metric-angle-entry",
+          title: "观察入口：定距与定角先定位点",
+          description: "$|FA|=|FP|$ 与 $30^\\circ$ 已经决定了 $P$ 相对顶点 $A$ 的方向和长度，先定位点比直接套曲线参数更近。",
+          methods: [
+            {
+              id: "tj09-coordinate-point",
+              title: "坐标化点 $P$",
+              description: "把焦点、顶点、点 $P$ 全部写成坐标，最后回代双曲线方程求离心率。",
+              solutionIds: ["tj09-coordinate"],
+            },
+            {
+              id: "tj09-ray-length",
+              title: "射线参数生成点",
+              description: "沿 $30^\\circ$ 射线设 $AP=t$，先用定距求出 $t$，再代回曲线。",
+              solutionIds: ["tj09-ray-parameter"],
+            },
+          ],
+        },
+        {
+          id: "tj09-focus-definition-entry",
+          title: "观察入口：点在双曲线上意味着距离差",
+          description: "目标是离心率，补出右焦点后，双曲线定义会把曲线条件转成三角形边长关系。",
+          methods: [
+            {
+              id: "tj09-right-focus",
+              title: "补右焦点成三角形",
+              description: "用 $PG-PF=2a$ 得到 $PG$，再在普通三角形里用余弦定理。",
+              solutionIds: ["tj09-focus-triangle"],
+              children: [
+                {
+                  id: "tj09-coordinate-backup",
+                  title: "坐标法可作为核算备份",
+                  description: "若焦点定义方向不好判断，回到坐标法能稳定校验点的位置和最终方程。",
+                  solutionIds: ["tj09-coordinate"],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    },
     solutions: [
       solution({
         id: "tj09-coordinate",
@@ -92,6 +169,13 @@ const rawProblems: Problem[] = [
         badge: "标准解",
         origin: "把左焦点、右顶点和点 $P$ 全部坐标化，角条件给方向，等距条件给长度。",
         keyTransform: "$AP=\\sqrt3(a+c)$，且 $P\\left(a-\\dfrac32(a+c),\\ \\pm\\dfrac{\\sqrt3}{2}(a+c)\\right)$。",
+        thinkingCues: {
+          observations: ["焦点", "顶点", "定角", "定距"],
+          keySignals: ["定角", "定距"],
+          reasoning: "由于角度和距离已经固定，先把点 $P$ 坐标化比直接套双曲线参数更自然。",
+          suggestedMethods: ["坐标法", "焦点三角形", "射线参数"],
+          confidence: 0.92,
+        },
         inspiration: "选择题里的圆锥曲线不一定要完整联立方程；先用几何条件直接定位点，再回代曲线即可。",
         transferValue: "可迁移到焦点、顶点、定角、定距共同出现的双曲线和椭圆离心率问题。",
         suitableFor: ["考场拿分", "稳定复算", "标准证明"],
@@ -121,6 +205,13 @@ const rawProblems: Problem[] = [
         badge: "启发解",
         origin: "在 $\\triangle AFP$ 中先求 $AP$，再引入右焦点 $G$，用双曲线定义把 $PG$ 直接写成 $c+3a$。",
         keyTransform: "若 $G(c,0)$，则 $AG=c-a$、$PF=a+c$，且 $P$ 在左支，所以 $PG-PF=2a$，即 $PG=c+3a$。",
+        thinkingCues: {
+          observations: ["双焦点", "等腰三角形", "定角", "离心率目标"],
+          keySignals: ["双焦点", "距离差"],
+          reasoning: "因为目标是离心率，且点在双曲线上，补出另一个焦点后可直接使用距离差定义。",
+          suggestedMethods: ["焦点定义", "余弦定理", "坐标法"],
+          confidence: 0.9,
+        },
         inspiration: "圆锥曲线题里，另一个焦点常常是隐藏的第二个坐标轴；补出来后，方程会变成普通三角形比例。",
         transferValue: "可迁移到用焦点定义求离心率、焦点三角形余弦定理、选择题快速几何化。",
         suitableFor: ["拓展思维", "技巧欣赏", "课堂讲解"],
@@ -221,6 +312,50 @@ const rawProblems: Problem[] = [
       ],
       recommendation: "先用斜率参数法拿稳全题；若想减少面积比处的代数负担，再看有向距离参数；仿射圆化法适合理解椭圆结构，但角度最值仍要回到原坐标。",
     },
+    solutionTree: {
+      roots: [
+        {
+          id: "ng1-18-line-parameter-entry",
+          title: "观察入口：过焦点动直线只有一个自由量",
+          description: "直线过定点且斜率大于 $0$，所有交点、面积和夹角都可由同一个参数控制。",
+          methods: [
+            {
+              id: "ng1-18-slope-root",
+              title: "斜率参数 + 根与系数",
+              description: "设 $y=m(x+1)$，用根差处理面积，用根和处理方向。",
+              solutionIds: ["ng1-18-slope-vieta"],
+            },
+            {
+              id: "ng1-18-directed-root",
+              title: "有向距离参数",
+              description: "沿直线方向设有向根，让面积比直接变成两个根的比例关系。",
+              solutionIds: ["ng1-18-directed-distance"],
+              children: [
+                {
+                  id: "ng1-18-angle-return",
+                  title: "角度最值回到斜率",
+                  description: "无论面积比如何简化，角度不是距离参数本身，最后仍需转回斜率表达。",
+                  solutionIds: ["ng1-18-slope-vieta", "ng1-18-directed-distance"],
+                },
+              ],
+            },
+          ],
+        },
+        {
+          id: "ng1-18-affine-entry",
+          title: "观察入口：椭圆可以先看成被拉伸的圆",
+          description: "中心对称和面积比在仿射变换下保持，适合解释结构；但角度必须回到原坐标。",
+          methods: [
+            {
+              id: "ng1-18-circle-model",
+              title: "仿射圆化",
+              description: "把椭圆化为单位圆，在圆中处理焦点弦和面积比，再追踪斜率拉伸。",
+              solutionIds: ["ng1-18-affine-circle"],
+            },
+          ],
+        },
+      ],
+    },
     solutions: [
       solution({
         id: "ng1-18-slope-vieta",
@@ -232,6 +367,13 @@ const rawProblems: Problem[] = [
         badge: "标准解",
         origin: "过焦点的动直线直接设为 $y=m(x+1)$，两个交点的横坐标由同一个二次方程控制。",
         keyTransform: "由交点横坐标根差求 $S_{\\triangle PQR}$，由 $P$ 的纵坐标求 $S_{\\triangle PFO}$；再用 $QR$ 的斜率求角。",
+        thinkingCues: {
+          observations: ["过定点动直线", "面积比", "夹角最值", "中心对称"],
+          keySignals: ["过定点动直线", "最值"],
+          reasoning: "由于所有动点都由同一条过焦点直线产生，设斜率后用根与系数能同时控制面积和角度。",
+          suggestedMethods: ["斜率参数", "有向距离", "仿射圆化"],
+          confidence: 0.88,
+        },
         inspiration: "圆锥曲线压轴题里，真正要算的常常不是点坐标本身，而是根和、根差与方向。",
         transferValue: "可迁移到过焦点弦、面积比、中心对称点、直线夹角最值等问题。",
         suitableFor: ["考场拿分", "标准证明", "稳定复算"],
@@ -366,6 +508,50 @@ const rawProblems: Problem[] = [
         "最后看配方分类法，把第（ii）问的中心和平移形状一次讲透。",
       ],
       recommendation: "优先掌握反解消元法；参数法适合看清动点生成机制；配方分类法则是回答“是什么曲线、有无中心”的关键。",
+    },
+    solutionTree: {
+      roots: [
+        {
+          id: "ng2-18-track-point-entry",
+          title: "观察入口：新点由旧点生成",
+          description: "$P$ 同时在 $AO$ 与 $GB$ 上，核心是把 $A$ 和 $P$ 的坐标关系写清楚。",
+          methods: [
+            {
+              id: "ng2-18-reverse-eliminate",
+              title: "反解原动点",
+              description: "从 $P(x,y)$ 反解 $A(x_0,y_0)$，再代回椭圆，轨迹方程最直接。",
+              solutionIds: ["ng2-18-elimination"],
+            },
+            {
+              id: "ng2-18-forward-param",
+              title: "参数生成轨迹",
+              description: "先把 $A$ 写成椭圆参数点，看清 $P$ 如何随参数生成，再消去参数。",
+              solutionIds: ["ng2-18-parametric"],
+            },
+          ],
+        },
+        {
+          id: "ng2-18-quadratic-entry",
+          title: "观察入口：轨迹方程决定曲线类型",
+          description: "一旦得到二次方程，后续问题转成配方、系数符号和退化情况判断。",
+          methods: [
+            {
+              id: "ng2-18-complete-square",
+              title: "配方中心分类",
+              description: "把 $x$ 项配方，读出中心坐标、平移后形状和抛物线退化边界。",
+              solutionIds: ["ng2-18-completion"],
+              children: [
+                {
+                  id: "ng2-18-track-domain",
+                  title: "保留删点条件",
+                  description: "$y\\ne0$ 是题设条件，分类完成后仍要保留，不应把端点误纳入轨迹。",
+                  solutionIds: ["ng2-18-elimination", "ng2-18-completion"],
+                },
+              ],
+            },
+          ],
+        },
+      ],
     },
     solutions: [
       solution({
@@ -504,6 +690,42 @@ const rawProblems: Problem[] = [
       ],
       recommendation: "先看“整体换元法”建立最短主线；第二种展开法适合复习二倍角求值，但不必在考场把函数完全展开。",
     },
+    solutionTree: {
+      roots: [
+        {
+          id: "tj16-phase-entry",
+          title: "观察入口：复合角可以整体看",
+          description: "$\\sin(2x+\\pi/6)$ 已经是标准相位形式，周期、区间和单调性都先由相位决定。",
+          methods: [
+            {
+              id: "tj16-phase-substitution",
+              title: "整体相位换元",
+              description: "令 $t=2x+\\pi/6$，把周期、最值和函数值都转回 $\\sin t$ 的基本图像。",
+              solutionIds: ["tj16-phase"],
+            },
+          ],
+        },
+        {
+          id: "tj16-formula-entry",
+          title: "观察入口：也可以展开成二倍角",
+          description: "若目标是复习公式或统一用单调性判断，可以把函数拆成 $\\sin2x$ 与 $\\cos2x$。",
+          methods: [
+            {
+              id: "tj16-expand-derive",
+              title: "辅助角展开 + 导数",
+              description: "展开后用导数判断区间单调性，再代入二倍角值。",
+              solutionIds: ["tj16-expand"],
+            },
+            {
+              id: "tj16-double-angle",
+              title: "第一象限补角再算二倍角",
+              description: "第（3）问的关键是先由象限确定 $\\cos\\alpha$，再求 $\\sin2\\alpha,\\cos2\\alpha$。",
+              solutionIds: ["tj16-phase", "tj16-expand"],
+            },
+          ],
+        },
+      ],
+    },
     solutions: [
       solution({
         id: "tj16-phase",
@@ -515,6 +737,13 @@ const rawProblems: Problem[] = [
         badge: "标准解",
         origin: "把 $2x+\\dfrac\\pi6$ 看成一个整体相位。周期、单调性和最值都回到最熟悉的 $\\sin t$。",
         keyTransform: "令 $t=2x+\\dfrac\\pi6$。当 $x\\in[-\\dfrac\\pi6,\\dfrac\\pi{12}]$ 时，$t\\in[-\\dfrac\\pi6,\\dfrac\\pi3]$。",
+        thinkingCues: {
+          observations: ["复合三角函数", "区间", "最值"],
+          keySignals: ["整体相位", "区间最值"],
+          reasoning: "由于函数已经是标准相位形式，先跟踪相位区间就能直接判断周期、单调性和最值。",
+          suggestedMethods: ["整体换元", "辅助角展开", "导数"],
+          confidence: 0.94,
+        },
         inspiration: "把复合三角函数先看成整体相位，而不是急着展开。",
         transferValue: "可迁移到三角函数图像变换、区间最值、单调性判断和相位参数题。",
         suitableFor: ["考场拿分", "基础复盘", "课堂讲解"],
@@ -543,6 +772,13 @@ const rawProblems: Problem[] = [
         badge: "教学解",
         origin: "把原函数展开为 $\\sin2x$ 与 $\\cos2x$ 的线性组合，并用导数统一判断区间单调性。",
         keyTransform: "$f(x)=\\dfrac{\\sqrt3}{2}\\sin2x+\\dfrac12\\cos2x$，且 $f'(x)=2\\cos(2x+\\dfrac\\pi6)$。",
+        thinkingCues: {
+          observations: ["最值", "参数", "可导"],
+          keySignals: ["参数", "最值"],
+          reasoning: "由于目标是研究最值，并且函数满足可导，因此导数成为最自然的方法。",
+          suggestedMethods: ["导数", "放缩", "均值"],
+          confidence: 0.86,
+        },
         inspiration: "同一个函数可以在整体相位和展开式之间切换，选择更适合当前小问的形态。",
         transferValue: "适合迁移到辅助角公式、二倍角求值、三角函数与导数结合的问题。",
         suitableFor: ["公式复盘", "课堂讲解", "查漏补缺"],
@@ -609,6 +845,44 @@ const rawProblems: Problem[] = [
         "再看辅助点几何路线，理解为什么垂直关系会藏在底面里。",
       ],
       recommendation: "想稳定拿满三问，先看坐标向量法；想训练几何直觉，再看“辅助点 + 面积距离法”。",
+    },
+    solutionTree: {
+      roots: [
+        {
+          id: "tj17-coordinate-entry",
+          title: "观察入口：长方体可直接坐标化",
+          description: "所有分点都在棱上，坐标、向量、法向量可以贯穿线面垂直、二面角和体积。",
+          methods: [
+            {
+              id: "tj17-space-vector",
+              title: "空间向量一线到底",
+              description: "把点坐标写全，用点积证垂直，用法向量算夹角，用混合积算体积。",
+              solutionIds: ["tj17-vector"],
+            },
+          ],
+        },
+        {
+          id: "tj17-geometric-entry",
+          title: "观察入口：垂直关系藏在底面",
+          description: "先把空间中的点投影到底面，寻找能解释 $BD\\perp$ 平面 $CEF$ 的平面直角结构。",
+          methods: [
+            {
+              id: "tj17-auxiliary-point",
+              title: "辅助点与底面降维",
+              description: "补出投影点后，把线面垂直和体积都转回底面距离与面积。",
+              solutionIds: ["tj17-geometry"],
+              children: [
+                {
+                  id: "tj17-vector-backup",
+                  title: "夹角仍可回到法向量",
+                  description: "几何路线解释结构，二面角计算继续借助向量，减少纯几何角度追踪。",
+                  solutionIds: ["tj17-vector", "tj17-geometry"],
+                },
+              ],
+            },
+          ],
+        },
+      ],
     },
     solutions: [
       solution({
@@ -714,6 +988,44 @@ const rawProblems: Problem[] = [
         "再看直接设过顶点斜率，体会目标量驱动的消元。",
       ],
       recommendation: "先看直接求交点法，最容易核对；再看“直接设 $AP,AQ$ 斜率”的消元法，体会如何绕开坐标。",
+    },
+    solutionTree: {
+      roots: [
+        {
+          id: "tj18-object-entry",
+          title: "观察入口：先把椭圆和切线定死",
+          description: "离心率、截弦长、圆切线条件足以确定所有对象，适合走稳定的坐标核算路线。",
+          methods: [
+            {
+              id: "tj18-direct-intersection",
+              title: "切线定截距 + 直接求交点",
+              description: "先求椭圆和切线，再联立得到 $P,Q$，最后按斜率定义计算比值。",
+              solutionIds: ["tj18-coordinate"],
+            },
+          ],
+        },
+        {
+          id: "tj18-target-entry",
+          title: "观察入口：目标只问斜率比",
+          description: "既然最终只要 $k_1/k_2$，可直接把过上顶点的弦斜率当主变量，减少无关坐标。",
+          methods: [
+            {
+              id: "tj18-slope-variable",
+              title: "直接设过顶点斜率",
+              description: "用过 $A$ 的直线与椭圆交点关系，把圆切线条件转成关于斜率的二次方程。",
+              solutionIds: ["tj18-slope"],
+              children: [
+                {
+                  id: "tj18-order-check",
+                  title: "用点序核对 $k_1,k_2$",
+                  description: "斜率方程给出两个根后，还要用 $y_1<y_2$ 判断哪一个对应 $P$。",
+                  solutionIds: ["tj18-coordinate", "tj18-slope"],
+                },
+              ],
+            },
+          ],
+        },
+      ],
     },
     solutions: [
       solution({
@@ -823,6 +1135,50 @@ const rawProblems: Problem[] = [
       ],
       recommendation: "先看“计数拆分 + 指示函数法”理解公式从哪里来；再看分块递推法，它更像压轴题考场中的组织方式。",
     },
+    solutionTree: {
+      roots: [
+        {
+          id: "tj19-count-source-entry",
+          title: "观察入口：集合计数来自两个来源",
+          description: "$E_n$ 是并集，先分清偶数项和 $3$ 的幂各贡献多少，再处理是否重合。",
+          methods: [
+            {
+              id: "tj19-explicit-count",
+              title: "显式计数公式",
+              description: "写出 $c_m=\\lfloor m/2\\rfloor+\\lfloor\\log_3m\\rfloor+1$，再拆开求和。",
+              solutionIds: ["tj19-indicator"],
+              children: [
+                {
+                  id: "tj19-indicator-events",
+                  title: "指示函数换序",
+                  description: "把对数取整改写为阈值事件之和，解释每个分层项从哪里来。",
+                  solutionIds: ["tj19-indicator"],
+                },
+              ],
+            },
+          ],
+        },
+        {
+          id: "tj19-block-entry",
+          title: "观察入口：$3$ 的幂是分块边界",
+          description: "$\\lfloor\\log_3m\\rfloor$ 只在幂边界变化，因此长求和可以按新区间增量组织。",
+          methods: [
+            {
+              id: "tj19-block-recursion",
+              title: "按幂区间递推",
+              description: "研究 $S_n-S_{n-1}$，在新区间内配对奇偶项，最后累加增量。",
+              solutionIds: ["tj19-block"],
+            },
+            {
+              id: "tj19-parity-pairing",
+              title: "奇偶配对",
+              description: "$(-1)^m$ 与偶数上限共同提示把相邻两项合并，降低交错和复杂度。",
+              solutionIds: ["tj19-indicator", "tj19-block"],
+            },
+          ],
+        },
+      ],
+    },
     solutions: [
       solution({
         id: "tj19-indicator",
@@ -931,6 +1287,56 @@ const rawProblems: Problem[] = [
         "最后看局部极限判别，理解最佳指数为什么只由 $x=0$ 附近的一阶项决定。",
       ],
       recommendation: "先看导数法掌握官方可接受的完整论证；递推法适合把望远镜结构讲清楚；局部极限法负责解释为什么若题面是 $f(1/k)$，乘积增长阶是 $n^{1/3}$，而不是 $e^{n^2/2}$。",
+    },
+    solutionTree: {
+      roots: [
+        {
+          id: "tj20-tangent-entry",
+          title: "观察入口：切线就是候选下界",
+          description: "第（1）问不是孤立计算，它把第（2）问需要证明的直线下界提前暴露出来。",
+          methods: [
+            {
+              id: "tj20-derivative-gap",
+              title: "构造差函数并求导",
+              description: "把 $f(x)\\ge1+x/3$ 改写为差函数非负，再用导数控制全区间。",
+              solutionIds: ["tj20-derivative"],
+            },
+            {
+              id: "tj20-elementary-bound",
+              title: "分段初等放缩",
+              description: "正半轴用基础不等式，负小区间用更精细的多项式下界。",
+              solutionIds: ["tj20-inequality"],
+            },
+          ],
+        },
+        {
+          id: "tj20-product-entry",
+          title: "观察入口：连乘积需要找增长尺度",
+          description: "第三问的关键不是继续算函数值，而是判断乘积相当于 $(n+1)^a$ 的哪个幂次。",
+          methods: [
+            {
+              id: "tj20-telescope",
+              title: "逐项放缩成望远镜",
+              description: "把每一项压到 $1+1/(3k)$，再与 $((k+1)/k)^{1/3}$ 比较。",
+              solutionIds: ["tj20-derivative"],
+              children: [
+                {
+                  id: "tj20-normalized-sequence",
+                  title: "归一化递推不变量",
+                  description: "把乘积除以候选增长量，转成单调性验证。",
+                  solutionIds: ["tj20-discrete-invariant"],
+                },
+              ],
+            },
+            {
+              id: "tj20-local-growth",
+              title: "局部极限判别",
+              description: "从 $f(t)=1+t/3+O(t^2)$ 读出对数增长率，解释最优指数为何是 $1/3$。",
+              solutionIds: ["tj20-local-limit", "tj20-inequality"],
+            },
+          ],
+        },
+      ],
     },
     solutions: [
       solution({

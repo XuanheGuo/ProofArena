@@ -37,6 +37,7 @@ ProofArena 的核心资产不是题目数量，而是可学习、可比较、可
 | `sourcePage` | PDF 页码，从 1 开始 |
 | `answerPdf` | 可选答案文件 |
 | `learningGuide` | 解题前的观察与推荐路径 |
+| `solutionTree` | 可选思路树：按思维入口组织解法分支 |
 | `solutions` | 解法数组 |
 
 ## LearningGuide 字段
@@ -61,6 +62,20 @@ ProofArena 的核心资产不是题目数量，而是可学习、可比较、可
 
 解释不同学习目标应先看哪条解法。
 
+## SolutionTree 字段
+
+`solutionTree` 用来解释多条解法如何从不同观察入口分化出来，而不是重复解法导航。
+
+| 字段 | 说明 |
+| --- | --- |
+| `roots` | 思维入口数组，例如“参数”“对称”“几何性质” |
+| `roots[].id` | 入口稳定 ID |
+| `roots[].title` | 入口标题 |
+| `roots[].description` | 为什么这个观察角度值得进入 |
+| `roots[].methods` | 该入口下产生的方法节点 |
+| `methods[].solutionIds` | 可选，对应站内 Solution 的 `id`，用于点击跳转 |
+| `methods[].children` | 可选子节点，预留无限层级扩展 |
+
 ## Solution 字段
 
 | 字段 | 说明 |
@@ -74,6 +89,7 @@ ProofArena 的核心资产不是题目数量，而是可学习、可比较、可
 | `badge` | 卡片上显示的简短类型名 |
 | `origin` | 为什么会想到这条路线 |
 | `keyTransform` | 决定后续推导的核心转化 |
+| `thinkingCues` | 思维线索：首先观察、关键线索、为什么想到该方法、备选方法 |
 | `summary` | 完整、顺序明确的步骤数组 |
 | `scores` | 五维评分 |
 | `scoringReason` | 解释优势、代价和分差 |
