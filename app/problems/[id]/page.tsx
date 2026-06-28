@@ -39,6 +39,7 @@ export default async function ProblemDetailPage({
     { label: "稳健解", tone: "text-emerald-300", solution: robustSolution, note: "计算较多，但容错高。" },
   ];
   const hasVisualization = new Set([
+    "ng2-2026-18",
     "tj-2026-18",
     "tj-2026-20",
   ]).has(problem.id);
