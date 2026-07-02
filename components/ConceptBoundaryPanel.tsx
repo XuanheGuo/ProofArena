@@ -6,7 +6,6 @@ import {
   BookOpenCheck,
   ChevronsUpDown,
   GitCompare,
-  HelpCircle,
   Link2,
   RouteOff,
 } from "lucide-react";
@@ -84,8 +83,8 @@ export function ConceptBoundaryPanel(props: ConceptBoundaryPanelProps) {
       </div>
 
       <div className={`grid gap-px bg-white/10 ${compact ? "" : "xl:grid-cols-2"}`}>
-        <ConceptSection title="相关概念" icon={<Link2 className="size-4" />} tone="cyan" defaultOpen={false}>
-          {conceptLinks.length > 0 ? (
+        {conceptLinks.length > 0 && (
+          <ConceptSection title="相关概念" icon={<Link2 className="size-4" />} tone="cyan" defaultOpen={false}>
             <div className="grid gap-3 sm:grid-cols-2">
               {conceptLinks.map((link) => {
                 const href = linkedConceptHref(link);
@@ -105,7 +104,6 @@ export function ConceptBoundaryPanel(props: ConceptBoundaryPanelProps) {
                     {href && <p className="mt-3 text-[11px] text-zinc-600">进入节点查看完整知识网络</p>}
                   </>
                 );
-
                 return href ? (
                   <Link key={`${link.label}-${link.relation}`} href={href} className="group border border-cyan-400/20 bg-cyan-400/[0.04] p-4 transition hover:border-cyan-400/45">
                     {body}
@@ -117,13 +115,11 @@ export function ConceptBoundaryPanel(props: ConceptBoundaryPanelProps) {
                 );
               })}
             </div>
-          ) : (
-            <EmptyText />
-          )}
-        </ConceptSection>
+          </ConceptSection>
+        )}
 
-        <ConceptSection title="易混概念" icon={<GitCompare className="size-4" />} tone="amber" defaultOpen={false}>
-          {conceptContrasts.length > 0 ? (
+        {conceptContrasts.length > 0 && (
+          <ConceptSection title="易混概念" icon={<GitCompare className="size-4" />} tone="amber" defaultOpen={false}>
             <div className="space-y-3">
               {conceptContrasts.map((contrast) => (
                 <div key={`${contrast.conceptA}-${contrast.conceptB}`} className="border border-amber-400/20 bg-amber-400/[0.04] p-4">
@@ -154,13 +150,11 @@ export function ConceptBoundaryPanel(props: ConceptBoundaryPanelProps) {
                 </div>
               ))}
             </div>
-          ) : (
-            <EmptyText />
-          )}
-        </ConceptSection>
+          </ConceptSection>
+        )}
 
-        <ConceptSection title="概念边界" icon={<BookOpenCheck className="size-4" />} tone="emerald" defaultOpen={false}>
-          {boundaryNotes.length > 0 ? (
+        {boundaryNotes.length > 0 && (
+          <ConceptSection title="概念边界" icon={<BookOpenCheck className="size-4" />} tone="emerald" defaultOpen={false}>
             <div className="space-y-3">
               {boundaryNotes.map((note) => (
                 <div key={note.title} className="border-l-2 border-emerald-400 bg-emerald-400/[0.04] p-4">
@@ -176,13 +170,11 @@ export function ConceptBoundaryPanel(props: ConceptBoundaryPanelProps) {
                 </div>
               ))}
             </div>
-          ) : (
-            <EmptyText />
-          )}
-        </ConceptSection>
+          </ConceptSection>
+        )}
 
-        <ConceptSection title="对比题目" icon={<ArrowUpRight className="size-4" />} tone="cyan" defaultOpen={false}>
-          {contrastProblems.length > 0 ? (
+        {contrastProblems.length > 0 && (
+          <ConceptSection title="对比题目" icon={<ArrowUpRight className="size-4" />} tone="cyan" defaultOpen={false}>
             <div className="grid gap-3 sm:grid-cols-2">
               {contrastProblems.map((item) => {
                 const problem = problemLookup[item.problemId];
@@ -205,13 +197,11 @@ export function ConceptBoundaryPanel(props: ConceptBoundaryPanelProps) {
                 );
               })}
             </div>
-          ) : (
-            <EmptyText />
-          )}
-        </ConceptSection>
+          </ConceptSection>
+        )}
 
-        <ConceptSection title="为什么不是这个方法？" icon={<RouteOff className="size-4" />} tone="red" defaultOpen={false} wide>
-          {whyNotMethods.length > 0 ? (
+        {whyNotMethods.length > 0 && (
+          <ConceptSection title="为什么不是这个方法？" icon={<RouteOff className="size-4" />} tone="red" defaultOpen={false} wide>
             <div className="grid gap-3 md:grid-cols-2">
               {whyNotMethods.map((method) => (
                 <div key={method.methodName} className="border border-red-400/20 bg-red-500/[0.04] p-4">
@@ -238,10 +228,8 @@ export function ConceptBoundaryPanel(props: ConceptBoundaryPanelProps) {
                 </div>
               ))}
             </div>
-          ) : (
-            <EmptyText />
-          )}
-        </ConceptSection>
+          </ConceptSection>
+        )}
       </div>
     </section>
   );
@@ -299,11 +287,3 @@ function BoundaryCallout({ label, tone, text }: { label: string; tone: "amber" |
   );
 }
 
-function EmptyText() {
-  return (
-    <p className="flex items-center gap-2 text-sm leading-6 text-zinc-600">
-      <HelpCircle className="size-4" />
-      暂无数据，等待后续补充。
-    </p>
-  );
-}

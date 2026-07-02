@@ -2,7 +2,12 @@ import { Target } from "lucide-react";
 import { ProblemExplorer } from "@/components/ProblemExplorer";
 import { problems } from "@/data/problems";
 
-export default function ProblemsPage() {
+export default async function ProblemsPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string>>;
+}) {
+  const params = await searchParams;
   const solutionCount = problems.reduce((sum, problem) => sum + problem.solutions.length, 0);
   const regionCount = new Set(problems.map((problem) => problem.region)).size;
 
@@ -46,7 +51,14 @@ export default function ProblemsPage() {
         </div>
       </section>
 
-      <ProblemExplorer problems={problems} />
+      <ProblemExplorer
+        problems={problems}
+        initialQuery={params.q ?? ""}
+        initialRegion={params.region ?? "全部卷别"}
+        initialType={params.type ?? "全部题型"}
+        initialDifficulty={params.difficulty ?? "全部难度"}
+        initialTopic={params.topic ?? "全部专题"}
+      />
     </main>
   );
 }

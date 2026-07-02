@@ -21,6 +21,12 @@ const rawKnowledgeNodes: KnowledgeNode[] = [
     prerequisites: ["空间直角坐标系", "向量点积", "向量叉积"],
     relatedIds: ["k-geometric-reduction"],
     examples: ["长方体三棱长已知时，优先考虑坐标化。", "面面角可转化为两个平面法向量夹角。"],
+    boundaryNotes: [
+      {
+        title: "向量法有时掩盖结构",
+        note: "坐标法稳定但不一定能看出几何原因，对垂直证明要能解释为什么，而不只是计算出来。",
+      },
+    ],
   },
   {
     id: "k-function-extremum",
@@ -171,6 +177,12 @@ const rawKnowledgeNodes: KnowledgeNode[] = [
     prerequisites: ["等差数列", "等比数列", "数学归纳法"],
     relatedIds: ["k-block-summation"],
     examples: ["看到 $a_{n+1}-a_n=f(n)$，考虑累加。", "看到 $a_{n+1}/a_n$，考虑累乘或取对数。"],
+    boundaryNotes: [
+      {
+        title: "累加和累乘的选择依据",
+        note: "差分型递推用累加，比例型递推用累乘。先化简 a_{n+1} 的表达式，看它是加了某个关于n的函数，还是乘了某个因子。",
+      },
+    ],
   },
   {
     id: "k-induction-proof",
@@ -221,6 +233,12 @@ const rawKnowledgeNodes: KnowledgeNode[] = [
     prerequisites: ["向量加减", "数量积", "坐标表示"],
     relatedIds: ["k-line-conic", "k-geometric-reduction"],
     examples: ["看到垂直可转成数量积为 $0$。", "看到共线可转成向量线性相关。"],
+    boundaryNotes: [
+      {
+        title: "数量积为零是充要条件",
+        note: "向量垂直的充要条件是数量积为零，反之亦然；但平行的充要条件是向量线性相关，不能混用。",
+      },
+    ],
   },
   {
     id: "k-trig-transform",
@@ -231,6 +249,16 @@ const rawKnowledgeNodes: KnowledgeNode[] = [
     prerequisites: ["诱导公式", "和差公式", "二倍角公式"],
     relatedIds: ["k-phase-transform"],
     examples: ["形如 $a\\sin x+b\\cos x$ 可化为 $R\\sin(x+\\varphi)$。", "含平方项时考虑降幂。"],
+    conceptContrasts: [
+      {
+        conceptA: "展开计算",
+        conceptB: "整体换元",
+        relationship: "处理复合三角函数的两种路线。",
+        keyDifference: "展开计算适合需要显式写出各项系数时；整体换元适合已知标准形式直接读周期和最值。",
+        commonMistake: "把复合角展开后忘记收回辅助角，或展开后找不到最值区间。",
+        exampleProblemIds: ["tj-2026-16"],
+      },
+    ],
   },
   {
     id: "k-complex-number-geometry",
@@ -425,6 +453,121 @@ const rawKnowledgeNodes: KnowledgeNode[] = [
         reason: "没有证明独立时，乘概率可能把受同一条件约束的事件错误拆开。",
         whenItWouldWork: "独立重复试验，或能由条件概率证明 $P(B|A)=P(B)$。",
         relatedConcepts: ["独立事件", "互斥事件", "条件概率"],
+      },
+    ],
+  },
+  {
+    id: "k-hyperbola-focal-triangle",
+    title: "双曲线焦点三角形",
+    category: "圆锥曲线",
+    summary: "利用双曲线定义（两焦距之差等于 $2a$）把焦点三角形中的边长关系转化为 $a,b,c$ 的方程，结合等腰、特殊角等附加条件解出离心率。",
+    aliases: ["双曲线定义", "焦距差", "焦点三角形", "离心率"],
+    prerequisites: ["双曲线定义", "正弦定理", "余弦定理", "离心率"],
+    relatedIds: ["k-conic-parameter", "k-line-conic"],
+    examples: [
+      "已知 $|PF_1|=|PF_2|=|F_1A|$，双曲线定义立即给出三角形第三边。",
+      "等腰条件 $|FA|=|FP|$ 配合 $30°$ 角先用三角形定律求边长，再回代 $|PF_2|-|PF_1|=2a$。",
+    ],
+    boundaryNotes: [
+      {
+        title: "定义转化是入口，不是结果",
+        note: "$|PF_1|-|PF_2|=\\pm2a$ 只给一个方程，还需要额外条件才能确定离心率。",
+        typicalMisuse: "把焦距差公式当成完整解，忘记补充角度或等距条件。",
+      },
+    ],
+    contrastProblems: [
+      { problemId: "tj-2026-09", role: "相似题", focus: "等腰三角形 + 双曲线定义反推离心率", reason: "典型的「先把几何条件转成距离等式，再用曲线定义收口」。" },
+    ],
+  },
+  {
+    id: "k-focal-chord-ellipse",
+    title: "椭圆焦点弦与焦半径",
+    category: "圆锥曲线",
+    summary: "过椭圆焦点的弦（焦点弦）的两端焦半径满足 $r_1=a-ex$，$r_2=a+ex$；椭圆中心对称使得过原点直线的另一端点恰好是关于原点的对称点。",
+    aliases: ["焦点弦", "焦半径", "弦长公式", "过焦点直线"],
+    prerequisites: ["椭圆定义", "离心率", "斜率联立"],
+    relatedIds: ["k-conic-parameter", "k-line-conic", "k-conic-area-range"],
+    examples: [
+      "椭圆 $\\dfrac{x^2}{4}+\\dfrac{y^2}{3}=1$，过左焦点 $F(-1,0)$ 的弦端点 $P$ 的焦半径 $|PF|=2-\\dfrac12 x_P$。",
+      "直线 $PO$ 的另一端 $R$ 满足 $R=-P$，这是中心对称的直接结论，不用代入再算。",
+    ],
+    boundaryNotes: [
+      {
+        title: "过原点 ≠ 过焦点",
+        note: "过原点的弦不一定是焦点弦；过焦点的弦才适用焦半径公式。",
+        typicalMisuse: "混淆过焦点和过原点两种弦，把焦半径公式用在非焦点弦上。",
+      },
+    ],
+    contrastProblems: [
+      { problemId: "ng1-2026-18", role: "相似题", focus: "过焦点动直线、中心对称点 R=-P、面积比与夹角", reason: "核心用到中心对称消掉 R 的坐标计算，以及焦点弦的斜率参数化。" },
+    ],
+  },
+  {
+    id: "k-trajectory-classification",
+    title: "轨迹方程类型判断",
+    category: "圆锥曲线",
+    summary: "整理动点轨迹方程后，通过 $x^2$ 系数的符号和大小判断曲线类型：系数同号为椭圆（含圆），异号为双曲线，某项消失为抛物线。",
+    aliases: ["轨迹方程", "曲线分类", "二次项系数", "配方法"],
+    prerequisites: ["椭圆", "双曲线", "抛物线", "反解消元"],
+    relatedIds: ["k-conic-parameter", "k-line-conic"],
+    examples: [
+      "整理后 $x^2$ 系数 $\\alpha>0$ 且 $y^2$ 系数 $\\beta>0$ → 椭圆型。",
+      "当参数过临界值时 $\\alpha=0$，$x^2$ 项消失 → 抛物线型；$\\alpha<0$ → 双曲线型。",
+    ],
+    conceptContrasts: [
+      {
+        conceptA: "椭圆型轨迹",
+        conceptB: "双曲线型轨迹",
+        relationship: "同一族动点轨迹，参数不同时可在两种类型之间切换。",
+        keyDifference: "$x^2$ 系数符号是分水岭：同号为椭圆，异号为双曲线，零为抛物线。",
+        commonMistake: "只看最终化简式的形状，没有检查参数范围是否满足各项系数符号。",
+        exampleProblemIds: ["ng2-2026-18"],
+      },
+    ],
+    contrastProblems: [
+      { problemId: "ng2-2026-18", role: "相似题", focus: "参数 $t_0$ 控制曲线类型切换", reason: "临界值 $t_0=\\sqrt2$ 处 $x^2$ 项消失，展示了从双曲线型到抛物线型到椭圆型的连续变化。" },
+    ],
+  },
+  {
+    id: "k-affine-transform",
+    title: "仿射变换与椭圆圆化",
+    category: "通用方法",
+    summary: "用线性坐标缩放 $(x,y)\\to(x,y/b\\cdot a)$ 把椭圆变为圆。仿射变换保持面积比和共线关系，但不保持角度和长度，最终角度计算要回到原坐标。",
+    aliases: ["仿射变换", "椭圆圆化", "坐标缩放", "拉伸"],
+    prerequisites: ["椭圆方程", "坐标变换", "面积比"],
+    relatedIds: ["k-conic-parameter", "k-line-conic"],
+    examples: [
+      "椭圆 $\\dfrac{x^2}{4}+\\dfrac{y^2}{3}=1$，令 $Y=y\\cdot\\dfrac{2}{\\sqrt3}$ 后方程变成 $x^2+Y^2=4$（圆）。",
+      "面积比、重心、平行等射影性质在仿射后仍成立；但 $\\angle PQR$ 必须在原坐标用斜率差公式计算。",
+    ],
+    boundaryNotes: [
+      {
+        title: "角度不能在圆里算",
+        note: "仿射变换不保角，因此「圆上的角」回代到椭圆后数值会变。",
+        typicalMisuse: "在仿射后的圆中算出角度，直接当作椭圆上的角度使用。",
+      },
+    ],
+    contrastProblems: [
+      { problemId: "ng1-2026-18", role: "相似题", focus: "椭圆焦点弦面积比", reason: "仿射圆化可以快速处理面积比条件，但最终夹角最值仍需回到原坐标。" },
+    ],
+  },
+  {
+    id: "k-basic-inequality",
+    title: "均值不等式",
+    category: "通用方法",
+    summary: "对正数 $a,b$ 有 $\\dfrac{a+b}{2}\\ge\\sqrt{ab}$，等号当且仅当 $a=b$ 时成立。常用于把和换积（求积最大）或把积换和（求和最小）。",
+    aliases: ["AM-GM", "均值不等式", "基本不等式", "和积互换"],
+    prerequisites: ["正数", "不等式", "等号条件"],
+    relatedIds: ["k-derivative-inequality", "k-log-inequality"],
+    examples: [
+      "若 $x+y=S$，$x,y>0$，则 $xy\\le S^2/4$，等号在 $x=y$ 时取到。",
+      "若要使 $x+4/x$ 最小，令两项相等 $x=4/x$ 解出 $x=2$，最小值为 $4$。",
+    ],
+    boundaryNotes: [
+      {
+        title: "必须验证等号条件能否取到",
+        note: "均值不等式给出最值，但如果等号条件不在定义域或约束范围内，最值无法取到，需要另法处理。",
+        typicalMisuse: "直接写最小值等于 $2\\sqrt{ab}$，没有检查 $a=b$ 是否满足题目约束。",
       },
     ],
   },

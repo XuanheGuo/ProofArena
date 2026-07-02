@@ -34,6 +34,7 @@ export function FunctionGraphPanel({ spec }: { spec: FunctionGraphSpec }) {
   const reactId = useId();
   const boardId = `fg-${reactId.replace(/:/g, "")}`;
   const boardRef = useRef<JXG.Board | null>(null);
+  const slidersRef = useRef<Map<string, JXG.Slider>>(new Map());
   const [ready, setReady] = useState(false);
   const [failed, setFailed] = useState(false);
 
@@ -107,6 +108,8 @@ export function FunctionGraphPanel({ spec }: { spec: FunctionGraphSpec }) {
           sliderMap.set(s.name, slider);
         }
 
+        slidersRef.current = sliderMap;
+
         function getParams(): Record<string, number> {
           const result: Record<string, number> = {};
           for (const [name, slider] of sliderMap) result[name] = slider.Value();
@@ -172,6 +175,16 @@ export function FunctionGraphPanel({ spec }: { spec: FunctionGraphSpec }) {
     boardRef.current?.setBoundingBox(spec.boundingBox, true);
   }
 
+  function resetParams() {
+    const board = boardRef.current;
+    if (!board) return;
+    for (const s of spec.sliders) {
+      const slider = slidersRef.current.get(s.name);
+      if (slider) slider.setValue(s.initial);
+    }
+    board.update();
+  }
+
   return (
     <section className="border border-cyan-400/25 bg-zinc-950">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-5 py-4">
@@ -184,14 +197,23 @@ export function FunctionGraphPanel({ spec }: { spec: FunctionGraphSpec }) {
             <span className="font-mono text-[10px] uppercase tracking-widest text-zinc-600">动态图像</span>
           </div>
         </div>
-        <button
-          type="button"
-          onClick={resetView}
-          className="inline-flex h-9 items-center gap-2 border border-white/10 px-3 text-xs text-zinc-400 hover:text-white"
-        >
-          <RotateCcw className="size-3.5" />
-          重置视图
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={resetParams}
+            className="inline-flex h-9 items-center gap-2 border border-white/10 px-3 text-xs text-zinc-400 hover:text-white"
+          >
+            <RotateCcw className="size-3.5" />
+            重置参数
+          </button>
+          <button
+            type="button"
+            onClick={resetView}
+            className="inline-flex h-9 items-center gap-2 border border-white/10 px-3 text-xs text-zinc-400 hover:text-white"
+          >
+            重置视图
+          </button>
+        </div>
       </div>
 
       <div className="grid lg:grid-cols-[1fr_19rem]">

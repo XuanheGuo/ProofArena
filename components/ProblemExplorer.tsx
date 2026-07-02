@@ -1,25 +1,68 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Search, SlidersHorizontal, X } from "lucide-react";
 import type { Difficulty, ExamRegion, Problem, QuestionType } from "@/lib/types";
 import { ProblemCard } from "@/components/ProblemCard";
+import { ProblemScrollbar } from "@/components/ProblemScrollbar";
 
 const regions: Array<"全部卷别" | ExamRegion> = ["全部卷别", "天津卷", "新高考 I 卷", "新高考 II 卷"];
 const types: Array<"全部题型" | QuestionType> = ["全部题型", "单选", "多选", "填空", "解答"];
 const difficulties: Array<"全部难度" | Difficulty> = ["全部难度", "基础", "中档", "压轴"];
 
-export function ProblemExplorer({ problems }: { problems: Problem[] }) {
-  const [query, setQuery] = useState("");
-  const [region, setRegion] = useState<(typeof regions)[number]>("全部卷别");
-  const [type, setType] = useState<(typeof types)[number]>("全部题型");
-  const [difficulty, setDifficulty] = useState<(typeof difficulties)[number]>("全部难度");
-  const [topic, setTopic] = useState("全部专题");
+interface ProblemExplorerProps {
+  problems: Problem[];
+  initialQuery?: string;
+  initialRegion?: string;
+  initialType?: string;
+  initialDifficulty?: string;
+  initialTopic?: string;
+}
+
+export function ProblemExplorer({
+  problems,
+  initialQuery = "",
+  initialRegion = "全部卷别",
+  initialType = "全部题型",
+  initialDifficulty = "全部难度",
+  initialTopic = "全部专题",
+}: ProblemExplorerProps) {
+  const router = useRouter();
+  const [query, setQuery] = useState(initialQuery);
+  const [region, setRegion] = useState<(typeof regions)[number]>(
+    regions.includes(initialRegion as (typeof regions)[number]) ? (initialRegion as (typeof regions)[number]) : "全部卷别"
+  );
+  const [type, setType] = useState<(typeof types)[number]>(
+    types.includes(initialType as (typeof types)[number]) ? (initialType as (typeof types)[number]) : "全部题型"
+  );
+  const [difficulty, setDifficulty] = useState<(typeof difficulties)[number]>(
+    difficulties.includes(initialDifficulty as (typeof difficulties)[number]) ? (initialDifficulty as (typeof difficulties)[number]) : "全部难度"
+  );
+  const [topic, setTopic] = useState(initialTopic);
 
   const topics = useMemo(
-    () => ["全部专题", ...Array.from(new Set(problems.flatMap((problem) => problem.tags))).sort()],
+    () => ["全部专题", ...Array.from(new Set(problems.flatMap((p) => p.tags))).sort()],
     [problems],
   );
+
+  const pushUrl = useCallback((updates: Record<string, string>) => {
+    const params = new URLSearchParams();
+    const merged = { q: query, region, type, difficulty, topic, ...updates };
+    if (merged.q) params.set("q", merged.q);
+    if (merged.region !== "全部卷别") params.set("region", merged.region);
+    if (merged.type !== "全部题型") params.set("type", merged.type);
+    if (merged.difficulty !== "全部难度") params.set("difficulty", merged.difficulty);
+    if (merged.topic !== "全部专题") params.set("topic", merged.topic);
+    const qs = params.toString();
+    router.replace(qs ? `/problems?${qs}` : "/problems", { scroll: false });
+  }, [query, region, type, difficulty, topic, router]);
+
+  function handleQuery(v: string) { setQuery(v); pushUrl({ q: v }); }
+  function handleRegion(v: string) { setRegion(v as typeof region); pushUrl({ region: v }); }
+  function handleType(v: string) { setType(v as typeof type); pushUrl({ type: v }); }
+  function handleDifficulty(v: string) { setDifficulty(v as typeof difficulty); pushUrl({ difficulty: v }); }
+  function handleTopic(v: string) { setTopic(v); pushUrl({ topic: v }); }
 
   const filtered = useMemo(() => {
     const keyword = query.trim().toLowerCase();
@@ -41,11 +84,8 @@ export function ProblemExplorer({ problems }: { problems: Problem[] }) {
   const hasFilters = query || region !== "全部卷别" || type !== "全部题型" || difficulty !== "全部难度" || topic !== "全部专题";
 
   function resetFilters() {
-    setQuery("");
-    setRegion("全部卷别");
-    setType("全部题型");
-    setDifficulty("全部难度");
-    setTopic("全部专题");
+    setQuery(""); setRegion("全部卷别"); setType("全部题型"); setDifficulty("全部难度"); setTopic("全部专题");
+    router.replace("/problems", { scroll: false });
   }
 
   return (
@@ -57,19 +97,19 @@ export function ProblemExplorer({ problems }: { problems: Problem[] }) {
               <Search className="size-4 text-zinc-500" />
               <input
                 value={query}
-                onChange={(event) => setQuery(event.target.value)}
+                onChange={(event) => handleQuery(event.target.value)}
                 placeholder="搜索题号、题目或专题..."
                 className="min-w-0 flex-1 bg-transparent text-sm text-zinc-200 outline-none placeholder:text-zinc-600"
               />
               {query && (
-                <button type="button" onClick={() => setQuery("")} aria-label="清空搜索" className="text-zinc-500 hover:text-white">
+                <button type="button" onClick={() => handleQuery("")} aria-label="清空搜索" className="text-zinc-500 hover:text-white">
                   <X className="size-4" />
                 </button>
               )}
             </label>
             <select
               value={region}
-              onChange={(event) => setRegion(event.target.value as typeof region)}
+              onChange={(event) => handleRegion(event.target.value)}
               className="h-11 border border-white/10 bg-zinc-950 px-3 text-sm text-zinc-300 outline-none"
               aria-label="卷别"
             >
@@ -77,7 +117,7 @@ export function ProblemExplorer({ problems }: { problems: Problem[] }) {
             </select>
             <select
               value={topic}
-              onChange={(event) => setTopic(event.target.value)}
+              onChange={(event) => handleTopic(event.target.value)}
               className="h-11 border border-white/10 bg-zinc-950 px-3 text-sm text-zinc-300 outline-none"
               aria-label="专题"
             >
@@ -101,7 +141,7 @@ export function ProblemExplorer({ problems }: { problems: Problem[] }) {
                   key={item}
                   type="button"
                   data-testid={`type-filter-${item}`}
-                  onClick={() => setType(item)}
+                  onClick={() => handleType(item)}
                   className={`h-9 shrink-0 border px-3 text-xs font-semibold transition ${
                     type === item
                       ? "border-cyan-400 bg-cyan-400 text-zinc-950"
@@ -120,7 +160,7 @@ export function ProblemExplorer({ problems }: { problems: Problem[] }) {
                   type="button"
                   data-testid={`difficulty-filter-${item}`}
                   aria-pressed={difficulty === item}
-                  onClick={() => setDifficulty(item)}
+                  onClick={() => handleDifficulty(item)}
                   className={`h-9 shrink-0 border px-3 text-xs font-semibold transition ${
                     difficulty === item
                       ? "border-cyan-400 bg-cyan-400 text-zinc-950"
@@ -157,7 +197,9 @@ export function ProblemExplorer({ problems }: { problems: Problem[] }) {
         {filtered.length ? (
           <div className="grid gap-4">
             {filtered.map((problem, index) => (
-              <ProblemCard key={problem.id} problem={problem} rank={index + 1} />
+              <div key={problem.id} id={`card-${problem.id}`}>
+                <ProblemCard problem={problem} rank={index + 1} />
+              </div>
             ))}
           </div>
         ) : (
@@ -168,6 +210,8 @@ export function ProblemExplorer({ problems }: { problems: Problem[] }) {
           </div>
         )}
       </section>
+
+      <ProblemScrollbar problems={filtered} />
     </>
   );
 }

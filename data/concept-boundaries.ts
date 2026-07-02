@@ -410,7 +410,37 @@ export const conceptBoundaryDemoByProblemId: Record<string, ConceptBoundaryField
 };
 
 export const conceptBoundaryDemoByKnowledgeId: Record<string, ConceptBoundaryFields> = {
-  "k-function-extremum": conceptBoundaryDemoByProblemId["tj-2026-16"],
+  "k-function-extremum": {
+    conceptContrasts: [
+      {
+        conceptA: "极值",
+        conceptB: "最值",
+        relationship: "都描述函数取值的高低，但比较范围不同。",
+        keyDifference: "极值只比较局部邻域；最值比较整个定义域或题目给定区间。最值可能出现在端点，极值不一定是最值。",
+        commonMistake: "求出导数零点后直接宣布最值，漏掉端点或给定区间边界。",
+        exampleProblemIds: ["tj-2026-16", "tj-2026-20"],
+      },
+    ],
+    boundaryNotes: [
+      {
+        title: "先确认变量的真实范围",
+        note: "区间最值的边界在变量范围，不在函数名字上。先把自变量约束区间映射到真正参与变化的参数范围，再比较候选点。",
+        typicalMisuse: "对复合函数直接套外层函数的全局振幅，忽略内层变量受到的区间限制。",
+      },
+      {
+        title: "端点是定义域的一部分，不是补丁",
+        note: "闭区间最值必须比较端点；导数和单调性只帮你确认内部是否还需要找候选点。",
+      },
+    ],
+    whyNotMethods: [
+      {
+        methodName: "只看导数零点",
+        reason: "导数零点只说明局部变化可能转折，无法排除端点给出更大或更小的值。",
+        whenItWouldWork: "题目只问局部极值，或已证明最值只能出现在内部唯一临界点。",
+        relatedConcepts: ["极值", "最值", "端点值"],
+      },
+    ],
+  },
   "k-probability-modeling": {
     conceptLinks: [
       {
@@ -454,10 +484,33 @@ export const conceptBoundaryDemoByKnowledgeId: Record<string, ConceptBoundaryFie
       },
     ],
   },
-  "k-block-summation": conceptBoundaryDemoByProblemId["tj-2026-19"],
-  "k-sequence-counting": conceptBoundaryDemoByProblemId["tj-2026-19"],
-  "k-telescoping-sum": conceptBoundaryDemoByProblemId["tj-2026-19"],
-  "k-offset-subtraction": conceptBoundaryDemoByProblemId["tj-2026-19"],
+  "k-sequence-counting": {
+    conceptContrasts: [
+      {
+        conceptA: "序列项数",
+        conceptB: "集合元素个数",
+        relationship: "同一数列可以生成集合，但序列项数可能多于集合元素个数。",
+        keyDifference: "序列允许重复，集合不允许。两个不同数列项可能生成同一整数，计数前必须判断重合。",
+        commonMistake: "把 $M$ 以内的等差数列项数直接当作集合元素个数，漏掉两数列的公共元素。",
+        exampleProblemIds: ["tj-2026-19"],
+      },
+    ],
+    boundaryNotes: [
+      {
+        title: "先问两个来源是否有交集",
+        note: "多个数列的并集计数，第一步是判断能否重合（即是否存在同时属于两个数列的正整数），再用容斥。",
+        typicalMisuse: "默认两个数列无公共元素，直接相加项数。",
+      },
+    ],
+    whyNotMethods: [
+      {
+        methodName: "直接相加两数列项数",
+        reason: "若两数列有公共项，直接相加会重复计数。",
+        whenItWouldWork: "已证明两数列在给定范围内无公共元素。",
+        relatedConcepts: ["集合计数", "容斥原理", "公共项"],
+      },
+    ],
+  },
 };
 
 export const conceptBoundaryDemoBySolutionId: Record<string, ConceptBoundaryFields> = {

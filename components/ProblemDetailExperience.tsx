@@ -18,6 +18,7 @@ import { MathBlock } from "@/components/MathBlock";
 import { ScoreBar } from "@/components/ScoreBar";
 import { VerificationPanel } from "@/components/VerificationPanel";
 import { FunctionGraphPanel } from "@/components/FunctionGraphPanel";
+import { SolutionTreePanel } from "@/components/SolutionTreePanel";
 import { MathVisualization, mathVizProblemIds } from "@/components/MathVisualization";
 import { graphSpecRegistry } from "@/data/graph-specs";
 import { difficultyBadgeClass } from "@/lib/problem-presentation";
@@ -403,6 +404,7 @@ export function ProblemDetailExperience({
                   提交新解法
                 </Link>
               </div>
+              <SolutionTreePanel problem={problem} />
               {problem.solutions.length ? (
                 <div className="space-y-4">
                   {problem.solutions.map((solution, index) => (
@@ -424,24 +426,34 @@ export function ProblemDetailExperience({
           <section className="space-y-4">
             <div className="border border-white/10 bg-zinc-950 p-5">
               <h2 className="font-bold text-white">知识点摘要</h2>
-              <p className="mt-2 text-sm leading-6 text-zinc-500">只先列出与本题最相关的知识节点，详细解释默认折叠。</p>
+              <p className="mt-2 text-sm leading-6 text-zinc-500">点击卡片进入知识节点查看完整边界说明和对比题目。</p>
             </div>
             {knowledgeNodes.length ? (
               <div className="grid gap-3 md:grid-cols-2">
                 {knowledgeNodes.map((node) => (
-                  <details key={node.id} className="border border-white/10 bg-zinc-950">
-                    <summary className="flex list-none items-center justify-between px-4 py-3 text-sm font-bold text-white marker:hidden">
-                      {node.title}
-                      <span className="text-xs font-normal text-cyan-300">{node.category}</span>
-                    </summary>
-                    <div className="border-t border-white/10 p-4 text-sm leading-7 text-zinc-400">
-                      <p>{node.summary}</p>
-                      <Link href={`/library/${node.id}`} className="mt-4 inline-flex items-center gap-1.5 text-xs font-bold text-cyan-300">
-                        打开知识点
-                        <ArrowUpRight className="size-3.5" />
-                      </Link>
+                  <Link
+                    key={node.id}
+                    href={`/library/${node.id}`}
+                    className="group border border-white/10 bg-zinc-950 p-4 transition hover:border-cyan-400/35"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <span className="text-[11px] font-mono text-zinc-500">{node.category}</span>
+                        <h3 className="mt-1 font-bold text-white group-hover:text-cyan-200">{node.title}</h3>
+                      </div>
+                      <ArrowUpRight className="size-4 shrink-0 text-zinc-600 group-hover:text-cyan-300 mt-1" />
                     </div>
-                  </details>
+                    <p className="mt-3 text-sm leading-6 text-zinc-400 line-clamp-2">{node.summary}</p>
+                    {node.aliases && node.aliases.length > 0 && (
+                      <div className="mt-3 flex flex-wrap gap-1.5">
+                        {node.aliases.slice(0, 3).map((alias) => (
+                          <span key={alias} className="border border-white/10 px-2 py-0.5 text-[11px] text-zinc-600">
+                            {alias}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </Link>
                 ))}
               </div>
             ) : (
