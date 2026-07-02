@@ -2,9 +2,12 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import { Crosshair, Expand, MousePointer2, RotateCcw } from "lucide-react";
+import { MathBlock } from "@/components/MathBlock";
 
 type VisualizationKind = "tianjin-tangent-ellipse" | "trajectory-classifier" | "derivative-proof";
 type JXGApi = typeof import("jsxgraph");
+
+export const mathVizProblemIds = new Set(["tj-2026-18", "ng2-2026-18", "tj-2026-20"]);
 
 interface VisualizationSpec {
   kind: VisualizationKind;
@@ -41,7 +44,7 @@ const visualizationSpecs: Record<string, VisualizationSpec> = {
   },
 };
 
-const colors = {
+const darkGraphColors = {
   cyan: "#22d3ee",
   amber: "#fbbf24",
   red: "#f87171",
@@ -49,6 +52,17 @@ const colors = {
   violet: "#c084fc",
   zinc: "#a1a1aa",
 };
+
+const lightGraphColors = {
+  cyan: "#0e7490",
+  amber: "#a16207",
+  red: "#be123c",
+  green: "#047857",
+  violet: "#7e22ce",
+  zinc: "#52525b",
+};
+
+let colors = darkGraphColors;
 
 const jsxgraphPromise: Promise<JXGApi> | null = typeof window === "undefined" ? null : import("jsxgraph");
 
@@ -81,6 +95,7 @@ export function MathVisualization({ problemId }: { problemId: string }) {
         }
 
         const dark = document.documentElement.dataset.theme !== "light";
+        colors = dark ? darkGraphColors : lightGraphColors;
         const board = JXGApi.JSXGraph.initBoard(boardId, {
           boundingBox: spec.boundingBox,
           axis: true,
@@ -169,13 +184,17 @@ export function MathVisualization({ problemId }: { problemId: string }) {
             <MousePointer2 className="size-4" />
             怎么操作
           </div>
-          <p className="mt-3 text-sm leading-7 text-zinc-400">{spec.description}</p>
+          <p className="mt-3 text-sm leading-7 text-zinc-400">
+            <MathBlock>{spec.description}</MathBlock>
+          </p>
           <div className="mt-6 border-l-2 border-amber-400 bg-amber-400/5 p-4">
             <div className="flex items-center gap-2 text-xs font-bold text-amber-300">
               <Expand className="size-4" />
               看懂什么
             </div>
-            <p className="mt-3 text-sm leading-7 text-zinc-300">{spec.insight}</p>
+            <p className="mt-3 text-sm leading-7 text-zinc-300">
+              <MathBlock>{spec.insight}</MathBlock>
+            </p>
           </div>
           <p className="mt-5 font-mono text-[10px] uppercase leading-5 text-zinc-600">
             Drag points / move sliders / wheel to zoom

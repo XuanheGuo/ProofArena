@@ -3,10 +3,10 @@ import { BookOpenCheck, Code2, Crosshair, Hammer, Info, Send, Swords } from "luc
 import { ThemeToggle } from "@/components/ThemeToggle";
 
 const navigation = [
-  { href: "/problems", label: "题目", icon: Swords },
-  { href: "/library", label: "思路库", icon: BookOpenCheck },
+  { href: "/problems", label: "题目", icon: Swords, mobile: true },
+  { href: "/library", label: "思路库", icon: BookOpenCheck, mobile: true },
   { href: "/studio", label: "Studio", icon: Hammer, badge: "内部" },
-  { href: "/submit", label: "投稿", icon: Send },
+  { href: "/submit", label: "投稿", icon: Send, mobile: true },
   { href: "/about", label: "关于", icon: Info },
 ];
 
@@ -23,14 +23,14 @@ export function SiteHeader() {
             高中数学解法竞技场
           </span>
         </Link>
-        <nav className="flex min-w-0 items-center gap-1 overflow-x-auto text-sm">
-          {navigation.map(({ href, label, icon: Icon, badge }) => (
+        <nav className="flex min-w-0 items-center gap-1 text-sm">
+          {navigation.map(({ href, label, icon: Icon, badge, mobile }) => (
             <Link
               key={href}
               href={href}
               aria-label={label}
               title={label}
-              className="inline-flex size-9 shrink-0 items-center justify-center text-zinc-400 transition hover:bg-white/[0.03] hover:text-white md:w-auto md:gap-2 md:px-3"
+              className={`${mobile ? "inline-flex" : "hidden md:inline-flex"} size-9 shrink-0 items-center justify-center text-zinc-400 transition hover:bg-white/[0.03] hover:text-white md:w-auto md:gap-2 md:px-3`}
             >
               <Icon className="size-4" />
               <span className="hidden md:inline">{label}</span>

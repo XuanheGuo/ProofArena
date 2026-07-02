@@ -1,8 +1,9 @@
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, CheckCircle2, ChevronRight, Send, Swords, Trophy } from "lucide-react";
-import { ProblemCard } from "@/components/ProblemCard";
-import { problems } from "@/data/problems";
+import { ArrowRight, CheckCircle2, ChevronRight, Compass, Send, Swords, Trophy } from "lucide-react";
+import { getLearningIndex, problems } from "@/data/problems";
+import { difficultyBadgeClass } from "@/lib/problem-presentation";
+import { MathBlock } from "@/components/MathBlock";
 
 export default function HomePage() {
   const solutionCount = problems.reduce((sum, problem) => sum + problem.solutions.length, 0);
@@ -40,34 +41,31 @@ export default function HomePage() {
               同一道题，多种解法，正面交锋。
             </p>
             <p className="mt-3 max-w-2xl border-l-2 border-red-500 pl-4 text-sm font-semibold leading-7 text-zinc-200 md:text-base">
-              同一道题，把标准解、启发解、稳健解、教学解放在一起比较。
+              ProofArena 是一个围绕数学题展开解法比较、思路拆解和知识关联的平台。
             </p>
             <p className="mt-4 max-w-xl text-sm leading-7 text-zinc-400 md:text-base">
-              我们不只给解法打分，更关心每个解法带来的启发。比较考场可行性、结构美感、计算负担与讲解质量，是为了帮助你选择最适合当前目标的路线。
+              核心路径很简单：看题，比较不同解法，然后把真正有启发的路线沉淀下来。
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Link
                 href="/problems"
                 className="inline-flex h-12 items-center gap-2 bg-cyan-400 px-5 text-sm font-bold text-zinc-950 transition hover:bg-cyan-300"
               >
-                进入题目擂台
+                开始看题
                 <ArrowRight className="size-4" />
               </Link>
               <Link
-                href={`/problems/${featuredProblems[0].id}`}
+                href="/submit"
                 className="inline-flex h-12 items-center gap-2 border border-white/20 bg-black/25 px-5 text-sm font-bold text-white transition hover:border-white/40"
               >
-                查看本周焦点
-                <ChevronRight className="size-4" />
-              </Link>
-              <Link
-                href="/submit"
-                className="inline-flex h-12 items-center gap-2 border border-white/20 bg-black/25 px-5 text-sm font-bold text-white transition hover:border-cyan-400/50 hover:text-cyan-300"
-              >
-                提交我的解法
+                提交题目/解法
                 <Send className="size-4" />
               </Link>
             </div>
+            <Link href="/example" className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-cyan-300 hover:text-cyan-200">
+              新手示例题：30 秒看懂怎么用
+              <ChevronRight className="size-4" />
+            </Link>
           </div>
         </div>
         <div className="relative mx-auto -mt-16 grid max-w-7xl grid-cols-3 border border-white/10 bg-zinc-950/90 backdrop-blur md:w-[calc(100%-3rem)]">
@@ -80,20 +78,72 @@ export default function HomePage() {
         </div>
       </section>
 
+      <section className="border-b border-white/10 bg-zinc-950 py-14">
+        <div className="mx-auto max-w-7xl px-4 md:px-6">
+          <div className="mb-6 flex items-center gap-2 text-sm font-bold text-white">
+            <Compass className="size-4 text-cyan-300" />
+            默认阅读路径
+          </div>
+          <div className="grid gap-px bg-white/10 md:grid-cols-3">
+            {[
+              ["01", "选一道题", "按卷别或专题进入，不需要先理解全部评分体系。"],
+              ["02", "看观察入口", "先读题干和关键观察，再决定走哪条解法。"],
+              ["03", "展开一条解法", "优先看标准解；想提思维时再看启发解和进阶资料。"],
+            ].map(([step, title, description]) => (
+              <div key={step} className="bg-zinc-950 p-5">
+                <span className="font-mono text-xs text-cyan-300">{step}</span>
+                <h2 className="mt-3 text-lg font-bold text-white">{title}</h2>
+                <p className="mt-2 text-sm leading-6 text-zinc-500">{description}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       <section className="grid-surface border-b border-white/10 py-20">
         <div className="mx-auto max-w-7xl px-4 md:px-6">
           <div className="mb-8 flex items-end justify-between gap-4">
             <div>
-              <span className="font-mono text-xs uppercase tracking-widest text-red-400">解法路线</span>
-              <h2 className="mt-2 text-3xl font-black text-white md:text-4xl">当前解法导航</h2>
+              <span className="font-mono text-xs uppercase tracking-widest text-red-400">新手入口</span>
+              <h2 className="mt-2 text-3xl font-black text-white md:text-4xl">先从这几道题开始</h2>
             </div>
             <Link href="/problems" className="hidden items-center gap-2 text-sm text-zinc-400 hover:text-white sm:flex">
               查看全部 <ArrowRight className="size-4" />
             </Link>
           </div>
-          <div className="grid gap-4">
+          <div className="grid gap-4 md:grid-cols-3">
             {featuredProblems.map((problem, index) => (
-              <ProblemCard key={problem.id} problem={problem} rank={index + 1} />
+              <article key={problem.id} className="flex border border-white/10 bg-zinc-950 p-5">
+                <div className="flex min-h-[22rem] w-full flex-col">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="font-mono text-xs text-zinc-600">{String(index + 1).padStart(2, "0")}</span>
+                    <span className={`border px-2 py-1 text-xs ${difficultyBadgeClass[problem.difficulty]}`}>
+                      {problem.difficulty}
+                    </span>
+                  </div>
+                  <h3 className="mt-4 min-h-14 text-lg font-bold leading-7 text-white">{problem.title}</h3>
+                  <p className="mt-4 line-clamp-5 text-sm leading-7 text-zinc-400">
+                    <MathBlock>{problem.statement[0]}</MathBlock>
+                  </p>
+                  <div className="mt-5 grid grid-cols-2 gap-px bg-white/10 text-center">
+                    <div className="bg-zinc-950 p-3">
+                      <strong className="font-display block text-xl text-cyan-300">{problem.solutions.length}</strong>
+                      <span className="text-[11px] text-zinc-600">解法路线</span>
+                    </div>
+                    <div className="bg-zinc-950 p-3">
+                      <strong className="font-display block text-xl text-amber-300">{getLearningIndex(problem)}</strong>
+                      <span className="text-[11px] text-zinc-600">学习指数</span>
+                    </div>
+                  </div>
+                  <Link
+                    href={`/problems/${problem.id}`}
+                    className="mt-auto inline-flex h-10 w-full items-center justify-center gap-2 bg-cyan-400 px-4 text-sm font-bold text-zinc-950 transition hover:bg-cyan-300"
+                  >
+                    进入擂台
+                    <ArrowRight className="size-4" />
+                  </Link>
+                </div>
+              </article>
             ))}
           </div>
         </div>

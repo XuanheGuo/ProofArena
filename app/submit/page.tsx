@@ -202,7 +202,7 @@ export default function SubmitPage() {
             <div>
               <h2 className="font-bold text-white">当前支持的投稿方式</h2>
               <p className="mt-2 text-sm leading-7 text-zinc-400">
-                Demo 阶段先通过 GitHub Issue 共建。你可以复制模板，新建 Issue，把题目与解法贴进去；后续整理进站内数据时，会尽量保留原署名与讨论记录。
+                Demo 阶段先通过 GitHub Issue 共建。你可以复制模板，新建 Issue，把题目与解法贴进去；后续整理进站内数据时，会尽量保留原署名与来源记录。
               </p>
             </div>
           </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { Search, SlidersHorizontal, X } from "lucide-react";
 import type { Difficulty, ExamRegion, Problem, QuestionType } from "@/lib/types";
 import { ProblemCard } from "@/components/ProblemCard";
@@ -10,13 +10,11 @@ const types: Array<"全部题型" | QuestionType> = ["全部题型", "单选", "
 const difficulties: Array<"全部难度" | Difficulty> = ["全部难度", "基础", "中档", "压轴"];
 
 export function ProblemExplorer({ problems }: { problems: Problem[] }) {
-  const mobileScrollerRef = useRef<HTMLDivElement>(null);
   const [query, setQuery] = useState("");
   const [region, setRegion] = useState<(typeof regions)[number]>("全部卷别");
   const [type, setType] = useState<(typeof types)[number]>("全部题型");
   const [difficulty, setDifficulty] = useState<(typeof difficulties)[number]>("全部难度");
   const [topic, setTopic] = useState("全部专题");
-  const [mobileSlideIndex, setMobileSlideIndex] = useState(0);
 
   const topics = useMemo(
     () => ["全部专题", ...Array.from(new Set(problems.flatMap((problem) => problem.tags))).sort()],
@@ -41,38 +39,6 @@ export function ProblemExplorer({ problems }: { problems: Problem[] }) {
   }, [difficulty, problems, query, region, type, topic]);
 
   const hasFilters = query || region !== "全部卷别" || type !== "全部题型" || difficulty !== "全部难度" || topic !== "全部专题";
-
-  useEffect(() => {
-    setMobileSlideIndex(0);
-    mobileScrollerRef.current?.scrollTo({ left: 0 });
-  }, [filtered]);
-
-  useEffect(() => {
-    const scroller = mobileScrollerRef.current;
-    if (!scroller) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const activeEntry = entries
-          .filter((entry) => entry.isIntersecting)
-          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
-        const index = activeEntry?.target.getAttribute("data-slide-index");
-        if (index) setMobileSlideIndex(Number(index));
-      },
-      { root: scroller, threshold: [0.55, 0.75, 0.95] },
-    );
-
-    Array.from(scroller.children).forEach((child) => observer.observe(child));
-    return () => observer.disconnect();
-  }, [filtered]);
-
-  function updateMobileSlideIndex() {
-    const scroller = mobileScrollerRef.current;
-    if (!scroller) return;
-
-    const nextIndex = Math.round(scroller.scrollLeft / scroller.clientWidth);
-    setMobileSlideIndex(Math.min(Math.max(nextIndex, 0), Math.max(filtered.length - 1, 0)));
-  }
 
   function resetFilters() {
     setQuery("");
@@ -119,7 +85,15 @@ export function ProblemExplorer({ problems }: { problems: Problem[] }) {
             </select>
           </div>
 
-          <div className="mt-3 flex gap-4 overflow-x-auto pb-1">
+          <details className="mt-3 border border-white/10 bg-black/20">
+            <summary className="flex h-10 list-none items-center justify-between px-3 text-xs font-bold text-zinc-300 marker:hidden">
+              <span className="flex items-center gap-2">
+                <SlidersHorizontal className="size-3.5 text-cyan-300" />
+                更多筛选
+              </span>
+              <span className="font-normal text-zinc-600">题型 / 难度</span>
+            </summary>
+            <div className="flex gap-4 overflow-x-auto border-t border-white/10 px-3 py-3">
             <div className="flex shrink-0 items-center gap-2">
               <span className="font-mono text-[10px] uppercase tracking-widest text-zinc-600">题型</span>
               {types.map((item) => (
@@ -157,7 +131,8 @@ export function ProblemExplorer({ problems }: { problems: Problem[] }) {
                 </button>
               ))}
             </div>
-          </div>
+            </div>
+          </details>
         </div>
       </section>
 
@@ -180,38 +155,11 @@ export function ProblemExplorer({ problems }: { problems: Problem[] }) {
         </div>
 
         {filtered.length ? (
-          <>
-            <div className="hidden md:grid md:gap-4">
-              {filtered.map((problem, index) => (
-                <ProblemCard key={problem.id} problem={problem} rank={index + 1} />
-              ))}
-            </div>
-
-            <div className="-mx-4 md:hidden">
-              <div
-                ref={mobileScrollerRef}
-                onScroll={updateMobileSlideIndex}
-                className="flex h-[calc(100svh-3rem)] min-h-[42rem] w-screen snap-x snap-mandatory overflow-x-auto scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-                aria-label="移动端题目滑动列表"
-              >
-                {filtered.map((problem, index) => (
-                  <div
-                    key={problem.id}
-                    data-slide-index={index}
-                    className="h-full w-screen min-w-full shrink-0 snap-start overflow-y-auto overscroll-contain"
-                  >
-                    <ProblemCard problem={problem} rank={index + 1} />
-                  </div>
-                ))}
-              </div>
-
-              <div className="pointer-events-none sticky bottom-4 z-10 mx-auto mt-4 flex w-fit items-center gap-2 border border-white/10 bg-zinc-950/90 px-3 py-1.5 font-mono text-xs text-zinc-300 backdrop-blur">
-                <span>{Math.min(mobileSlideIndex + 1, filtered.length)}</span>
-                <span className="text-zinc-600">/</span>
-                <span>{filtered.length}</span>
-              </div>
-            </div>
-          </>
+          <div className="grid gap-4">
+            {filtered.map((problem, index) => (
+              <ProblemCard key={problem.id} problem={problem} rank={index + 1} />
+            ))}
+          </div>
         ) : (
           <div className="border border-white/10 bg-zinc-950 px-6 py-20 text-center">
             <Search className="mx-auto size-7 text-zinc-600" />

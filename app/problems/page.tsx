@@ -9,16 +9,16 @@ export default function ProblemsPage() {
   return (
     <main className="grid-surface min-h-screen">
       <section className="border-b border-white/10 bg-zinc-950/80">
-        <div className="mx-auto max-w-7xl px-4 py-12 md:px-6 md:py-16">
+        <div className="mx-auto max-w-7xl px-4 py-8 md:px-6 md:py-10">
           <div className="flex items-center gap-2 font-mono text-xs uppercase tracking-widest text-cyan-300">
             <Target className="size-4" />
             2026 赛季
           </div>
-          <div className="mt-4 flex flex-col justify-between gap-6 md:flex-row md:items-end">
+          <div className="mt-4 flex flex-col justify-between gap-5 md:flex-row md:items-end">
             <div>
               <h1 className="text-4xl font-black text-white md:text-5xl">题目擂台</h1>
               <p className="mt-3 max-w-2xl text-sm leading-7 text-zinc-400">
-                2026 高考数学真题精编专场。每题保留经过校订、复核与独立评分的一题多解。
+                先按卷别或专题找到题，再进入详情比较不同解法。每题保留校订、复核与独立评分。
               </p>
             </div>
             <div className="grid grid-cols-3 border border-white/10 bg-zinc-950">
@@ -35,6 +35,13 @@ export default function ProblemsPage() {
                 <span className="text-[10px] text-zinc-600">解法</span>
               </div>
             </div>
+          </div>
+          <div className="mt-6 flex flex-wrap gap-2 text-xs text-zinc-500">
+            {["按卷别筛选", "按专题定位", "进入详情比较解法"].map((item) => (
+              <span key={item} className="border border-white/10 bg-black/20 px-3 py-1.5">
+                {item}
+              </span>
+            ))}
           </div>
         </div>
       </section>

@@ -3,15 +3,21 @@
 @import "./jsxgraph.css";
 
 :root {
-  --background: #09090b;
-  --foreground: #f4f4f5;
-  --grid-line: rgba(255, 255, 255, 0.035);
+  --background: #f7f8fa;
+  --foreground: #111827;
+  --grid-line: rgba(17, 24, 39, 0.045);
 }
 
 :root[data-theme="light"] {
-  --background: #f4f4f5;
-  --foreground: #18181b;
-  --grid-line: rgba(24, 24, 27, 0.07);
+  --background: #f7f8fa;
+  --foreground: #111827;
+  --grid-line: rgba(17, 24, 39, 0.045);
+}
+
+:root[data-theme="dark"] {
+  --background: #111318;
+  --foreground: #f3f4f6;
+  --grid-line: rgba(255, 255, 255, 0.045);
 }
 
 * {
@@ -46,8 +52,8 @@ select {
 }
 
 ::selection {
-  background: #22d3ee;
-  color: #09090b;
+  background: #4f46e5;
+  color: #ffffff;
 }
 
 .font-display {
@@ -59,7 +65,7 @@ select {
   background-image:
     linear-gradient(var(--grid-line) 1px, transparent 1px),
     linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
-  background-size: 32px 32px;
+  background-size: 36px 36px;
 }
 
 .math-scroll {
@@ -68,7 +74,12 @@ select {
 }
 
 .katex {
+  color: inherit;
   font-size: 1.04em;
+}
+
+.katex-display {
+  margin: 0.65em 0;
 }
 
 .share-card .katex {
@@ -81,6 +92,11 @@ select {
 
 .jxgbox {
   touch-action: none;
+  background-color: transparent !important;
+}
+
+[data-theme="light"] .jxgbox {
+  background-color: #ffffff !important;
 }
 
 .JXGtext,
@@ -92,91 +108,90 @@ select {
   color: #18181b;
 }
 
-/* Light mode keeps the arena accents while changing the reading surface. */
+/* Light mode is the primary reading experience: paper surfaces, restrained accents. */
 [data-theme="light"] [class~="bg-zinc-950"],
 [data-theme="light"] [class~="bg-zinc-950/75"],
 [data-theme="light"] [class~="bg-zinc-950/80"],
 [data-theme="light"] [class~="bg-zinc-950/85"],
 [data-theme="light"] [class~="bg-zinc-950/90"],
 [data-theme="light"] [class~="bg-zinc-950/95"] {
-  background-color: rgba(255, 255, 255, 0.94) !important;
+  background-color: #ffffff !important;
 }
 
 [data-theme="light"] [class~="bg-zinc-900"] {
-  background-color: #e4e4e7 !important;
+  background-color: #f3f4f6 !important;
 }
 
 [data-theme="light"] [class~="bg-zinc-800"] {
-  background-color: #d4d4d8 !important;
+  background-color: #e5e7eb !important;
 }
 
 [data-theme="light"] [class~="bg-black/15"],
 [data-theme="light"] [class~="bg-black/20"],
 [data-theme="light"] [class~="bg-black/25"] {
-  background-color: rgba(228, 228, 231, 0.58) !important;
+  background-color: #f9fafb !important;
 }
 
 [data-theme="light"] [class~="bg-white/10"],
 [data-theme="light"] [class~="bg-white/5"],
 [data-theme="light"] [class~="bg-white/[0.03]"],
 [data-theme="light"] [class~="bg-white/[0.06]"] {
-  background-color: rgba(63, 63, 70, 0.12) !important;
+  background-color: #f3f4f6 !important;
 }
 
 [data-theme="light"] [class~="border-white/10"] {
-  border-color: rgba(63, 63, 70, 0.18) !important;
+  border-color: #e5e7eb !important;
 }
 
 [data-theme="light"] [class~="border-white/15"] {
-  border-color: rgba(63, 63, 70, 0.24) !important;
+  border-color: #d1d5db !important;
 }
 
 [data-theme="light"] [class~="border-white/20"],
 [data-theme="light"] [class~="border-white/25"] {
-  border-color: rgba(63, 63, 70, 0.3) !important;
+  border-color: #d1d5db !important;
 }
 
 [data-theme="light"] [class~="border-white/40"] {
-  border-color: rgba(63, 63, 70, 0.48) !important;
+  border-color: #9ca3af !important;
 }
 
 [data-theme="light"] [class~="text-white"],
 [data-theme="light"] [class~="text-zinc-100"],
 [data-theme="light"] [class~="text-zinc-200"] {
-  color: #18181b !important;
+  color: #111827 !important;
 }
 
 [data-theme="light"] [class~="text-zinc-300"] {
-  color: #27272a !important;
+  color: #374151 !important;
 }
 
 [data-theme="light"] [class~="text-zinc-400"] {
-  color: #3f3f46 !important;
+  color: #4b5563 !important;
 }
 
 [data-theme="light"] [class~="text-zinc-500"] {
-  color: #3f3f46 !important;
+  color: #6b7280 !important;
 }
 
 [data-theme="light"] [class~="text-zinc-600"] {
-  color: #52525b !important;
+  color: #6b7280 !important;
 }
 
 [data-theme="light"] [class~="text-zinc-700"] {
-  color: #3f3f46 !important;
+  color: #374151 !important;
 }
 
-/* Tailwind's 200-400 accents are designed for dark surfaces; use deeper inks on paper. */
 [data-theme="light"] [class~="text-cyan-100"],
 [data-theme="light"] [class~="text-cyan-200"],
 [data-theme="light"] [class~="text-cyan-300"],
 [data-theme="light"] [class~="text-cyan-400"] {
-  color: #0e7490 !important;
+  color: #4f46e5 !important;
 }
 
 [data-theme="light"] [class~="text-amber-200"],
 [data-theme="light"] [class~="text-amber-300"] {
-  color: #a16207 !important;
+  color: #b45309 !important;
 }
 
 [data-theme="light"] [class~="text-emerald-200"],
@@ -188,26 +203,82 @@ select {
 [data-theme="light"] [class~="text-red-200"],
 [data-theme="light"] [class~="text-red-300"],
 [data-theme="light"] [class~="text-red-400"] {
-  color: #be123c !important;
+  color: #c2410c !important;
+}
+
+[data-theme="light"] [class~="bg-cyan-400"],
+[data-theme="light"] [class~="hover:bg-cyan-300"]:hover {
+  background-color: #4f46e5 !important;
+}
+
+[data-theme="light"] [class~="bg-cyan-400"][class~="text-zinc-950"],
+[data-theme="light"] [class~="hover:bg-cyan-300"]:hover {
+  color: #ffffff !important;
+}
+
+[data-theme="light"] [class~="bg-cyan-400/5"],
+[data-theme="light"] [class~="bg-cyan-400/[0.04]"],
+[data-theme="light"] [class~="bg-cyan-400/[0.06]"],
+[data-theme="light"] [class~="bg-cyan-400/10"] {
+  background-color: rgba(79, 70, 229, 0.06) !important;
+}
+
+[data-theme="light"] [class~="border-cyan-400/20"],
+[data-theme="light"] [class~="border-cyan-400/25"],
+[data-theme="light"] [class~="border-cyan-400/30"],
+[data-theme="light"] [class~="border-cyan-400/35"],
+[data-theme="light"] [class~="border-cyan-400/40"],
+[data-theme="light"] [class~="border-cyan-400"] {
+  border-color: rgba(79, 70, 229, 0.22) !important;
+}
+
+[data-theme="light"] [class~="border-cyan-400"][class~="bg-cyan-400"] {
+  border-color: #4f46e5 !important;
+}
+
+[data-theme="light"] [class~="border-red-400/20"],
+[data-theme="light"] [class~="border-red-400/25"],
+[data-theme="light"] [class~="border-red-400/30"],
+[data-theme="light"] [class~="border-red-400/35"],
+[data-theme="light"] [class~="border-red-400/40"],
+[data-theme="light"] [class~="border-red-500"] {
+  border-color: rgba(245, 158, 11, 0.46) !important;
+}
+
+[data-theme="light"] [class~="bg-red-400/10"],
+[data-theme="light"] [class~="bg-red-500/5"],
+[data-theme="light"] [class~="bg-red-500/[0.04]"] {
+  background-color: rgba(245, 158, 11, 0.08) !important;
 }
 
 [data-theme="light"] [class~="bg-red-500"][class~="text-white"] {
   color: #ffffff !important;
 }
 
+[data-theme="light"] section[class*="border"][class*="bg-zinc-950"],
+[data-theme="light"] article[class*="border"][class*="bg-zinc-950"],
+[data-theme="light"] details[class*="border"][class*="bg-zinc-950"],
+[data-theme="light"] div[class*="border"][class*="bg-zinc-950"] {
+  border-radius: 8px;
+  box-shadow: 0 1px 2px rgba(17, 24, 39, 0.04), 0 10px 28px rgba(17, 24, 39, 0.045);
+}
+
+[data-theme="light"] nav[class*="bg-zinc-950"],
+[data-theme="light"] header[class*="bg-zinc-950"] {
+  background-color: rgba(255, 255, 255, 0.92) !important;
+  box-shadow: 0 1px 0 #e5e7eb;
+}
+
 [data-theme="light"] .hero-overlay {
-  background: linear-gradient(
-    90deg,
-    rgba(250, 250, 250, 0.98) 4%,
-    rgba(250, 250, 250, 0.9) 38%,
-    rgba(250, 250, 250, 0.35) 76%,
-    rgba(250, 250, 250, 0.82) 100%
-  ) !important;
+  background:
+    radial-gradient(circle at 18% 22%, rgba(79, 70, 229, 0.16), transparent 30%),
+    radial-gradient(circle at 78% 14%, rgba(245, 158, 11, 0.12), transparent 24%),
+    linear-gradient(90deg, rgba(247, 248, 250, 0.98) 0%, rgba(247, 248, 250, 0.86) 45%, rgba(247, 248, 250, 0.68) 100%) !important;
 }
 
 [data-theme="light"] .hero-arena > img {
-  opacity: 0.42 !important;
-  filter: saturate(0.8) contrast(0.9);
+  opacity: 0.16 !important;
+  filter: saturate(0.45) contrast(0.92);
 }
 
 /* Share cards have their own reading surface, so light mode does not inherit dark gradients. */
@@ -239,4 +310,189 @@ select {
 
 [data-theme="light"] .share-card .text-red-300 {
   color: #be123c !important;
+}
+
+/* Dark mode mirrors the light system: deep paper, muted borders, same semantic accents. */
+[data-theme="dark"] [class~="bg-zinc-950"],
+[data-theme="dark"] [class~="bg-zinc-950/75"],
+[data-theme="dark"] [class~="bg-zinc-950/80"],
+[data-theme="dark"] [class~="bg-zinc-950/85"],
+[data-theme="dark"] [class~="bg-zinc-950/90"],
+[data-theme="dark"] [class~="bg-zinc-950/95"] {
+  background-color: #181b23 !important;
+}
+
+[data-theme="dark"] [class~="bg-zinc-900"] {
+  background-color: #20242e !important;
+}
+
+[data-theme="dark"] [class~="bg-zinc-800"] {
+  background-color: #2a2f3a !important;
+}
+
+[data-theme="dark"] [class~="bg-black/15"],
+[data-theme="dark"] [class~="bg-black/20"],
+[data-theme="dark"] [class~="bg-black/25"] {
+  background-color: #141720 !important;
+}
+
+[data-theme="dark"] [class~="bg-white/10"],
+[data-theme="dark"] [class~="bg-white/5"],
+[data-theme="dark"] [class~="bg-white/[0.03]"],
+[data-theme="dark"] [class~="bg-white/[0.06]"] {
+  background-color: #242936 !important;
+}
+
+[data-theme="dark"] [class~="border-white/10"] {
+  border-color: #2a2f3a !important;
+}
+
+[data-theme="dark"] [class~="border-white/15"],
+[data-theme="dark"] [class~="border-white/20"],
+[data-theme="dark"] [class~="border-white/25"] {
+  border-color: #343a46 !important;
+}
+
+[data-theme="dark"] [class~="border-white/40"] {
+  border-color: #4b5563 !important;
+}
+
+[data-theme="dark"] [class~="text-white"],
+[data-theme="dark"] [class~="text-zinc-100"],
+[data-theme="dark"] [class~="text-zinc-200"] {
+  color: #f3f4f6 !important;
+}
+
+[data-theme="dark"] [class~="text-zinc-300"] {
+  color: #d1d5db !important;
+}
+
+[data-theme="dark"] [class~="text-zinc-400"] {
+  color: #b7bdc8 !important;
+}
+
+[data-theme="dark"] [class~="text-zinc-500"] {
+  color: #9ca3af !important;
+}
+
+[data-theme="dark"] [class~="text-zinc-600"],
+[data-theme="dark"] [class~="text-zinc-700"] {
+  color: #7f8794 !important;
+}
+
+[data-theme="dark"] [class~="placeholder:text-zinc-700"]::placeholder,
+[data-theme="dark"] [class~="placeholder:text-zinc-600"]::placeholder {
+  color: #7f8794 !important;
+  opacity: 1;
+}
+
+[data-theme="dark"] [class~="text-cyan-100"],
+[data-theme="dark"] [class~="text-cyan-200"],
+[data-theme="dark"] [class~="text-cyan-300"],
+[data-theme="dark"] [class~="text-cyan-400"] {
+  color: #a5b4fc !important;
+}
+
+[data-theme="dark"] [class~="text-amber-200"],
+[data-theme="dark"] [class~="text-amber-300"] {
+  color: #fbbf24 !important;
+}
+
+[data-theme="dark"] [class~="text-emerald-200"],
+[data-theme="dark"] [class~="text-emerald-300"],
+[data-theme="dark"] [class~="text-emerald-400"] {
+  color: #34d399 !important;
+}
+
+[data-theme="dark"] [class~="text-red-200"],
+[data-theme="dark"] [class~="text-red-300"],
+[data-theme="dark"] [class~="text-red-400"] {
+  color: #fb923c !important;
+}
+
+[data-theme="dark"] [class~="bg-cyan-400"],
+[data-theme="dark"] [class~="hover:bg-cyan-300"]:hover {
+  background-color: #6366f1 !important;
+}
+
+[data-theme="dark"] [class~="bg-cyan-400"][class~="text-zinc-950"],
+[data-theme="dark"] [class~="hover:bg-cyan-300"]:hover {
+  color: #ffffff !important;
+}
+
+[data-theme="dark"] [class~="bg-cyan-400/5"],
+[data-theme="dark"] [class~="bg-cyan-400/[0.04]"],
+[data-theme="dark"] [class~="bg-cyan-400/[0.06]"],
+[data-theme="dark"] [class~="bg-cyan-400/10"] {
+  background-color: rgba(99, 102, 241, 0.14) !important;
+}
+
+[data-theme="dark"] [class~="border-cyan-400/20"],
+[data-theme="dark"] [class~="border-cyan-400/25"],
+[data-theme="dark"] [class~="border-cyan-400/30"],
+[data-theme="dark"] [class~="border-cyan-400/35"],
+[data-theme="dark"] [class~="border-cyan-400/40"],
+[data-theme="dark"] [class~="border-cyan-400"] {
+  border-color: rgba(129, 140, 248, 0.34) !important;
+}
+
+[data-theme="dark"] [class~="border-cyan-400"][class~="bg-cyan-400"] {
+  border-color: #6366f1 !important;
+}
+
+[data-theme="dark"] [class~="border-red-400/20"],
+[data-theme="dark"] [class~="border-red-400/25"],
+[data-theme="dark"] [class~="border-red-400/30"],
+[data-theme="dark"] [class~="border-red-400/35"],
+[data-theme="dark"] [class~="border-red-400/40"],
+[data-theme="dark"] [class~="border-red-500"] {
+  border-color: rgba(245, 158, 11, 0.45) !important;
+}
+
+[data-theme="dark"] [class~="bg-red-400/10"],
+[data-theme="dark"] [class~="bg-red-500/5"],
+[data-theme="dark"] [class~="bg-red-500/[0.04]"] {
+  background-color: rgba(245, 158, 11, 0.12) !important;
+}
+
+[data-theme="dark"] section[class*="border"][class*="bg-zinc-950"],
+[data-theme="dark"] article[class*="border"][class*="bg-zinc-950"],
+[data-theme="dark"] details[class*="border"][class*="bg-zinc-950"],
+[data-theme="dark"] div[class*="border"][class*="bg-zinc-950"] {
+  border-radius: 8px;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.03), 0 18px 42px rgba(0, 0, 0, 0.18);
+}
+
+[data-theme="dark"] nav[class*="bg-zinc-950"],
+[data-theme="dark"] header[class*="bg-zinc-950"] {
+  background-color: rgba(24, 27, 35, 0.94) !important;
+  box-shadow: 0 1px 0 #2a2f3a;
+}
+
+[data-theme="dark"] .hero-overlay {
+  background:
+    radial-gradient(circle at 18% 22%, rgba(99, 102, 241, 0.2), transparent 28%),
+    radial-gradient(circle at 78% 14%, rgba(245, 158, 11, 0.12), transparent 24%),
+    linear-gradient(90deg, rgba(17, 19, 24, 0.98) 0%, rgba(17, 19, 24, 0.88) 48%, rgba(17, 19, 24, 0.72) 100%) !important;
+}
+
+[data-theme="dark"] .hero-arena > img {
+  opacity: 0.18 !important;
+  filter: saturate(0.55) contrast(0.9);
+}
+
+[data-theme="dark"] .share-card {
+  border-color: #2a2f3a !important;
+  border-top-color: #6366f1 !important;
+  background: #181b23 !important;
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.22) !important;
+}
+
+[data-theme="dark"] .share-card [class*="bg-zinc-950"] {
+  background-color: #181b23 !important;
+}
+
+[data-theme="dark"] .share-card [class~="bg-black/20"],
+[data-theme="dark"] .share-card [class~="bg-black/25"] {
+  background-color: #141720 !important;
 }

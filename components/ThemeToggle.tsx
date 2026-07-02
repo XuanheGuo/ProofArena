@@ -20,18 +20,18 @@ function applyTheme(mode: ThemeMode) {
 }
 
 export function ThemeToggle() {
-  const [mode, setMode] = useState<ThemeMode>("system");
+  const [mode, setMode] = useState<ThemeMode>("light");
 
   useEffect(() => {
     const saved = localStorage.getItem("proofarena-theme");
     const initialMode: ThemeMode =
-      saved === "light" || saved === "dark" || saved === "system" ? saved : "system";
+      saved === "light" || saved === "dark" || saved === "system" ? saved : "light";
     setMode(initialMode);
     applyTheme(initialMode);
 
     const media = window.matchMedia("(prefers-color-scheme: dark)");
     const handleSystemChange = () => {
-      if ((localStorage.getItem("proofarena-theme") ?? "system") === "system") {
+      if ((localStorage.getItem("proofarena-theme") ?? "light") === "system") {
         applyTheme("system");
       }
     };

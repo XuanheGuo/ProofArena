@@ -1,4 +1,5 @@
 import { CheckCircle2, CircleAlert, FlaskConical } from "lucide-react";
+import { MathBlock } from "@/components/MathBlock";
 import type { Verification } from "@/lib/types";
 
 const statusMap = {
@@ -34,7 +35,9 @@ export function VerificationPanel({ verification }: { verification: Verification
           {verification.engine}
         </span>
       </div>
-      <p className="mt-3 text-sm leading-6 text-zinc-300">{verification.statement}</p>
+      <p className="mt-3 text-sm leading-6 text-zinc-300">
+        <MathBlock>{verification.statement}</MathBlock>
+      </p>
       <div className="mt-3 flex flex-wrap gap-2">
         {verification.checks.map((check) => (
           <span key={check} className="border border-white/10 bg-black/15 px-2 py-1 text-[11px] text-zinc-400">
@@ -47,7 +50,7 @@ export function VerificationPanel({ verification }: { verification: Verification
           <h4 className="font-bold text-emerald-300">已验证什么</h4>
           <ul className="mt-2 space-y-1.5">
             {verification.verifiedScope.map((item) => (
-              <li key={item}>· {item}</li>
+              <li key={item}>· <MathBlock>{item}</MathBlock></li>
             ))}
           </ul>
         </div>
@@ -55,13 +58,15 @@ export function VerificationPanel({ verification }: { verification: Verification
           <h4 className="font-bold text-amber-300">未验证什么</h4>
           <ul className="mt-2 space-y-1.5">
             {verification.unverifiedScope.map((item) => (
-              <li key={item}>· {item}</li>
+              <li key={item}>· <MathBlock>{item}</MathBlock></li>
             ))}
           </ul>
         </div>
         <div className="border border-white/10 bg-black/15 p-3">
           <h4 className="font-bold text-cyan-300">为什么仍需人工审核</h4>
-          <p className="mt-2">{verification.reviewNote}</p>
+          <p className="mt-2">
+            <MathBlock>{verification.reviewNote}</MathBlock>
+          </p>
         </div>
       </div>
     </div>

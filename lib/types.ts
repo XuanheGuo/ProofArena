@@ -138,6 +138,51 @@ export interface SolutionTree {
   roots: SolutionTreeRoot[];
 }
 
+export type GraphColor = "cyan" | "amber" | "red" | "green" | "violet" | "zinc";
+
+export interface SliderParam {
+  name: string;
+  label: string;
+  min: number;
+  max: number;
+  step: number;
+  initial: number;
+}
+
+export interface TraceSpec {
+  fn: (x: number, p: Record<string, number>) => number;
+  color?: GraphColor;
+  style?: "solid" | "dashed";
+  width?: number;
+  label?: string;
+  domain?: [number, number];
+}
+
+export interface PointSpec {
+  x: number | ((p: Record<string, number>) => number);
+  y: number | ((p: Record<string, number>) => number);
+  label?: string;
+  color?: GraphColor;
+}
+
+export interface FunctionGraphSpec {
+  title: string;
+  description: string;
+  insight?: string;
+  boundingBox: [number, number, number, number];
+  keepAspectRatio?: boolean;
+  sliders: SliderParam[];
+  traces?: TraceSpec[];
+  points?: PointSpec[];
+  /** Custom draw function for complex visualizations (parametric curves, dynamic geometry). Called after sliders are created. */
+  draw?: (
+    board: JXG.Board,
+    sliders: Map<string, JXG.Slider>,
+    colors: Record<GraphColor, string>,
+    dark: boolean
+  ) => void;
+}
+
 export interface Problem {
   id: string;
   year: number;

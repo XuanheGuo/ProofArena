@@ -195,7 +195,9 @@ export function ConceptBoundaryPanel(props: ConceptBoundaryPanelProps) {
                       <ArrowUpRight className="size-3.5 shrink-0 text-zinc-600 group-hover:text-cyan-300" />
                     </div>
                     <h3 className="mt-3 text-sm font-bold text-white">{problem?.title ?? item.problemId}</h3>
-                    <p className="mt-2 text-xs leading-5 text-zinc-500">{item.focus}</p>
+                    <p className="mt-2 text-xs leading-5 text-zinc-500">
+                      <MathBlock>{item.focus}</MathBlock>
+                    </p>
                     <p className="mt-3 text-sm leading-6 text-zinc-300">
                       <MathBlock>{item.reason}</MathBlock>
                     </p>

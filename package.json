@@ -20,11 +20,13 @@
     "react-katex": "latest"
   },
   "devDependencies": {
+    "@playwright/test": "^1.61.1",
     "@tailwindcss/postcss": "latest",
     "@types/katex": "latest",
     "@types/node": "latest",
     "@types/react": "latest",
     "@types/react-dom": "latest",
+    "playwright": "^1.61.1",
     "tailwindcss": "latest",
     "typescript": "latest"
   }

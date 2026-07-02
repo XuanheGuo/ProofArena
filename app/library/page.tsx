@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowUpRight, BookOpenCheck, BrainCircuit, Tags } from "lucide-react";
+import { MathBlock } from "@/components/MathBlock";
 import { insightNodes } from "@/data/insights";
 import { knowledgeNodes } from "@/data/knowledge";
 
@@ -62,7 +63,9 @@ export default function LibraryPage() {
                             <h3 className="font-bold text-white">{node.title}</h3>
                             <ArrowUpRight className="size-4 shrink-0 text-zinc-600 group-hover:text-cyan-300" />
                           </div>
-                          <p className="mt-2 line-clamp-2 text-sm leading-6 text-zinc-500">{node.summary}</p>
+                          <p className="mt-2 line-clamp-2 text-sm leading-6 text-zinc-500">
+                            <MathBlock>{node.summary}</MathBlock>
+                          </p>
                           <div className="mt-3 flex flex-wrap gap-2">
                             {node.aliases.slice(0, 3).map((alias) => (
                               <span key={alias} className="border border-cyan-400/15 px-2 py-1 text-[11px] text-zinc-500">
@@ -86,7 +89,9 @@ export default function LibraryPage() {
                             <h3 className="font-bold text-white">{node.title}</h3>
                             <ArrowUpRight className="size-4 shrink-0 text-zinc-600 group-hover:text-amber-300" />
                           </div>
-                          <p className="mt-2 text-sm leading-6 text-zinc-400">{node.trigger}</p>
+                          <p className="mt-2 text-sm leading-6 text-zinc-400">
+                            <MathBlock>{node.trigger}</MathBlock>
+                          </p>
                           <div className="mt-3 flex flex-wrap gap-2">
                             {node.appliesTo.slice(0, 3).map((item) => (
                               <span key={item} className="inline-flex items-center gap-1 border border-amber-400/15 px-2 py-1 text-[11px] text-zinc-500">

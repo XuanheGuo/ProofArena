@@ -46,7 +46,7 @@ export function ProblemCard({ problem, rank }: { problem: Problem; rank?: number
         <p className="mt-3 line-clamp-2 text-sm leading-7 text-zinc-400">
           <MathBlock>{problem.statement[0]}</MathBlock>
         </p>
-        <div className="mt-6 border border-white/10 bg-zinc-950/90">
+        <div className="mt-6 hidden border border-white/10 bg-zinc-950/90 md:block">
           <div className="flex items-center justify-between border-b border-white/10 px-3 py-2.5">
             <span className="flex items-center gap-2 text-xs font-bold text-white">
               <Compass className="size-3.5 text-cyan-300" />
@@ -60,16 +60,24 @@ export function ProblemCard({ problem, rank }: { problem: Problem; rank?: number
                 <TimerReset className="size-3.5 text-red-400" />
                 标准解
               </span>
-              <strong className="mt-1.5 block truncate text-xs text-zinc-200">{examSolution.title}</strong>
-              <p className="mt-2 line-clamp-2 text-[11px] leading-5 text-zinc-500">{examSolution.inspiration}</p>
+              <strong className="mt-1.5 block truncate text-xs text-zinc-200">
+                <MathBlock>{examSolution.title}</MathBlock>
+              </strong>
+              <p className="mt-2 line-clamp-2 text-[11px] leading-5 text-zinc-500">
+                <MathBlock>{examSolution.inspiration}</MathBlock>
+              </p>
             </div>
             <div className="min-w-0 bg-zinc-950 p-3">
               <span className="flex items-center gap-1.5 text-[11px] text-zinc-500">
                 <Sparkles className="size-3.5 text-amber-300" />
                 启发解
               </span>
-              <strong className="mt-1.5 block truncate text-xs text-zinc-200">{elegantSolution.title}</strong>
-              <p className="mt-2 line-clamp-2 text-[11px] leading-5 text-zinc-500">{elegantSolution.inspiration}</p>
+              <strong className="mt-1.5 block truncate text-xs text-zinc-200">
+                <MathBlock>{elegantSolution.title}</MathBlock>
+              </strong>
+              <p className="mt-2 line-clamp-2 text-[11px] leading-5 text-zinc-500">
+                <MathBlock>{elegantSolution.inspiration}</MathBlock>
+              </p>
             </div>
             <div className="bg-zinc-950 p-3">
               <span className="flex items-center gap-1.5 text-[11px] text-zinc-500">
@@ -79,6 +87,13 @@ export function ProblemCard({ problem, rank }: { problem: Problem; rank?: number
               <strong className="mt-1 block font-display text-xl text-cyan-300">{getLearningIndex(problem)}</strong>
             </div>
           </div>
+        </div>
+        <div className="mt-5 flex items-center justify-between border-t border-white/10 pt-4 md:hidden">
+          <span className="text-xs text-zinc-500">{problem.solutions.length} 条解法</span>
+          <span className="inline-flex items-center gap-1.5 text-xs font-bold text-cyan-300">
+            进入详情
+            <ArrowUpRight className="size-3.5" />
+          </span>
         </div>
         <div className="mt-auto flex flex-wrap items-end justify-between gap-4 pt-8">
           <div className="flex flex-wrap gap-2">

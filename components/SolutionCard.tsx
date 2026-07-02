@@ -333,7 +333,7 @@ export function SolutionCard({ solution, rank }: { solution: Solution; rank: num
         {view === "full" && <aside className="space-y-6 border-t border-white/10 p-5 md:p-7 lg:border-t-0">
           <div>
             <h3 className="mb-1 font-mono text-xs uppercase tracking-widest text-zinc-500">五维参考</h3>
-            <p className="mb-4 text-xs leading-5 text-zinc-600">分数用于辅助讨论，重点仍是画像、场景和局限。</p>
+            <p className="mb-4 text-xs leading-5 text-zinc-600">分数用于辅助比较，重点仍是画像、场景和局限。</p>
             <div className="space-y-3.5">
               {scoreLabels.map(([key, label], index) => (
                 <ScoreBar
@@ -350,7 +350,9 @@ export function SolutionCard({ solution, rank }: { solution: Solution; rank: num
               <MessageSquareQuote className="size-4" />
               评分理由
             </div>
-            <p className="mt-3 text-sm leading-7 text-zinc-300">{solution.scoringReason}</p>
+            <p className="mt-3 text-sm leading-7 text-zinc-300">
+              <MathBlock>{solution.scoringReason}</MathBlock>
+            </p>
           </div>
           <VerificationPanel verification={solution.verification} />
         </aside>}
