@@ -92,7 +92,7 @@ export function ProblemExplorer({
     <>
       <section className="border-b border-white/10 bg-zinc-950/80">
         <div className="mx-auto max-w-7xl px-4 py-5 md:px-6">
-          <div className="grid gap-3 lg:grid-cols-[1fr_auto_auto]">
+          <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto_auto]">
             <label className="flex h-11 items-center gap-3 border border-white/10 bg-zinc-950 px-3 focus-within:border-cyan-400/50">
               <Search className="size-4 text-zinc-500" />
               <input
@@ -134,7 +134,7 @@ export function ProblemExplorer({
               <span className="font-normal text-zinc-600">题型 / 难度</span>
             </summary>
             <div className="flex gap-4 overflow-x-auto border-t border-white/10 px-3 py-3">
-            <div className="flex shrink-0 items-center gap-2">
+            <div className="flex min-w-max items-center gap-2">
               <span className="font-mono text-[10px] uppercase tracking-widest text-zinc-600">题型</span>
               {types.map((item) => (
                 <button
@@ -152,7 +152,7 @@ export function ProblemExplorer({
                 </button>
               ))}
             </div>
-            <div className="flex shrink-0 items-center gap-2 border-l border-white/10 pl-4">
+            <div className="flex min-w-max items-center gap-2 border-l border-white/10 pl-4">
               <span className="font-mono text-[10px] uppercase tracking-widest text-zinc-600">难度</span>
               {difficulties.map((item) => (
                 <button
@@ -177,7 +177,7 @@ export function ProblemExplorer({
       </section>
 
       <section className="mx-auto max-w-7xl px-4 py-10 md:px-6">
-        <div className="mb-5 flex items-center justify-between border-b border-white/10 pb-4">
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-4">
           <span className="font-mono text-xs uppercase tracking-wider text-zinc-500">
             {filtered.length} / {problems.length} 道题
           </span>

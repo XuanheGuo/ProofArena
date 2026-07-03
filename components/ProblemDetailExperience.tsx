@@ -52,7 +52,7 @@ function SolutionCompareCard({ solution, rank }: { solution: Solution; rank: num
 
   return (
     <article id={solution.id} className="scroll-mt-32 border border-white/10 bg-zinc-950">
-      <div className="grid gap-px bg-white/10 lg:grid-cols-[1fr_18rem]">
+      <div className="grid gap-px bg-white/10 lg:grid-cols-[minmax(0,1fr)_18rem]">
         <div className="bg-zinc-950 p-5 md:p-6">
           <div className="flex flex-wrap items-center gap-2">
             <span className="font-mono text-xs text-zinc-600">{String(rank).padStart(2, "0")}</span>
@@ -64,7 +64,7 @@ function SolutionCompareCard({ solution, rank }: { solution: Solution; rank: num
               </span>
             ))}
           </div>
-          <h3 className="mt-4 text-xl font-bold text-white">{solution.title}</h3>
+          <h3 className="mt-4 text-lg font-bold leading-7 text-white sm:text-xl">{solution.title}</h3>
           <p className="mt-3 text-sm leading-7 text-zinc-300">
             <MathBlock>{solution.inspiration}</MathBlock>
           </p>
@@ -83,7 +83,7 @@ function SolutionCompareCard({ solution, rank }: { solution: Solution; rank: num
             type="button"
             onClick={() => setExpanded((value) => !value)}
             aria-expanded={expanded}
-            className="mt-5 inline-flex h-10 items-center justify-center gap-2 border border-cyan-400/35 bg-cyan-400/5 px-4 text-sm font-bold text-cyan-200 transition hover:bg-cyan-400/10"
+            className="mt-5 inline-flex min-h-10 items-center justify-center gap-2 border border-cyan-400/35 bg-cyan-400/5 px-4 py-2 text-sm font-bold text-cyan-200 transition hover:bg-cyan-400/10"
           >
             {expanded ? "收起解析" : "展开查看"}
             <ChevronDown className={`size-4 transition ${expanded ? "rotate-180" : ""}`} />
@@ -93,7 +93,7 @@ function SolutionCompareCard({ solution, rank }: { solution: Solution; rank: num
 
       {expanded && (
         <div className="border-t border-white/10 p-5 md:p-6">
-          <div className="grid gap-5 lg:grid-cols-[1fr_18rem]">
+          <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_18rem]">
             <div className="space-y-5">
               <section className="border border-cyan-400/20 bg-cyan-400/[0.04] p-4">
                 <h4 className="flex items-center gap-2 text-sm font-bold text-white">
@@ -108,7 +108,7 @@ function SolutionCompareCard({ solution, rank }: { solution: Solution; rank: num
                 <h4 className="text-sm font-bold text-white">完整解析摘要</h4>
                 <ol className="mt-4 space-y-4">
                   {solution.summary.map((step, index) => (
-                    <li key={step} className="grid grid-cols-[2rem_1fr] gap-3 text-sm leading-7 text-zinc-300">
+                    <li key={step} className="grid grid-cols-[2rem_minmax(0,1fr)] gap-3 text-sm leading-7 text-zinc-300">
                       <span className="font-mono text-cyan-300">{String(index + 1).padStart(2, "0")}</span>
                       <span><MathBlock>{step}</MathBlock></span>
                     </li>
@@ -116,7 +116,7 @@ function SolutionCompareCard({ solution, rank }: { solution: Solution; rank: num
                 </ol>
               </section>
               <details className="border border-white/10 bg-black/20">
-                <summary className="flex list-none items-center justify-between px-4 py-3 text-sm font-bold text-white marker:hidden">
+                <summary className="flex list-none flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm font-bold text-white marker:hidden">
                   上传者补充说明
                   <span className="text-xs font-normal text-zinc-600">适用场景 / 局限 / 验证</span>
                 </summary>
@@ -143,7 +143,7 @@ function SolutionCompareCard({ solution, rank }: { solution: Solution; rank: num
             </div>
             <aside className="space-y-5">
               <details className="border border-white/10 bg-black/20">
-                <summary className="flex list-none items-center justify-between px-4 py-3 text-sm font-bold text-white marker:hidden">
+                <summary className="flex list-none flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm font-bold text-white marker:hidden">
                   评分细节
                   <span className="text-xs font-normal text-zinc-600">默认折叠</span>
                 </summary>
@@ -235,7 +235,7 @@ export function ProblemDetailExperience({
           <Link href="/problems" className="text-sm text-zinc-500 transition hover:text-white">
             返回题目列表
           </Link>
-          <div className="mt-5 grid gap-6 lg:grid-cols-[1fr_20rem] lg:items-end">
+          <div className="mt-5 grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-end">
             <div>
               <div className="flex flex-wrap items-center gap-2 text-xs">
                 <span className="bg-cyan-400 px-2 py-1 font-bold text-zinc-950">{problem.region}</span>
@@ -244,12 +244,12 @@ export function ProblemDetailExperience({
                 </span>
                 <span className={`border px-2 py-1 ${difficultyBadgeClass[problem.difficulty]}`}>{problem.difficulty}</span>
               </div>
-              <h1 className="mt-4 text-3xl font-black leading-tight text-white md:text-5xl">{problem.title}</h1>
+              <h1 className="mt-4 text-2xl font-black leading-tight text-white sm:text-3xl md:text-5xl">{problem.title}</h1>
               <p className="mt-4 max-w-3xl text-sm leading-7 text-zinc-400">
                 先看题目本体，再在解法 Tab 中比较不同路线。知识点和相关题放在辅助区，避免干扰主线阅读。
               </p>
             </div>
-            <div className="grid grid-cols-3 border border-white/10 bg-black/20 text-center">
+            <div className="grid grid-cols-3 border border-white/10 bg-black/20 text-center sm:max-w-md lg:max-w-none">
               <div className="border-r border-white/10 p-3">
                 <strong className="font-display block text-2xl text-cyan-300">{problem.solutions.length}</strong>
                 <span className="text-[11px] text-zinc-600">解法</span>
@@ -282,7 +282,7 @@ export function ProblemDetailExperience({
             </Link>
           </div>
 
-          <div className="mt-6 grid gap-4 lg:grid-cols-[1fr_24rem]">
+          <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_24rem]">
             <section className="border border-white/10 bg-zinc-950 p-5 md:p-6">
               <div className="mb-4 flex items-center gap-2 text-sm font-bold text-white">
                 <FileText className="size-4 text-cyan-300" />
@@ -349,7 +349,7 @@ export function ProblemDetailExperience({
 
       <div className="mx-auto max-w-7xl px-4 py-6 md:px-6 md:py-8">
         {activeTab === "problem" && (
-          <section className="grid gap-5 lg:grid-cols-[1fr_22rem]">
+          <section className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_22rem]">
             <div className="border border-white/10 bg-zinc-950 p-5 md:p-7">
               <h2 className="font-bold text-white">题目</h2>
               <div className="mt-5 space-y-4 text-base leading-8 text-zinc-200">
@@ -360,7 +360,7 @@ export function ProblemDetailExperience({
             </div>
             <aside className="space-y-4">
               <details className="border border-white/10 bg-zinc-950">
-                <summary className="flex list-none items-center justify-between px-4 py-3 text-sm font-bold text-white marker:hidden">
+                <summary className="flex list-none flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm font-bold text-white marker:hidden">
                   参考答案
                   <span className="text-xs font-normal text-zinc-600">展开查看</span>
                 </summary>
@@ -382,7 +382,7 @@ export function ProblemDetailExperience({
         )}
 
         {activeTab === "solutions" && (
-          <section className="grid gap-5 lg:grid-cols-[18rem_1fr]">
+          <section className="grid gap-5 lg:grid-cols-[18rem_minmax(0,1fr)]">
             <aside className="hidden lg:block">
               <div className="sticky top-32 border border-white/10 bg-zinc-950 p-4">
                 <h2 className="text-sm font-bold text-white">对照题目</h2>

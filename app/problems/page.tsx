@@ -23,12 +23,12 @@ export default async function ProblemsPage({
           </div>
           <div className="mt-4 flex flex-col justify-between gap-5 md:flex-row md:items-end">
             <div>
-              <h1 className="text-4xl font-black text-white md:text-5xl">题目擂台</h1>
+              <h1 className="text-3xl font-black text-white sm:text-4xl md:text-5xl">题目擂台</h1>
               <p className="mt-3 max-w-2xl text-sm leading-7 text-zinc-400">
                 先按卷别或专题找到题，再进入详情比较不同解法。每题保留校订、复核与独立评分。
               </p>
             </div>
-            <div className="grid grid-cols-3 border border-white/10 bg-zinc-950">
+            <div className="grid w-full grid-cols-3 border border-white/10 bg-zinc-950 sm:w-auto">
               <div className="border-r border-white/10 px-4 py-3 text-center">
                 <strong className="font-display block text-xl text-white">{String(problems.length).padStart(2, "0")}</strong>
                 <span className="text-[10px] text-zinc-600">真题</span>

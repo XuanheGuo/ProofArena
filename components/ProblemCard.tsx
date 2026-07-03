@@ -20,7 +20,7 @@ export function ProblemCard({ problem, rank }: { problem: Problem; rank?: number
   return (
     <Link
       href={`/problems/${problem.id}`}
-      className="group grid min-h-72 border border-white/10 bg-zinc-950/75 transition hover:border-cyan-400/45 hover:bg-zinc-900 md:grid-cols-[5.25rem_1fr]"
+      className="group grid min-h-72 overflow-hidden border border-white/10 bg-zinc-950/75 transition hover:border-cyan-400/45 hover:bg-zinc-900 md:grid-cols-[5.25rem_minmax(0,1fr)]"
     >
       <div className="flex items-center justify-between border-b border-white/10 px-5 py-4 md:flex-col md:border-r md:border-b-0 md:px-3">
         <span className="font-mono text-xs uppercase text-zinc-500">题目</span>
@@ -40,7 +40,7 @@ export function ProblemCard({ problem, rank }: { problem: Problem; rank?: number
             {problem.difficulty}
           </span>
         </div>
-        <h2 className="mt-5 text-2xl font-bold text-white transition group-hover:text-cyan-200">
+        <h2 className="mt-5 text-xl font-bold leading-8 text-white transition group-hover:text-cyan-200 sm:text-2xl">
           {problem.title}
         </h2>
         <p className="mt-3 line-clamp-2 text-sm leading-7 text-zinc-400">
@@ -88,7 +88,7 @@ export function ProblemCard({ problem, rank }: { problem: Problem; rank?: number
             </div>
           </div>
         </div>
-        <div className="mt-5 flex items-center justify-between border-t border-white/10 pt-4 md:hidden">
+        <div className="mt-5 flex flex-wrap items-center justify-between gap-2 border-t border-white/10 pt-4 md:hidden">
           <span className="text-xs text-zinc-500">{problem.solutions.length} 条解法</span>
           <span className="inline-flex items-center gap-1.5 text-xs font-bold text-cyan-300">
             进入详情
@@ -103,7 +103,7 @@ export function ProblemCard({ problem, rank }: { problem: Problem; rank?: number
               </span>
             ))}
           </div>
-          <div className="flex items-center gap-4 font-mono text-xs text-zinc-400">
+          <div className="flex flex-wrap items-center gap-3 font-mono text-xs text-zinc-400">
             <span className="flex items-center gap-1.5">
               <Layers3 className="size-3.5 text-cyan-300" />
               {problem.solutions.length} 解法

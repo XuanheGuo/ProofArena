@@ -37,7 +37,7 @@ export default async function HomePage() {
               <span className="h-px w-8 bg-cyan-400" />
               2026 高考数学赛季
             </div>
-            <h1 className="font-display text-5xl font-black leading-[1.02] text-white sm:text-6xl md:text-8xl">
+            <h1 className="font-display text-4xl font-black leading-[1.02] text-white sm:text-6xl md:text-8xl">
               Proof<span className="text-cyan-300">Arena</span>
             </h1>
             <p className="mt-5 text-xl font-bold text-zinc-100 md:text-2xl">
@@ -67,7 +67,7 @@ export default async function HomePage() {
             </div>
           </div>
         </div>
-        <div className="relative mx-auto -mt-16 grid max-w-7xl grid-cols-3 border border-white/10 bg-zinc-950/90 backdrop-blur md:w-[calc(100%-3rem)]">
+        <div className="relative mx-4 -mt-16 grid max-w-7xl grid-cols-3 border border-white/10 bg-zinc-950/90 backdrop-blur md:mx-auto md:w-[calc(100%-3rem)]">
           {stats.map(([value, label]) => (
             <div key={label} className="border-r border-white/10 p-4 last:border-r-0 md:p-6">
               <strong className="font-display block text-2xl font-black text-white md:text-3xl">{value}</strong>
@@ -101,10 +101,10 @@ export default async function HomePage() {
 
       <section className="grid-surface border-b border-white/10 py-20">
         <div className="mx-auto max-w-7xl px-4 md:px-6">
-          <div className="mb-8 flex items-end justify-between gap-4">
+          <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
             <div>
               <span className="font-mono text-xs uppercase tracking-widest text-red-400">新手入口</span>
-              <h2 className="mt-2 text-3xl font-black text-white md:text-4xl">先从这几道题开始</h2>
+              <h2 className="mt-2 text-2xl font-black leading-tight text-white sm:text-3xl md:text-4xl">先从这几道题开始</h2>
             </div>
             <Link href="/problems" className="hidden items-center gap-2 text-sm text-zinc-400 hover:text-white sm:flex">
               查看全部 <ArrowRight className="size-4" />
@@ -152,7 +152,7 @@ export default async function HomePage() {
         <div className="mx-auto grid max-w-7xl gap-12 px-4 md:grid-cols-[.8fr_1.2fr] md:px-6">
           <div>
             <span className="font-mono text-xs uppercase tracking-widest text-cyan-300">解法评价维度</span>
-            <h2 className="mt-3 text-3xl font-black text-white">解法不只分对错</h2>
+            <h2 className="mt-3 text-2xl font-black leading-tight text-white sm:text-3xl">解法不只分对错</h2>
             <p className="mt-4 text-sm leading-7 text-zinc-400">
               一个正确但考场上写不完的解法，和一个短、稳、能迁移的解法，不该得到相同评价。
             </p>
@@ -182,7 +182,7 @@ export default async function HomePage() {
         <p>当前为 ProofArena Demo，题目与解法数据仍在整理中。</p>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <span>ProofArena · 高中数学解法竞技场</span>
-          <span className="flex gap-4">
+          <span className="flex flex-wrap gap-4">
             <Link href="/about" className="hover:text-white">关于</Link>
             <Link href="/submit" className="hover:text-white">投稿</Link>
             <span>Demo · 2026</span>

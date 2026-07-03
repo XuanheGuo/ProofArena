@@ -26,14 +26,46 @@
 
 html {
   scroll-behavior: smooth;
+  overflow-x: hidden;
 }
 
 body {
   margin: 0;
+  overflow-x: hidden;
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, "PingFang SC", "Microsoft YaHei", sans-serif;
   transition: background-color 160ms ease, color 160ms ease;
+}
+
+body,
+main,
+section,
+article,
+aside,
+nav,
+header,
+footer,
+div,
+p,
+li,
+h1,
+h2,
+h3,
+h4 {
+  min-width: 0;
+}
+
+h1,
+h2,
+h3,
+h4,
+p,
+li,
+a,
+button,
+span {
+  overflow-wrap: anywhere;
 }
 
 button,
@@ -71,6 +103,7 @@ select {
 .math-scroll {
   overflow-x: auto;
   overflow-y: hidden;
+  max-width: 100%;
 }
 
 .katex {
@@ -80,6 +113,13 @@ select {
 
 .katex-display {
   margin: 0.65em 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 0.15rem;
+}
+
+.katex-display > .katex {
+  white-space: nowrap;
 }
 
 .share-card .katex {

@@ -12,7 +12,7 @@ function canReviewSubmissions(role?: UserRole | null) {
   return role === 'admin' || role === 'moderator';
 }
 
-export function AuthButton() {
+export function AuthButton({ variant = 'icon' }: { variant?: 'icon' | 'menu' }) {
   const [user, setUser] = useState<User | null>(null);
   const [role, setRole] = useState<UserRole | null>(null);
   const [loading, setLoading] = useState(true);
@@ -58,12 +58,43 @@ export function AuthButton() {
 
   if (loading) {
     return (
-      <div className="size-9 shrink-0 animate-pulse rounded bg-white/5" />
+      <div className={variant === 'menu' ? "h-11 w-full animate-pulse rounded bg-white/5" : "size-9 shrink-0 animate-pulse rounded bg-white/5"} />
     );
   }
 
   if (user) {
     const canReview = canReviewSubmissions(role);
+
+    if (variant === 'menu') {
+      return (
+        <div className="grid gap-2">
+          {canReview && (
+            <Link
+              href="/admin/submissions"
+              className="flex min-h-11 items-center gap-3 border border-white/10 bg-black/20 px-3 text-sm font-bold text-zinc-300 transition hover:border-cyan-400/35 hover:text-cyan-200"
+            >
+              <ShieldCheck className="size-4 shrink-0 text-cyan-300" />
+              <span>投稿审核</span>
+            </Link>
+          )}
+          <Link
+            href="/profile"
+            className="flex min-h-11 items-center gap-3 border border-white/10 bg-black/20 px-3 text-sm font-bold text-zinc-300 transition hover:border-cyan-400/35 hover:text-white"
+          >
+            <UserIcon className="size-4 shrink-0 text-zinc-500" />
+            <span className="min-w-0 flex-1 truncate">{user.email || '个人主页'}</span>
+          </Link>
+          <button
+            type="button"
+            onClick={handleSignOut}
+            className="flex min-h-11 w-full items-center gap-3 border border-white/10 bg-black/20 px-3 text-left text-sm font-bold text-zinc-300 transition hover:border-red-400/35 hover:text-red-300"
+          >
+            <LogOut className="size-4 shrink-0 text-red-400" />
+            <span>退出登录</span>
+          </button>
+        </div>
+      );
+    }
 
     return (
       <div className="flex items-center gap-2">
@@ -91,6 +122,18 @@ export function AuthButton() {
           <LogOut className="size-4" />
         </button>
       </div>
+    );
+  }
+
+  if (variant === 'menu') {
+    return (
+      <Link
+        href="/auth/login"
+        className="flex min-h-11 items-center gap-3 border border-white/10 bg-black/20 px-3 text-sm font-bold text-zinc-300 transition hover:border-cyan-400/35 hover:text-white"
+      >
+        <LogIn className="size-4 shrink-0 text-cyan-300" />
+        <span>登录 / 注册</span>
+      </Link>
     );
   }
 

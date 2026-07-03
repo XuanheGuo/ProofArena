@@ -13,7 +13,28 @@ const REGION_SHORT: Record<string, string> = {
 export function ProblemScrollbar({ problems }: { problems: Problem[] }) {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [hoverId, setHoverId] = useState<string | null>(null);
+  const [mobileVisible, setMobileVisible] = useState(true);
   const observerRef = useRef<IntersectionObserver | null>(null);
+
+  useEffect(() => {
+    const media = window.matchMedia("(min-width: 1024px)");
+    if (media.matches) return;
+
+    let timeout = window.setTimeout(() => setMobileVisible(false), 1400);
+    const showTemporarily = () => {
+      setMobileVisible(true);
+      window.clearTimeout(timeout);
+      timeout = window.setTimeout(() => setMobileVisible(false), 900);
+    };
+
+    window.addEventListener("scroll", showTemporarily, { passive: true });
+    window.addEventListener("touchstart", showTemporarily, { passive: true });
+    return () => {
+      window.clearTimeout(timeout);
+      window.removeEventListener("scroll", showTemporarily);
+      window.removeEventListener("touchstart", showTemporarily);
+    };
+  }, []);
 
   useEffect(() => {
     if (problems.length === 0) return;
@@ -64,7 +85,13 @@ export function ProblemScrollbar({ problems }: { problems: Problem[] }) {
   const hovered = problems.find((p) => p.id === hoverId);
 
   return (
-    <div className="fixed right-4 top-1/2 z-40 flex -translate-y-1/2" aria-hidden="true">
+    <div
+      data-testid="problem-scrollbar"
+      className={`fixed right-2 top-1/2 z-40 flex -translate-y-1/2 transition-opacity duration-300 lg:pointer-events-auto lg:right-4 lg:opacity-100 ${
+        mobileVisible ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"
+      }`}
+      aria-hidden="true"
+    >
       {/* Tooltip — desktop only (hover doesn't exist on touch) */}
       {hovered && (
         <div className="pointer-events-none mr-4 hidden self-center whitespace-nowrap rounded border border-white/10 bg-zinc-950/95 px-3 py-2 text-xs shadow-lg lg:block">
