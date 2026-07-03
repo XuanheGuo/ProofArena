@@ -1,6 +1,6 @@
 'use server';
 
-import { createClient } from '@/lib/supabase-server';
+import { createClient, createServiceClient } from '@/lib/supabase-server';
 import type { SolutionScores } from '@/lib/types';
 
 type SubmissionStatus = 'pending' | 'approved' | 'rejected' | 'needs_revision';
@@ -77,7 +77,7 @@ async function publishProblem(submission: Submission): Promise<{
   error?: string;
   problemId?: string;
 }> {
-  const supabase = await createClient();
+  const supabase = createServiceClient();
   const problemData = submission.content.json?.problem ?? {};
 
   const problemId = generateId('prob');
@@ -127,7 +127,7 @@ async function publishSolution(submission: Submission): Promise<{
   error?: string;
   solutionId?: string;
 }> {
-  const supabase = await createClient();
+  const supabase = createServiceClient();
 
   if (!submission.problem_id) {
     return { success: false, error: '解法投稿必须绑定题目 ID' };
