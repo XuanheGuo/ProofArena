@@ -256,6 +256,7 @@ export function AdminSubmissionsView() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [publishing, setPublishing] = useState<string | null>(null);
   const supabase = createClient();
 
   useEffect(() => {
@@ -380,6 +381,17 @@ export function AdminSubmissionsView() {
     await loadSubmissions();
   };
 
+  const publishExisting = async (submissionId: string) => {
+    setPublishing(submissionId);
+    const result = await publishSubmission(submissionId);
+    setPublishing(null);
+    if (!result.success) {
+      alert('发布失败：' + (result.error ?? '未知错误'));
+    } else {
+      alert('已成功发布到题库。');
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     const styles = {
       pending: 'border-amber-400/30 bg-amber-400/[0.06] text-amber-300',
@@ -454,14 +466,27 @@ export function AdminSubmissionsView() {
                   <h3 className="truncate font-bold text-white">{sub.title}</h3>
                   <p className="mt-1 text-sm text-zinc-500">{getTypeLabel(sub)} · {getTargetLabel(sub)} · 类型: {kindLabels[sub.kind] ?? sub.kind}</p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => openSubmission(sub)}
-                  className="inline-flex h-9 shrink-0 items-center gap-2 rounded border border-white/10 px-4 text-sm text-zinc-400 transition hover:border-cyan-400/50 hover:text-cyan-400"
-                >
-                  <Eye className="size-4" />
-                  审核编辑
-                </button>
+                <div className="flex shrink-0 gap-2">
+                  {sub.status === 'approved' && (
+                    <button
+                      type="button"
+                      onClick={() => publishExisting(sub.id)}
+                      disabled={publishing === sub.id}
+                      className="inline-flex h-9 items-center gap-2 rounded border border-emerald-400/30 px-4 text-sm text-emerald-300 transition hover:bg-emerald-400/10 disabled:opacity-50"
+                    >
+                      <CheckCircle2 className="size-4" />
+                      {publishing === sub.id ? '发布中...' : '发布到题库'}
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => openSubmission(sub)}
+                    className="inline-flex h-9 items-center gap-2 rounded border border-white/10 px-4 text-sm text-zinc-400 transition hover:border-cyan-400/50 hover:text-cyan-400"
+                  >
+                    <Eye className="size-4" />
+                    审核编辑
+                  </button>
+                </div>
               </div>
             </div>
           ))}
