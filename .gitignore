@@ -10,6 +10,7 @@
 # local tooling
 *.tsbuildinfo
 .DS_Store
+.playwright-mcp/
 
 # environment files
 .env*

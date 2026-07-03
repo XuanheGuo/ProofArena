@@ -1,13 +1,15 @@
 import { Target } from "lucide-react";
 import { ProblemExplorer } from "@/components/ProblemExplorer";
-import { problems } from "@/data/problems";
+import { getProblems } from "@/lib/db";
+
+export const revalidate = 3600;
 
 export default async function ProblemsPage({
   searchParams,
 }: {
   searchParams: Promise<Record<string, string>>;
 }) {
-  const params = await searchParams;
+  const [params, problems] = await Promise.all([searchParams, getProblems()]);
   const solutionCount = problems.reduce((sum, problem) => sum + problem.solutions.length, 0);
   const regionCount = new Set(problems.map((problem) => problem.region)).size;
 

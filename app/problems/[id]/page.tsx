@@ -1,12 +1,10 @@
 import { notFound } from "next/navigation";
 import { ProblemDetailExperience } from "@/components/ProblemDetailExperience";
-import { getProblem, problems } from "@/data/problems";
+import { getProblem, getProblems } from "@/lib/db";
 import { getKnowledgeNode } from "@/data/knowledge";
 import type { KnowledgeNode } from "@/lib/types";
 
-export function generateStaticParams() {
-  return problems.map((problem) => ({ id: problem.id }));
-}
+export const revalidate = 3600;
 
 function uniqueKnowledgeNodes(ids: string[]) {
   const seen = new Set<string>();
@@ -26,7 +24,7 @@ export default async function ProblemDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const problem = getProblem(id);
+  const [problem, allProblems] = await Promise.all([getProblem(id), getProblems()]);
 
   if (!problem) notFound();
 
@@ -37,7 +35,7 @@ export default async function ProblemDetailPage({
     ...problem.solutions.flatMap((solution) => solution.knowledgeIds ?? []),
   ];
   const knowledgeNodes = uniqueKnowledgeNodes(knowledgeIds).slice(0, 6);
-  const relatedProblems = problems
+  const relatedProblems = allProblems
     .filter((item) => item.id !== problem.id)
     .map((item) => ({
       item,

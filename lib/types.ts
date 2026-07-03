@@ -10,6 +10,75 @@ export type TagMatchSource = "auto" | "manual";
 
 export type SolutionKind = "standard" | "insight" | "robust" | "teaching";
 
+export const SCORE_DIMS = ["correctness", "examReady", "elegance", "calculation", "explanation"] as const;
+export type ScoreDim = typeof SCORE_DIMS[number];
+export type SolutionScores = Record<ScoreDim, number>;
+
+export interface ConceptLink {
+  conceptId?: string;
+  label: string;
+  relation: string;
+  note: string;
+}
+
+export interface ConceptContrast {
+  conceptA: string;
+  conceptB: string;
+  relationship: string;
+  keyDifference: string;
+  commonMistake: string;
+  exampleProblemIds: string[];
+}
+
+export interface BoundaryNote {
+  title: string;
+  note: string;
+  typicalMisuse?: string;
+}
+
+export interface ContrastProblem {
+  problemId: string;
+  role: "相似题" | "反例题" | "边界题" | "迁移题" | "对比题";
+  focus: string;
+  reason: string;
+}
+
+export interface WhyNotMethod {
+  methodName: string;
+  reason: string;
+  whenItWouldWork: string;
+  relatedConcepts: string[];
+}
+
+export interface TagMatch {
+  tag: string;
+  matchedKnowledgeIds: string[];
+  matchedInsightIds: string[];
+  confidence: number;
+  source: TagMatchSource;
+}
+
+/** Shared pedagogical annotation fields used by both Problem and Solution. */
+export interface PedagogicalAnnotations {
+  knowledgeIds?: string[];
+  insightIds?: string[];
+  autoMatches?: TagMatch[];
+  manualMatches?: TagMatch[];
+  conceptLinks?: ConceptLink[];
+  conceptContrasts?: ConceptContrast[];
+  boundaryNotes?: BoundaryNote[];
+  contrastProblems?: ContrastProblem[];
+  whyNotMethods?: WhyNotMethod[];
+}
+
+export interface QualityReport {
+  completenessScore: number;
+  warnings: string[];
+  suggestions: string[];
+  missingFields: string[];
+  strengths: string[];
+}
+
 export interface KnowledgeNode {
   id: string;
   title: string;
@@ -37,30 +106,6 @@ export interface InsightNode {
   difficulty: Difficulty;
 }
 
-export interface TagMatch {
-  tag: string;
-  matchedKnowledgeIds: string[];
-  matchedInsightIds: string[];
-  confidence: number;
-  source: TagMatchSource;
-}
-
-export interface QualityReport {
-  completenessScore: number;
-  warnings: string[];
-  suggestions: string[];
-  missingFields: string[];
-  strengths: string[];
-}
-
-export interface SolutionScores {
-  correctness: number;
-  examReady: number;
-  elegance: number;
-  calculation: number;
-  explanation: number;
-}
-
 export interface Verification {
   status: VerificationStatus;
   engine: string;
@@ -79,7 +124,7 @@ export interface ThinkingCues {
   confidence?: number;
 }
 
-export interface Solution {
+export interface Solution extends PedagogicalAnnotations {
   id: string;
   kind: SolutionKind;
   title: string;
@@ -100,15 +145,6 @@ export interface Solution {
   scoringReason: string;
   verification: Verification;
   estimatedMinutes: number;
-  knowledgeIds?: string[];
-  insightIds?: string[];
-  autoMatches?: TagMatch[];
-  manualMatches?: TagMatch[];
-  conceptLinks?: ConceptLink[];
-  conceptContrasts?: ConceptContrast[];
-  boundaryNotes?: BoundaryNote[];
-  contrastProblems?: ContrastProblem[];
-  whyNotMethods?: WhyNotMethod[];
 }
 
 export interface LearningGuide {
@@ -136,6 +172,27 @@ export interface SolutionTreeRoot {
 
 export interface SolutionTree {
   roots: SolutionTreeRoot[];
+}
+
+export interface Problem extends PedagogicalAnnotations {
+  id: string;
+  year: number;
+  region: ExamRegion;
+  paper: string;
+  number: string;
+  difficulty: Difficulty;
+  questionType: QuestionType;
+  tags: string[];
+  title: string;
+  statement: string[];
+  answer: string;
+  heat: number;
+  sourcePdf: string;
+  sourcePage: number;
+  answerPdf?: string;
+  learningGuide: LearningGuide;
+  solutionTree?: SolutionTree;
+  solutions: Solution[];
 }
 
 export type GraphColor = "cyan" | "amber" | "red" | "green" | "violet" | "zinc";
@@ -174,77 +231,10 @@ export interface FunctionGraphSpec {
   sliders: SliderParam[];
   traces?: TraceSpec[];
   points?: PointSpec[];
-  /** Custom draw function for complex visualizations (parametric curves, dynamic geometry). Called after sliders are created. */
   draw?: (
     board: JXG.Board,
     sliders: Map<string, JXG.Slider>,
     colors: Record<GraphColor, string>,
     dark: boolean
   ) => void;
-}
-
-export interface Problem {
-  id: string;
-  year: number;
-  region: ExamRegion;
-  paper: string;
-  number: string;
-  difficulty: Difficulty;
-  questionType: QuestionType;
-  tags: string[];
-  title: string;
-  statement: string[];
-  answer: string;
-  heat: number;
-  sourcePdf: string;
-  sourcePage: number;
-  answerPdf?: string;
-  learningGuide: LearningGuide;
-  solutionTree?: SolutionTree;
-  solutions: Solution[];
-  knowledgeIds?: string[];
-  insightIds?: string[];
-  autoMatches?: TagMatch[];
-  manualMatches?: TagMatch[];
-  conceptLinks?: ConceptLink[];
-  conceptContrasts?: ConceptContrast[];
-  boundaryNotes?: BoundaryNote[];
-  contrastProblems?: ContrastProblem[];
-  whyNotMethods?: WhyNotMethod[];
-}
-
-export interface ConceptLink {
-  conceptId?: string;
-  label: string;
-  relation: string;
-  note: string;
-}
-
-export interface ConceptContrast {
-  conceptA: string;
-  conceptB: string;
-  relationship: string;
-  keyDifference: string;
-  commonMistake: string;
-  exampleProblemIds: string[];
-}
-
-export interface BoundaryNote {
-  title: string;
-  note: string;
-  typicalMisuse?: string;
-}
-
-export interface ContrastProblem {
-  problemId: string;
-  role: "相似题" | "反例题" | "边界题" | "迁移题" | "对比题";
-  focus: string;
-  reason: string;
-}
-
-export interface WhyNotMethod {
-  methodName: string;
-  reason: string;
-  whenItWouldWork: string;
-  relatedConcepts: string[];
 }

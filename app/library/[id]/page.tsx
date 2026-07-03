@@ -8,6 +8,8 @@ import { getInsightNode, insightNodes } from "@/data/insights";
 import { getKnowledgeNode, knowledgeNodes } from "@/data/knowledge";
 import { problems } from "@/data/problems";
 
+export const revalidate = 3600;
+
 export function generateStaticParams() {
   return [...knowledgeNodes, ...insightNodes].map((node) => ({ id: node.id }));
 }

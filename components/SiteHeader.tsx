@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { BookOpenCheck, Code2, Crosshair, Hammer, Info, Send, Swords } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { AuthButton } from "@/components/AuthButton";
 
 const navigation = [
   { href: "/problems", label: "题目", icon: Swords, mobile: true },
@@ -37,6 +38,7 @@ export function SiteHeader() {
               {badge && <span className="hidden border border-cyan-400/20 px-1.5 py-0.5 font-mono text-[9px] uppercase text-cyan-300 lg:inline">{badge}</span>}
             </Link>
           ))}
+          <AuthButton />
           <ThemeToggle />
           <a
             href="https://github.com/XuanheGuo/ProofArena"

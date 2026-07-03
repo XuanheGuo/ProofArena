@@ -1,11 +1,14 @@
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, CheckCircle2, ChevronRight, Compass, Send, Swords, Trophy } from "lucide-react";
-import { getLearningIndex, problems } from "@/data/problems";
+import { ArrowRight, CheckCircle2, Compass, Send, Swords, Trophy } from "lucide-react";
+import { getLearningIndex, getProblems } from "@/lib/db";
 import { difficultyBadgeClass } from "@/lib/problem-presentation";
 import { MathBlock } from "@/components/MathBlock";
 
-export default function HomePage() {
+export const revalidate = 3600;
+
+export default async function HomePage() {
+  const problems = await getProblems();
   const solutionCount = problems.reduce((sum, problem) => sum + problem.solutions.length, 0);
   const featuredProblems = ["ng2-2026-18", "ng1-2026-18", "tj-2026-09"]
     .map((id) => problems.find((problem) => problem.id === id))
@@ -62,10 +65,6 @@ export default function HomePage() {
                 <Send className="size-4" />
               </Link>
             </div>
-            <Link href="/example" className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-cyan-300 hover:text-cyan-200">
-              新手示例题：30 秒看懂怎么用
-              <ChevronRight className="size-4" />
-            </Link>
           </div>
         </div>
         <div className="relative mx-auto -mt-16 grid max-w-7xl grid-cols-3 border border-white/10 bg-zinc-950/90 backdrop-blur md:w-[calc(100%-3rem)]">
@@ -164,7 +163,7 @@ export default function HomePage() {
               [Swords, "考场性", "时间可控、路径容易识别"],
               [Trophy, "结构美感", "转化自然、结构简洁"],
               [ArrowRight, "计算量", "更少展开与重复运算"],
-              [ChevronRight, "讲解友好", "便于复盘与迁移"],
+              [ArrowRight, "讲解友好", "便于复盘与迁移"],
             ].map(([Icon, title, description]) => {
               const FeatureIcon = Icon as typeof CheckCircle2;
               return (
