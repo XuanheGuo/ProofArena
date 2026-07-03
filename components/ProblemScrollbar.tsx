@@ -64,10 +64,10 @@ export function ProblemScrollbar({ problems }: { problems: Problem[] }) {
   const hovered = problems.find((p) => p.id === hoverId);
 
   return (
-    <div className="fixed right-6 top-1/2 z-40 hidden -translate-y-1/2 lg:flex" aria-hidden="true">
-      {/* Tooltip */}
+    <div className="fixed right-4 top-1/2 z-40 flex -translate-y-1/2" aria-hidden="true">
+      {/* Tooltip — desktop only (hover doesn't exist on touch) */}
       {hovered && (
-        <div className="pointer-events-none mr-4 self-center whitespace-nowrap rounded border border-white/10 bg-zinc-950/95 px-3 py-2 text-xs shadow-lg">
+        <div className="pointer-events-none mr-4 hidden self-center whitespace-nowrap rounded border border-white/10 bg-zinc-950/95 px-3 py-2 text-xs shadow-lg lg:block">
           <span className="font-mono text-zinc-500">{REGION_SHORT[hovered.region] ?? ""} </span>
           <span className="text-zinc-300">{hovered.number}</span>
           <span className="ml-2 text-zinc-500">
@@ -82,7 +82,7 @@ export function ProblemScrollbar({ problems }: { problems: Problem[] }) {
           item.type === "region" ? (
             <div
               key={`region-${i}`}
-              className="my-1.5 pr-1 font-mono text-[10px] leading-none text-zinc-500 select-none"
+              className="my-1 hidden pr-0.5 font-mono text-[9px] leading-none text-zinc-500 select-none lg:my-1.5 lg:block lg:pr-1 lg:text-[10px]"
             >
               {item.label}
             </div>
@@ -93,16 +93,16 @@ export function ProblemScrollbar({ problems }: { problems: Problem[] }) {
               onClick={() => scrollTo(item.problem.id)}
               onMouseEnter={() => setHoverId(item.problem.id)}
               onMouseLeave={() => setHoverId(null)}
-              className="flex items-center justify-end py-1.5 pl-6"
+              className="flex items-center justify-end py-1 pl-3 lg:py-1.5 lg:pl-6"
               tabIndex={-1}
             >
               <span
                 className={`block rounded-full transition-all duration-200 ${
                   activeId === `card-${item.problem.id}`
-                    ? "h-[3px] w-10 bg-cyan-400"
+                    ? "h-[3px] bg-cyan-400 w-6 lg:w-10"
                     : hoverId === item.problem.id
-                    ? "h-0.5 w-8 bg-zinc-300"
-                    : "h-0.5 w-5 bg-zinc-600 hover:bg-zinc-400"
+                    ? "h-0.5 bg-zinc-300 w-5 lg:w-8"
+                    : "h-px bg-zinc-600 w-3 lg:h-0.5 lg:w-5 hover:bg-zinc-400"
                 }`}
               />
             </button>
