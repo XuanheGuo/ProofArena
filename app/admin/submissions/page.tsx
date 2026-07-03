@@ -2,6 +2,10 @@ import { createClient } from '@/lib/supabase-server';
 import { redirect } from 'next/navigation';
 import { AdminSubmissionsView } from '@/components/AdminSubmissionsView';
 
+function canReviewSubmissions(role?: string | null) {
+  return role === 'admin' || role === 'moderator';
+}
+
 export default async function AdminSubmissionsPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -10,12 +14,13 @@ export default async function AdminSubmissionsPage() {
     redirect('/auth/login');
   }
 
-  // Check if user is admin (for now, check if email matches admin list)
-  // In production, you'd check a role field in user_profiles table
-  const adminEmails = ['xuanheguo@icloud.com']; // Configure this in .env later
-  const isAdmin = adminEmails.includes(user.email || '');
+  const { data: profile } = await supabase
+    .from('user_profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single();
 
-  if (!isAdmin) {
+  if (!canReviewSubmissions(profile?.role)) {
     return (
       <div className="min-h-screen bg-zinc-950 px-4 py-16">
         <div className="mx-auto max-w-2xl text-center">
