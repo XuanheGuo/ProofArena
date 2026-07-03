@@ -10,6 +10,7 @@
     "start": "next start",
     "start:standalone": "node .next/standalone/server.js",
     "seed": "npx tsx scripts/seed-problems.mts",
+    "fix:summaries": "npx tsx scripts/fix-solution-summaries.mts",
     "lint": "tsc --noEmit"
   },
   "dependencies": {

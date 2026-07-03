@@ -105,13 +105,23 @@ function splitList(value: string) {
 }
 
 function splitProcess(value: string) {
-  const lines = value
-    .split(/\n+/)
-    .map((line) => line.replace(/^\s*(?:\d+[.)、]|[-*])\s*/, "").trim())
-    .filter(Boolean);
-
-  if (lines.length > 1) return lines;
   if (!value.trim()) return [];
+
+  const chineseStepRe = /第[一二三四五六七八九十百]+步[:：]?/;
+  if (chineseStepRe.test(value)) {
+    return value
+      .split(/(?=第[一二三四五六七八九十百]+步)/)
+      .map((chunk) => chunk.replace(/^第[一二三四五六七八九十百]+步[:：]?\s*/, "").trim())
+      .filter(Boolean);
+  }
+
+  const numericStepRe = /^\s*\d+[.)、]/m;
+  if (numericStepRe.test(value)) {
+    return value
+      .split(/(?=^\s*\d+[.)、])/m)
+      .map((chunk) => chunk.replace(/^\s*\d+[.)、]\s*/, "").trim())
+      .filter(Boolean);
+  }
 
   return value
     .split(/(?<=[。！？；])/)
@@ -383,12 +393,18 @@ export function AdminSubmissionsView() {
 
   const publishExisting = async (submissionId: string) => {
     setPublishing(submissionId);
-    const result = await publishSubmission(submissionId);
-    setPublishing(null);
-    if (!result.success) {
-      alert('发布失败：' + (result.error ?? '未知错误'));
-    } else {
-      alert('已成功发布到题库。');
+    try {
+      const result = await publishSubmission(submissionId);
+      if (!result.success) {
+        alert('发布失败：' + (result.error ?? '未知错误'));
+      } else {
+        alert('已成功发布到题库。');
+      }
+    } catch (error) {
+      console.error('Publish error:', error);
+      alert('发布时发生异常：' + (error instanceof Error ? error.message : String(error)));
+    } finally {
+      setPublishing(null);
     }
   };
 
