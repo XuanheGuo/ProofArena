@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { publishSubmission } from '@/lib/publish-submission';
 import { createClient } from '@/lib/supabase-client';
 import {
   Check,
@@ -363,8 +364,19 @@ export function AdminSubmissionsView() {
     const updated = data[0] as Submission;
     setSelectedSubmission(updated);
     setForm(formFromSubmission(updated));
-    setMessage(nextStatus ? '审核结论和评语已保存。' : '修改已保存。');
     setSubmissions((current) => current.map((item) => item.id === updated.id ? updated : item));
+
+    if (nextStatus === 'approved') {
+      const publishResult = await publishSubmission(selectedSubmission.id);
+      if (!publishResult.success) {
+        setMessage('审核结论已保存，但发布到题库时出错：' + (publishResult.error ?? '未知错误'));
+      } else {
+        setMessage('审核通过，已发布到题库。');
+      }
+    } else {
+      setMessage(nextStatus ? '审核结论和评语已保存。' : '修改已保存。');
+    }
+
     await loadSubmissions();
   };
 
