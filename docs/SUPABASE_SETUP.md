@@ -15,6 +15,8 @@
 
 如果你已经创建过旧版表，投稿时报 `Could not find the 'submission_type' column of 'submissions' in the schema cache`，不要重跑整份 `001`。直接复制并执行 `supabase/migrations/002_repair_submissions_schema.sql`，它会补齐投稿表缺失的列并刷新 PostgREST schema cache。
 
+如果管理员点击“保存并通过”后投稿仍显示待审核，说明旧库缺少审核用的 `submissions` UPDATE RLS policy。复制并执行 `supabase/migrations/003_repair_submission_review_policies.sql`，再重新登录管理员账号测试。
+
 ### 3. 配置环境变量
 
 1. 进入项目 Settings → API

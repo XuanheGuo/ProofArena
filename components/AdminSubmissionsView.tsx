@@ -341,10 +341,11 @@ export function AdminSubmissionsView() {
       ...(nextStatus ? { status: nextStatus } : {}),
     };
 
-    const { error: updateError } = await supabase
+    const { data, error: updateError } = await supabase
       .from('submissions')
       .update(patch)
-      .eq('id', selectedSubmission.id);
+      .eq('id', selectedSubmission.id)
+      .select('*');
 
     setSaving(false);
 
@@ -353,12 +354,13 @@ export function AdminSubmissionsView() {
       return;
     }
 
-    const updated: Submission = {
-      ...selectedSubmission,
-      ...patch,
-      status: nextStatus ?? selectedSubmission.status,
-      content: nextContent,
-    };
+    if (!data || data.length === 0) {
+      setError('保存没有更新到任何投稿。请确认当前账号仍有管理员权限，或在 Supabase 中补齐 submissions 的 UPDATE RLS policy。');
+      await loadSubmissions();
+      return;
+    }
+
+    const updated = data[0] as Submission;
     setSelectedSubmission(updated);
     setForm(formFromSubmission(updated));
     setMessage(nextStatus ? '审核结论和评语已保存。' : '修改已保存。');
