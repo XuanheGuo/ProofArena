@@ -1,35 +1,19 @@
 "use client";
 
 import { BlockMath, InlineMath } from "react-katex";
+import {
+  exactMathTokenPattern,
+  mathTokenPattern,
+  normalizeBlockMath,
+  normalizeLatexShorthand,
+  splitPlainMathCandidates,
+  unwrapMath,
+} from "@/lib/math-normalizer";
 
 interface MathBlockProps {
   children: string;
   block?: boolean;
   className?: string;
-}
-
-const mathTokenPattern = /(\\\[[\s\S]+?\\\]|\\\([\s\S]+?\\\)|\$\$[\s\S]+?\$\$|\$[^$\n]+\$)/g;
-const exactMathTokenPattern = /^(\\\[[\s\S]+?\\\]|\\\([\s\S]+?\\\)|\$\$[\s\S]+?\$\$|\$[^$\n]+\$)$/;
-
-function unwrapMath(token: string) {
-  if (token.startsWith("\\[") && token.endsWith("\\]")) {
-    return { math: token.slice(2, -2), display: true };
-  }
-  if (token.startsWith("\\(") && token.endsWith("\\)")) {
-    return { math: token.slice(2, -2), display: false };
-  }
-  if (token.startsWith("$$") && token.endsWith("$$")) {
-    return { math: token.slice(2, -2), display: true };
-  }
-  return { math: token.slice(1, -1), display: false };
-}
-
-function normalizeBlockMath(content: string) {
-  const trimmed = content.trim();
-  if (trimmed.startsWith("\\[") && trimmed.endsWith("\\]")) return trimmed.slice(2, -2);
-  if (trimmed.startsWith("$$") && trimmed.endsWith("$$")) return trimmed.slice(2, -2);
-  if (trimmed.startsWith("$") && trimmed.endsWith("$")) return trimmed.slice(1, -1);
-  return trimmed;
 }
 
 function renderMixedMath(content: string) {
@@ -41,13 +25,19 @@ function renderMixedMath(content: string) {
       const key = `${part}-${index}`;
       return display ? (
         <span key={key} className="my-2 block">
-          <BlockMath math={math.trim()} />
+          <BlockMath math={normalizeLatexShorthand(math.trim())} />
         </span>
       ) : (
-        <InlineMath key={key} math={math.trim()} />
+        <InlineMath key={key} math={normalizeLatexShorthand(math.trim())} />
       );
     }
-    return <span key={`${part}-${index}`}>{part}</span>;
+    return splitPlainMathCandidates(part).map((candidate, candidateIndex) => {
+      const key = `${part}-${index}-${candidateIndex}`;
+      if (candidate.type === "math") {
+        return <InlineMath key={key} math={candidate.value} />;
+      }
+      return <span key={key}>{candidate.value}</span>;
+    });
   });
 }
 

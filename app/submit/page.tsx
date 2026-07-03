@@ -32,7 +32,7 @@ export default async function SubmitPage() {
   const problemOptions = problems.map((problem) => ({
     id: problem.id,
     title: problem.title,
-    source: `${problem.paper}${problem.number ? ` · ${problem.number}` : ""}`,
+    source: `${problem.year} ${problem.region} · ${problem.paper}${problem.number ? ` · ${problem.number}` : ""}`,
   }));
 
   return (

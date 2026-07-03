@@ -28,6 +28,7 @@ import { createClient } from "@/lib/supabase-client";
 import { MathBlock } from "@/components/MathBlock";
 import { ScoreBar } from "@/components/ScoreBar";
 import { getSolutionKindMeta } from "@/lib/solution-kinds";
+import { convertPlainMathTextToLatex } from "@/lib/math-normalizer";
 import type { TagMatch } from "@/lib/types";
 
 type ProblemOption = {
@@ -126,6 +127,10 @@ function unique<T>(items: T[]) {
 
 function confidenceLabel(value: number) {
   return `${Math.round(value * 100)}%`;
+}
+
+function normalizeScore(value: number) {
+  return Math.min(10, Math.max(1, Math.round(value * 10) / 10));
 }
 
 export function StudioWorkspace({ problems }: { problems: ProblemOption[] }) {
@@ -271,7 +276,7 @@ ${splitList(state.pitfalls).length ? splitList(state.pitfalls).map((item) => `- 
 ${splitList(state.verifiableSteps).length ? splitList(state.verifiableSteps).map((item) => `- ${item}`).join("\n") : "（未填写）"}
 
 ## 五维自评
-${scoreLabels.map(([key, label]) => `- ${label}：${state.scores[key]}`).join("\n")}
+${scoreLabels.map(([key, label]) => `- ${label}：${state.scores[key].toFixed(1)}`).join("\n")}
 
 ## 评分理由
 ${state.scoringReason || "（未填写）"}
@@ -288,7 +293,23 @@ ${state.scoringReason || "（未填写）"}
   function updateScore(key: keyof StudioState["scores"], value: number) {
     setState((current) => ({
       ...current,
-      scores: { ...current.scores, [key]: value },
+      scores: { ...current.scores, [key]: normalizeScore(value) },
+    }));
+    setSubmitStatus("idle");
+  }
+
+  function convertMathFields() {
+    setState((current) => ({
+      ...current,
+      origin: convertPlainMathTextToLatex(current.origin),
+      keyTransform: convertPlainMathTextToLatex(current.keyTransform),
+      fullProcess: convertPlainMathTextToLatex(current.fullProcess),
+      inspiration: convertPlainMathTextToLatex(current.inspiration),
+      transferValue: convertPlainMathTextToLatex(current.transferValue),
+      tradeoffs: convertPlainMathTextToLatex(current.tradeoffs),
+      pitfalls: convertPlainMathTextToLatex(current.pitfalls),
+      verifiableSteps: convertPlainMathTextToLatex(current.verifiableSteps),
+      scoringReason: convertPlainMathTextToLatex(current.scoringReason),
     }));
     setSubmitStatus("idle");
   }
@@ -415,6 +436,15 @@ ${state.scoringReason || "（未填写）"}
 
             {activeStep === "process" && (
               <div className="space-y-4">
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    onClick={convertMathFields}
+                    className="inline-flex h-10 items-center rounded border border-amber-400/30 px-4 text-sm font-bold text-amber-300 transition hover:bg-amber-400/10"
+                  >
+                    自动转码公式
+                  </button>
+                </div>
                 <TextArea label="完整过程" value={state.fullProcess} onChange={(value) => updateField("fullProcess", value)} rows={12} placeholder="按步骤写出推理链，保留定义域、分类讨论、取等条件等关键位置。" />
                 <div className="grid gap-4 md:grid-cols-3">
                   <TextArea label="适用场景" value={state.suitableFor} onChange={(value) => updateField("suitableFor", value)} rows={5} />
@@ -435,12 +465,13 @@ ${state.scoringReason || "（未填写）"}
                           <p className="text-sm font-bold text-white">{label}</p>
                           <p className="mt-1 text-xs text-zinc-600">{description}</p>
                         </div>
-                        <strong className="font-display text-2xl text-cyan-300">{state.scores[key]}</strong>
+                        <strong className="font-display text-2xl text-cyan-300">{state.scores[key].toFixed(1)}</strong>
                       </div>
                       <input
                         type="range"
                         min="1"
                         max="10"
+                        step="0.1"
                         value={state.scores[key]}
                         onChange={(event) => updateScore(key, Number(event.target.value))}
                         className="mt-4 w-full accent-cyan-400"

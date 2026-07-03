@@ -13,6 +13,8 @@
 3. 粘贴到 SQL Editor 并执行
 4. 确认所有表创建成功（检查 Table Editor 中是否出现 `problems`, `solutions` 等表）
 
+如果你已经创建过旧版表，投稿时报 `Could not find the 'submission_type' column of 'submissions' in the schema cache`，不要重跑整份 `001`。直接复制并执行 `supabase/migrations/002_repair_submissions_schema.sql`，它会补齐投稿表缺失的列并刷新 PostgREST schema cache。
+
 ### 3. 配置环境变量
 
 1. 进入项目 Settings → API
