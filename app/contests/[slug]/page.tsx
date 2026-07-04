@@ -231,7 +231,9 @@ export default async function ContestDetailPage({ params }: PageProps) {
                             <span className="text-[10px] text-zinc-600">解法</span>
                           </div>
                           <div className="bg-zinc-950 p-3">
-                            <strong className="block text-lg text-amber-300">0</strong>
+                            <strong className="block text-lg text-amber-300">
+                              {contest.awards.filter((a) => a.problemId === contestProblem.problemId).length}
+                            </strong>
                             <span className="text-[10px] text-zinc-600">获奖</span>
                           </div>
                         </div>
