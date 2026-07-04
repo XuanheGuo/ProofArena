@@ -8,6 +8,7 @@ import {
   normalizeLatexShorthand,
   splitPlainMathCandidates,
   unwrapMath,
+  wrapBareLatexCommands,
 } from "@/lib/math-normalizer";
 
 interface MathBlockProps {
@@ -17,7 +18,7 @@ interface MathBlockProps {
 }
 
 function renderMixedMath(content: string) {
-  const parts = content.split(mathTokenPattern).filter((part) => part.length > 0);
+  const parts = wrapBareLatexCommands(content).split(mathTokenPattern).filter((part) => part.length > 0);
 
   return parts.map((part, index) => {
     if (exactMathTokenPattern.test(part)) {

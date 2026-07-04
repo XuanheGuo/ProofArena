@@ -1,5 +1,22 @@
-export const mathTokenPattern = /(\\\[[\s\S]+?\\\]|\\\([\s\S]+?\\\)|\$\$[\s\S]+?\$\$|\$[^$\n]+\$)/g;
-export const exactMathTokenPattern = /^(\\\[[\s\S]+?\\\]|\\\([\s\S]+?\\\)|\$\$[\s\S]+?\$\$|\$[^$\n]+\$)$/;
+export const mathTokenPattern = /(\\\[[\s\S]+?\\\]|\\\([\s\S]+?\\\)|\$\$[\s\S]+?\$\$|\$[^$]+\$)/g;
+export const exactMathTokenPattern = /^(\\\[[\s\S]+?\\\]|\\\([\s\S]+?\\\)|\$\$[\s\S]+?\$\$|\$[^$]+\$)$/;
+
+// Matches bare LaTeX command sequences not yet wrapped in math delimiters.
+// Handles one level of nested braces: \frac{a}{b}, \sqrt{n}, \sum_{i=1}^n etc.
+const latexCmdPattern = /\\[a-zA-Z]+(?:\{(?:[^{}]|\{[^{}]*\})*\}|\[[^\]]*\]|[_^](?:\{[^{}]*\}|[A-Za-z0-9]))*/g;
+
+/**
+ * Wraps bare LaTeX command sequences (those not already inside $, $$, \[, or \() in $…$.
+ * This handles user-submitted content that uses \frac, \sqrt, etc. without delimiters.
+ */
+export function wrapBareLatexCommands(text: string): string {
+  if (!/\\[a-zA-Z]/.test(text)) return text;
+  // Split on existing delimiters; only touch the plain-text segments (even indices)
+  const segments = text.split(mathTokenPattern);
+  return segments
+    .map((seg, i) => (i % 2 === 0 ? seg.replace(latexCmdPattern, (m) => `$${m}$`) : seg))
+    .join("");
+}
 
 const greekWords: Record<string, string> = {
   alpha: "\\alpha",
