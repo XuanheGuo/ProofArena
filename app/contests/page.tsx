@@ -3,7 +3,7 @@ import Link from "next/link";
 import { ArrowUpRight, CalendarDays, ClipboardList, Swords, Trophy, UsersRound } from "lucide-react";
 import { getProblems } from "@/lib/db";
 import { contestStatusMeta } from "@/lib/contest-meta";
-import { getContests } from "@/lib/contests";
+import { getContests, getContestSubmissionStats } from "@/lib/contests";
 
 export const metadata: Metadata = {
   title: "比赛活动 | ProofArena",
@@ -24,6 +24,11 @@ function formatDate(value: string) {
 export default async function ContestsPage() {
   const [problems, contests] = await Promise.all([getProblems(), getContests()]);
   const problemMap = new Map(problems.map((problem) => [problem.id, problem]));
+
+  const statsPerContest = await Promise.all(
+    contests.map((contest) => getContestSubmissionStats(contest.slug))
+  );
+  const statsMap = new Map(contests.map((contest, index) => [contest.slug, statsPerContest[index]]));
 
   return (
     <main className="grid-surface min-h-screen">
@@ -101,13 +106,23 @@ export default async function ContestsPage() {
                   </div>
                   <div className="border-r border-white/10 p-4">
                     <UsersRound className="mx-auto size-4 text-emerald-300" />
-                    <strong className="mt-2 block text-xl text-white">待统计</strong>
+                    <strong className="mt-2 block text-xl text-white">
+                      {(statsMap.get(contest.slug)?.participantCount ?? 0) > 0
+                        ? statsMap.get(contest.slug)!.participantCount
+                        : "—"}
+                    </strong>
                     <span className="text-[11px] text-zinc-600">参与者</span>
                   </div>
                   <div className="p-4">
                     <Trophy className="mx-auto size-4 text-amber-300" />
-                    <strong className="mt-2 block text-xl text-white">{solutionCount}</strong>
-                    <span className="text-[11px] text-zinc-600">可比较解法</span>
+                    <strong className="mt-2 block text-xl text-white">
+                      {(statsMap.get(contest.slug)?.submissionCount ?? 0) > 0
+                        ? statsMap.get(contest.slug)!.submissionCount
+                        : (solutionCount > 0 ? solutionCount : "—")}
+                    </strong>
+                    <span className="text-[11px] text-zinc-600">
+                      {(statsMap.get(contest.slug)?.submissionCount ?? 0) > 0 ? "参赛解法" : "可比较解法"}
+                    </span>
                   </div>
                 </div>
                 <div className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between md:p-6">

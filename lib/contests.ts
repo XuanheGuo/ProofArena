@@ -140,6 +140,66 @@ export async function getFeaturedContest() {
   return contests[0];
 }
 
+export type ContestStats = {
+  contestId: string;
+  submissionCount: number;
+  participantCount: number;
+};
+
+export async function getContestStats(contestIds: string[]): Promise<ContestStats[]> {
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || contestIds.length === 0) {
+    return contestIds.map((id) => ({ contestId: id, submissionCount: 0, participantCount: 0 }));
+  }
+
+  const supabase = await createClient();
+
+  const { data } = await supabase
+    .from("submissions")
+    .select("contest_slug, user_id")
+    .in("contest_slug", contestIds.map(() => "").filter(Boolean));
+
+  if (!data) return contestIds.map((id) => ({ contestId: id, submissionCount: 0, participantCount: 0 }));
+
+  const byContest = new Map<string, { users: Set<string>; count: number }>();
+  for (const row of data) {
+    const slug = row.contest_slug as string;
+    if (!slug) continue;
+    if (!byContest.has(slug)) byContest.set(slug, { users: new Set(), count: 0 });
+    const entry = byContest.get(slug)!;
+    entry.count++;
+    if (row.user_id) entry.users.add(row.user_id as string);
+  }
+
+  return contestIds.map((id) => {
+    const entry = byContest.get(id);
+    return {
+      contestId: id,
+      submissionCount: entry?.count ?? 0,
+      participantCount: entry?.users.size ?? 0,
+    };
+  });
+}
+
+export async function getContestSubmissionStats(contestSlug: string) {
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    return { submissionCount: 0, participantCount: 0 };
+  }
+
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("submissions")
+    .select("user_id")
+    .eq("contest_slug", contestSlug);
+
+  if (!data) return { submissionCount: 0, participantCount: 0 };
+
+  const participants = new Set(data.map((r) => r.user_id).filter(Boolean));
+  return {
+    submissionCount: data.length,
+    participantCount: participants.size,
+  };
+}
+
 export type ContestSolutionEntry = {
   solutionId: string;
   problemId: string | null;
