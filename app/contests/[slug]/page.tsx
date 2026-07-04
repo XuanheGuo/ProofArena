@@ -47,7 +47,15 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   };
 }
 
-export const dynamic = "force-dynamic";
+function getProblemStatusLabel(effectiveStatus: string, contest: { status: string }) {
+  if (effectiveStatus === "locked") return null;
+  if (effectiveStatus === "closed" || contest.status === "finished") return { label: "已结束", className: "border-zinc-600 text-zinc-500" };
+  if (effectiveStatus === "reviewing" || contest.status === "judging") return { label: "互评中", className: "border-cyan-400/30 text-cyan-300" };
+  if (effectiveStatus === "open" && contest.status === "active") return { label: "提交中", className: "border-emerald-400/30 text-emerald-300" };
+  return null;
+}
+
+
 
 export default async function ContestDetailPage({ params }: PageProps) {
   const { slug } = await params;
@@ -215,6 +223,12 @@ export default async function ContestDetailPage({ params }: PageProps) {
                           <span className="bg-cyan-400 px-2 py-1 font-bold text-zinc-950">Day {contestProblem.dayIndex}</span>
                           <span className="border border-white/10 px-2 py-1 text-zinc-500">{contestProblem.title}</span>
                           {problem && !isLocked && <span className={`border px-2 py-1 ${difficultyBadgeClass[problem.difficulty]}`}>{problem.difficulty}</span>}
+                          {(() => {
+                            const statusLabel = getProblemStatusLabel(effectiveStatus, contest);
+                            return statusLabel ? (
+                              <span className={`border px-2 py-1 font-bold ${statusLabel.className}`}>{statusLabel.label}</span>
+                            ) : null;
+                          })()}
                           {isLocked && (
                             <span className="inline-flex items-center gap-1 border border-white/10 px-2 py-1 text-zinc-600">
                               <Lock className="size-3" />
