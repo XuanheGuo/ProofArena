@@ -115,6 +115,7 @@ flowchart LR
 ## 主要文档
 
 - [架构说明](./docs/ARCHITECTURE.md)
+- [Proof Graph 超级改造纲领](./docs/PROOF_GRAPH_TRANSFORMATION.md)
 - [Supabase 设置](./docs/SUPABASE_SETUP.md)
 - [比赛模块](./docs/CONTESTS.md)
 - [第一场比赛启动方案](./docs/FIRST_CONTEST_PLAN.md)

@@ -286,8 +286,79 @@ export interface Problem extends PedagogicalAnnotations {
   answerPdf?: string;
   learningGuide: LearningGuide;
   solutionTree?: SolutionTree;
+  proofGraph?: ProofGraphV1;
   solutions: Solution[];
 }
+
+// ─── Proof Graph v1 ──────────────────────────────────────────────────────────
+
+export interface ProofObservation {
+  id: string;
+  title: string;
+  signal: string;
+  whyItMatters: string;
+  relatedSolutionIds: string[];
+}
+
+export interface ProofStrategyBranch {
+  id: string;
+  observationId: string;
+  title: string;
+  promise: string;
+  risk: string;
+  methodBoundaryIds?: string[];
+  solutionIds: string[];
+}
+
+export interface ProofTransformation {
+  id: string;
+  solutionId: string;
+  title: string;
+  from: string;
+  to: string;
+  justification: string;
+  complexityReduction: string;
+}
+
+export interface ProofVerificationStep {
+  id: string;
+  solutionId: string;
+  type: "substitution" | "boundary" | "equality" | "numeric" | "cas" | "manual";
+  statement: string;
+  status: VerificationStatus;
+  note: string;
+}
+
+export interface ProofMethodBoundary {
+  id: string;
+  methodName: string;
+  whyTempting: string;
+  whyNotPriority: string;
+  whereItBreaks: string;
+  whenItWorks: string;
+  relatedConcepts: string[];
+}
+
+export interface ProofChallengeEdge {
+  id: string;
+  challengerSolutionId: string;
+  targetSolutionId: string;
+  claim: string;
+  advantages: string[];
+  risk: string;
+  reviewerNote?: string;
+}
+
+export interface ProofGraphV1 {
+  observations: ProofObservation[];
+  branches: ProofStrategyBranch[];
+  transformations: ProofTransformation[];
+  verificationSteps: ProofVerificationStep[];
+  methodBoundaries: ProofMethodBoundary[];
+  challengeEdges: ProofChallengeEdge[];
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 export type GraphColor = "cyan" | "amber" | "red" | "green" | "violet" | "zinc";
 

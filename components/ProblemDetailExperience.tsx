@@ -22,6 +22,9 @@ import { FunctionGraphPanel } from "@/components/FunctionGraphPanel";
 import { SolutionTreePanel } from "@/components/SolutionTreePanel";
 import { MathVisualization, mathVizProblemIds } from "@/components/MathVisualization";
 import { SolutionRatingPanel } from "@/components/SolutionRatingPanel";
+import { ProofGraphMatrix } from "@/components/ProofGraphMatrix";
+import { ReasoningReplayPanel } from "@/components/ReasoningReplayPanel";
+import { ProofChallengeEdges } from "@/components/ProofChallengeEdges";
 import { graphSpecRegistry } from "@/data/graph-specs";
 import { difficultyBadgeClass } from "@/lib/problem-presentation";
 import { getSolutionKindMeta } from "@/lib/solution-kinds";
@@ -191,6 +194,42 @@ function SolutionCompareCard({ solution, rank }: { solution: Solution; rank: num
   );
 }
 
+function ProofGraphSummaryStrip({
+  problem,
+  submitHref,
+}: {
+  problem: Problem;
+  submitHref: string;
+}) {
+  const pg = problem.proofGraph!;
+  const items = [
+    { count: pg.observations.length, label: "思路入口", color: "text-cyan-300" },
+    { count: pg.branches.length, label: "路线分支", color: "text-violet-300" },
+    { count: pg.transformations.length, label: "关键转化", color: "text-emerald-300" },
+    { count: pg.methodBoundaries.length, label: "方法边界", color: "text-amber-300" },
+    { count: pg.challengeEdges.length, label: "挑战关系", color: "text-red-300" },
+  ].filter((i) => i.count > 0);
+
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3 border border-white/10 bg-black/20 px-4 py-2.5">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+        {items.map((item) => (
+          <span key={item.label} className="flex items-baseline gap-1 text-xs">
+            <strong className={`font-display text-base ${item.color}`}>{item.count}</strong>
+            <span className="text-zinc-600">{item.label}</span>
+          </span>
+        ))}
+      </div>
+      <a
+        href={submitHref}
+        className="inline-flex h-8 items-center gap-1.5 border border-cyan-400/30 px-3 text-xs font-bold text-cyan-300 transition hover:bg-cyan-400/10"
+      >
+        提交 / 挑战解法
+      </a>
+    </div>
+  );
+}
+
 function EmptyState({ title, description, action }: { title: string; description: string; action?: React.ReactNode }) {
   return (
     <div className="border border-white/10 bg-zinc-950 px-6 py-12 text-center">
@@ -336,6 +375,9 @@ export function ProblemDetailExperience({
                 <span className="text-[11px] text-zinc-600">知识点</span>
               </div>
             </div>
+            {problem.proofGraph && (
+              <ProofGraphSummaryStrip problem={problem} submitHref={submitHref} />
+            )}
           </div>
           <div className="mt-4 grid gap-2 sm:hidden">
             <button
@@ -495,6 +537,11 @@ export function ProblemDetailExperience({
                 </div>
               ) : (
                 <>
+              {problem.proofGraph && (
+                <div className="mb-4">
+                  <ProofGraphMatrix problem={problem} />
+                </div>
+              )}
               <SolutionTreePanel problem={problem} />
               {problem.solutions.length ? (
                 <div className="space-y-4">
@@ -508,6 +555,12 @@ export function ProblemDetailExperience({
                   description="你可以提交第一个思路，让这道题真正进入擂台。"
                   action={<Link href={submitHref} className="text-sm font-bold text-cyan-300">提交第一个解法</Link>}
                 />
+              )}
+              {problem.proofGraph && (
+                <div className="mt-4 space-y-4">
+                  <ReasoningReplayPanel problem={problem} />
+                  <ProofChallengeEdges problem={problem} />
+                </div>
               )}
                 </>
               )}
