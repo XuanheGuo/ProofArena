@@ -76,6 +76,15 @@ export default async function ContestsPage() {
       </section>
 
       <section className="mx-auto max-w-7xl px-4 py-8 md:px-6 md:py-10">
+        {contests.length === 0 ? (
+          <div className="border border-white/10 bg-zinc-950 px-6 py-16 text-center">
+            <Swords className="mx-auto size-8 text-zinc-600" />
+            <h2 className="mt-4 text-lg font-bold text-white">暂时还没有比赛</h2>
+            <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-zinc-500">
+              第一届思路擂台即将开始。届时可以从这里进入比赛，围绕同一道题提交和评比解法。
+            </p>
+          </div>
+        ) : (
         <div className="grid gap-4 lg:grid-cols-2">
           {contests.map((contest) => {
             const status = contestStatusMeta[contest.status];
@@ -142,6 +151,7 @@ export default async function ContestsPage() {
             );
           })}
         </div>
+        )}
       </section>
     </main>
   );
