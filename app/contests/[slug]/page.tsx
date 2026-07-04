@@ -251,13 +251,23 @@ export default async function ContestDetailPage({ params }: PageProps) {
                           {contestProblem.unlockMode === "auto_time" ? `将于 ${formatDateTime(contestProblem.openAt)} 自动解锁` : "等待管理员解锁"}
                         </span>
                       ) : problem ? (
-                        <Link
-                          href={`/problems/${problem.id}?contest=${contest.slug}`}
-                          className="inline-flex h-9 items-center justify-center gap-2 border border-cyan-400/30 px-3 text-xs font-bold text-cyan-300 transition hover:bg-cyan-400/10"
-                        >
-                          进入题目
-                          <ArrowUpRight className="size-3.5" />
-                        </Link>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Link
+                            href={`/problems/${problem.id}?contest=${contest.slug}`}
+                            className="inline-flex h-9 items-center justify-center gap-2 border border-cyan-400/30 px-3 text-xs font-bold text-cyan-300 transition hover:bg-cyan-400/10"
+                          >
+                            进入题目
+                            <ArrowUpRight className="size-3.5" />
+                          </Link>
+                          {(contest.status === "active" || contest.status === "judging") && (
+                            <Link
+                              href={`/submit?contest=${contest.slug}&problem=${problem.id}`}
+                              className="inline-flex h-9 items-center justify-center gap-2 border border-amber-400/25 bg-amber-400/[0.06] px-3 text-xs font-bold text-amber-200 transition hover:bg-amber-400/10"
+                            >
+                              提交解法
+                            </Link>
+                          )}
+                        </div>
                       ) : (
                         <span className="text-zinc-600">等待管理员关联题目</span>
                       )}
