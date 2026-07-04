@@ -95,55 +95,51 @@ export default async function ContestsPage() {
             }, 0);
 
             return (
-              <article key={contest.id} className="border border-white/10 bg-zinc-950">
-                <div className="border-b border-white/10 p-5 md:p-6">
-                  <div className="flex flex-wrap items-center gap-2 text-xs">
-                    <span className={`border px-2.5 py-1 font-bold ${status.className}`}>{status.label}</span>
-                    <span className="border border-white/10 px-2.5 py-1 text-zinc-500">
-                      {formatDate(contest.startAt)} - {formatDate(contest.endAt)}
+              <article key={contest.id} className="flex flex-col border border-white/10 bg-zinc-950 transition hover:border-white/20">
+                <div className="flex-1 p-5 md:p-6">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className={`border px-2 py-0.5 text-[11px] font-bold ${status.className}`}>{status.label}</span>
+                    <span className="text-[11px] text-zinc-500">
+                      {formatDate(contest.startAt)} – {formatDate(contest.endAt)}
                     </span>
                   </div>
-                  <h2 className="mt-4 text-2xl font-black text-white">{contest.title}</h2>
-                  <p className="mt-3 text-sm leading-7 text-zinc-400">{contest.description}</p>
-                  <p className="mt-3 text-sm leading-7 text-zinc-300">{contest.tagline}</p>
+                  <h2 className="mt-4 text-xl font-black leading-snug text-white sm:text-2xl">{contest.title}</h2>
+                  <p className="mt-2 text-sm leading-6 text-zinc-400">{contest.tagline}</p>
                 </div>
-                <div className="grid grid-cols-3 border-b border-white/10 text-center">
-                  <div className="border-r border-white/10 p-4">
-                    <ClipboardList className="mx-auto size-4 text-cyan-300" />
-                    <strong className="mt-2 block text-xl text-white">{linkedProblems.length}</strong>
-                    <span className="text-[11px] text-zinc-600">题目</span>
+                <div className="grid grid-cols-3 divide-x divide-white/[0.07] border-y border-white/[0.07]">
+                  <div className="p-3 text-center">
+                    <ClipboardList className="mx-auto size-4 text-cyan-400" />
+                    <strong className="mt-1.5 block text-lg font-bold text-white">{linkedProblems.length}</strong>
+                    <span className="text-[10px] text-zinc-500">题目</span>
                   </div>
-                  <div className="border-r border-white/10 p-4">
-                    <UsersRound className="mx-auto size-4 text-emerald-300" />
-                    <strong className="mt-2 block text-xl text-white">
+                  <div className="p-3 text-center">
+                    <UsersRound className="mx-auto size-4 text-emerald-400" />
+                    <strong className="mt-1.5 block text-lg font-bold text-white">
                       {(statsMap.get(contest.slug)?.participantCount ?? 0) > 0
                         ? statsMap.get(contest.slug)!.participantCount
                         : "—"}
                     </strong>
-                    <span className="text-[11px] text-zinc-600">参与者</span>
+                    <span className="text-[10px] text-zinc-500">参与者</span>
                   </div>
-                  <div className="p-4">
-                    <Trophy className="mx-auto size-4 text-amber-300" />
-                    <strong className="mt-2 block text-xl text-white">
+                  <div className="p-3 text-center">
+                    <Trophy className="mx-auto size-4 text-amber-400" />
+                    <strong className="mt-1.5 block text-lg font-bold text-white">
                       {(statsMap.get(contest.slug)?.submissionCount ?? 0) > 0
                         ? statsMap.get(contest.slug)!.submissionCount
                         : (solutionCount > 0 ? solutionCount : "—")}
                     </strong>
-                    <span className="text-[11px] text-zinc-600">
-                      {(statsMap.get(contest.slug)?.submissionCount ?? 0) > 0 ? "参赛解法" : "可比较解法"}
+                    <span className="text-[10px] text-zinc-500">
+                      {(statsMap.get(contest.slug)?.submissionCount ?? 0) > 0 ? "投稿" : "解法"}
                     </span>
                   </div>
                 </div>
-                <div className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between md:p-6">
-                  <div className="flex items-center gap-2 text-xs text-zinc-500">
-                    <CalendarDays className="size-4" />
-                    7 天 / 6 道题 / 1 天评审总结
-                  </div>
+                <div className="flex items-center justify-between gap-3 p-4 md:px-5">
+                  <span className="text-xs text-zinc-500">{contest.description}</span>
                   <Link
                     href={`/contests/${contest.slug}`}
-                    className="inline-flex h-10 items-center justify-center gap-2 bg-cyan-400 px-4 text-sm font-bold text-zinc-950 transition hover:bg-cyan-300"
+                    className="inline-flex shrink-0 items-center gap-1.5 bg-cyan-400 px-4 py-2 text-sm font-bold text-zinc-950 transition hover:bg-cyan-300"
                   >
-                    进入比赛
+                    进入
                     <ArrowUpRight className="size-4" />
                   </Link>
                 </div>
