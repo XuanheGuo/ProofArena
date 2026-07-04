@@ -46,7 +46,7 @@ function KeyTransformCell({ solution, problem }: { solution: Solution; problem: 
   );
   const text = proofTransform ? proofTransform.title : solution.keyTransform;
   return (
-    <p className="line-clamp-3 text-xs leading-5 text-zinc-400">
+    <p className="line-clamp-2 text-xs leading-5 text-zinc-400 [word-break:keep-all]">
       <MathBlock>{text}</MathBlock>
     </p>
   );
@@ -58,7 +58,7 @@ function RiskCell({ solution }: { solution: Solution }) {
   return (
     <ul className="space-y-1">
       {items.map((item) => (
-        <li key={item} className="border-l border-red-400/30 pl-2 text-xs leading-5 text-zinc-400">
+        <li key={item} className="line-clamp-2 border-l border-red-400/30 pl-2 text-xs leading-5 text-zinc-400 [word-break:keep-all]">
           <MathBlock>{item}</MathBlock>
         </li>
       ))}
@@ -72,7 +72,7 @@ function SuitableForCell({ solution }: { solution: Solution }) {
       {solution.suitableFor.slice(0, 3).map((item) => (
         <span
           key={item}
-          className="border border-emerald-400/20 bg-emerald-400/5 px-1.5 py-0.5 text-[10px] text-zinc-300"
+          className="whitespace-nowrap border border-emerald-400/20 bg-emerald-400/5 px-1.5 py-0.5 text-[10px] text-zinc-300"
         >
           {item}
         </span>
@@ -87,25 +87,34 @@ function DesktopMatrix({ problem }: { problem: Problem }) {
   const { solutions } = problem;
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full border-collapse text-left" style={{ minWidth: "900px" }}>
+    <div className="overflow-x-auto overscroll-x-contain pb-1">
+      <table className="min-w-[1120px] table-fixed border-collapse text-left">
+        <colgroup>
+          <col className="w-48" />
+          {SCORE_COLS.map((col) => (
+            <col key={col.key} className="w-[4.5rem]" />
+          ))}
+          <col className="w-60" />
+          <col className="w-52" />
+          <col className="w-44" />
+        </colgroup>
         <thead>
           <tr className="border-b border-white/10">
-            <th className="w-44 shrink-0 py-2 pr-4 text-xs font-bold text-zinc-500">解法</th>
+            <th className="whitespace-nowrap px-3 py-2 text-xs font-bold text-zinc-500">解法</th>
             {SCORE_COLS.map((col) => (
-              <th key={col.key} className="w-20 py-2 pr-3 text-xs font-bold text-zinc-500">
+              <th key={col.key} className="whitespace-nowrap px-2 py-2 text-center text-xs font-bold text-zinc-500">
                 {col.label}
               </th>
             ))}
-            <th className="w-52 py-2 pr-3 text-xs font-bold text-zinc-500">关键转化</th>
-            <th className="w-44 py-2 pr-3 text-xs font-bold text-zinc-500">代价 / 风险</th>
-            <th className="py-2 text-xs font-bold text-zinc-500">最适合</th>
+            <th className="whitespace-nowrap px-3 py-2 text-xs font-bold text-zinc-500">关键转化</th>
+            <th className="whitespace-nowrap px-3 py-2 text-xs font-bold text-zinc-500">代价 / 风险</th>
+            <th className="whitespace-nowrap px-3 py-2 text-xs font-bold text-zinc-500">最适合</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-white/5">
           {solutions.map((sol) => (
             <tr key={sol.id} className="group hover:bg-white/[0.02]">
-              <td className="py-3 pr-4 align-top">
+              <td className="px-3 py-3 align-top">
                 <span
                   className={`inline-block border px-1.5 py-0.5 text-[10px] font-bold ${kindBadgeClass(sol.kind)}`}
                 >
@@ -113,25 +122,25 @@ function DesktopMatrix({ problem }: { problem: Problem }) {
                 </span>
                 <a
                   href={`#${sol.id}`}
-                  className="mt-1 block text-xs font-bold leading-snug text-zinc-200 hover:text-cyan-300"
+                  className="mt-1 line-clamp-2 text-xs font-bold leading-snug text-zinc-200 hover:text-cyan-300 [word-break:keep-all]"
                 >
                   {sol.title}
                 </a>
               </td>
               {SCORE_COLS.map((col) => (
-                <td key={col.key} className="py-3 pr-3 align-top">
+                <td key={col.key} className="px-2 py-3 text-center align-top">
                   <span className={`text-sm font-bold tabular-nums ${scoreColor(sol.scores[col.key])}`}>
                     {sol.scores[col.key].toFixed(1)}
                   </span>
                 </td>
               ))}
-              <td className="py-3 pr-3 align-top">
+              <td className="px-3 py-3 align-top">
                 <KeyTransformCell solution={sol} problem={problem} />
               </td>
-              <td className="py-3 pr-3 align-top">
+              <td className="px-3 py-3 align-top">
                 <RiskCell solution={sol} />
               </td>
-              <td className="py-3 align-top">
+              <td className="px-3 py-3 align-top">
                 <SuitableForCell solution={sol} />
               </td>
             </tr>

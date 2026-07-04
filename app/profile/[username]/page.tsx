@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase-client';
+import { hasSupabasePublicEnv } from '@/lib/supabase-env';
 import {
   Award,
   Calendar,
@@ -49,12 +50,17 @@ function avgScore(scores?: Record<string, number>): number {
 
 export default function PublicProfilePage() {
   const { username } = useParams<{ username: string }>();
+  const communityEnabled = hasSupabasePublicEnv();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [solutions, setSolutions] = useState<PublishedSolution[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(communityEnabled);
   const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
+    if (!communityEnabled) {
+      setLoading(false);
+      return;
+    }
     if (!username) return;
     const supabase = createClient();
 
@@ -82,7 +88,23 @@ export default function PublicProfilePage() {
       setSolutions((solutionData as PublishedSolution[]) ?? []);
       setLoading(false);
     })();
-  }, [username]);
+  }, [communityEnabled, username]);
+
+  if (!communityEnabled) {
+    return (
+      <div className="min-h-screen bg-zinc-950 px-4 py-16 text-center">
+        <div className="mx-auto max-w-2xl border border-amber-400/25 bg-amber-400/[0.06] p-6">
+          <h1 className="text-xl font-black text-white">社区数据库暂不可用</h1>
+          <p className="mt-3 text-sm leading-6 text-amber-100">
+            公开个人主页需要 Supabase。当前仍可浏览静态题库和解法。
+          </p>
+          <a href="/problems" className="mt-5 inline-block text-sm font-bold text-cyan-300 hover:text-cyan-200">
+            返回题库
+          </a>
+        </div>
+      </div>
+    );
+  }
 
   if (loading) {
     return (

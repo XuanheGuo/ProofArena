@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import {
+  AlertTriangle,
   ArrowUpRight,
   BookOpen,
   ChevronDown,
@@ -297,6 +298,13 @@ export function ProblemDetailExperience({
     <main className="grid-surface min-h-screen">
       <section className="border-b border-white/10 bg-zinc-950/90">
         <div className="mx-auto max-w-7xl px-4 py-6 md:px-6 md:py-10">
+          {problem.dataNotice && (
+            <div className="mb-5 flex gap-3 border border-amber-400/25 bg-amber-400/[0.06] px-4 py-3 text-sm leading-6 text-amber-100">
+              <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-300" />
+              <span>{problem.dataNotice}</span>
+            </div>
+          )}
+
           {showGuide && (
             <div className="mb-5 flex flex-col gap-3 border border-cyan-400/25 bg-cyan-400/[0.06] p-4 text-sm leading-6 text-zinc-200 sm:flex-row sm:items-center sm:justify-between">
               <span>新手可以按这个顺序看：先读题，再比较不同解法，最后把自己的思路整理成可复核的投稿。</span>

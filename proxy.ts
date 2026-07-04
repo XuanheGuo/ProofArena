@@ -1,5 +1,6 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
+import { hasSupabasePublicEnv } from '@/lib/supabase-env';
 
 type CookieToSet = {
   name: string;
@@ -9,6 +10,10 @@ type CookieToSet = {
 
 export async function proxy(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
+
+  if (!hasSupabasePublicEnv()) {
+    return supabaseResponse;
+  }
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

@@ -287,6 +287,8 @@ export interface Problem extends PedagogicalAnnotations {
   learningGuide: LearningGuide;
   solutionTree?: SolutionTree;
   proofGraph?: ProofGraphV1;
+  dataSource?: "supabase" | "static-fallback";
+  dataNotice?: string;
   solutions: Solution[];
 }
 
