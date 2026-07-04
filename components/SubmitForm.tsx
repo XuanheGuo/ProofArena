@@ -396,16 +396,24 @@ export function SubmitForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <div className={`border p-4 ${isContestMode ? 'border-amber-400/25 bg-amber-400/[0.06]' : 'border-white/10 bg-black/20'}`}>
-        <p className={`text-sm font-bold ${isContestMode ? 'text-amber-100' : 'text-white'}`}>
-          {isContestMode ? '比赛投稿模式' : '普通投稿模式'}
-        </p>
-        <p className="mt-1 text-xs leading-5 text-zinc-500">
-          {isContestMode
-            ? '这里收集参赛思路，不要求写成完整标准答案。一个入口、一个观察、一个模糊但有价值的感觉，都可以先投进来。'
-            : '普通投稿会进入题库审核，更适合提交完整题目或相对成型的解法。'}
-        </p>
+    <form onSubmit={handleSubmit} className="space-y-5">
+      {/* Mode indicator */}
+      <div className={`flex items-center gap-3 border px-4 py-3 ${
+        isContestMode
+          ? 'border-amber-400/40 bg-amber-400/[0.08]'
+          : 'border-white/10 bg-black/20'
+      }`}>
+        <div className={`size-2 rounded-full shrink-0 ${isContestMode ? 'bg-amber-400' : 'bg-zinc-600'}`} />
+        <div className="min-w-0 flex-1">
+          <p className={`text-sm font-bold ${isContestMode ? 'text-amber-200' : 'text-white'}`}>
+            {isContestMode ? '比赛投稿模式' : '普通投稿模式'}
+          </p>
+          <p className="mt-0.5 text-xs leading-5 text-zinc-500">
+            {isContestMode
+              ? '不要求完整答案——一个入口、一个观察、一个有价值的感觉都可以投。'
+              : '普通投稿会进入题库审核，适合提交完整题目或成型解法。'}
+          </p>
+        </div>
       </div>
 
       {!isContestMode && (
@@ -438,31 +446,31 @@ export function SubmitForm({
       )}
 
       {done && (
-        <div className="rounded border border-emerald-400/30 bg-emerald-400/[0.06] p-4">
-          <div className="flex items-start gap-3">
-            <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-emerald-400" />
-            <p className="text-sm leading-6 text-zinc-300">
-              已提交{done === 'problem' ? '题目' : '解法'}，感谢你的贡献。管理员审核后会整理到正式题库。
-            </p>
-          </div>
+        <div className="flex items-start gap-3 border border-emerald-500/40 bg-emerald-500/[0.08] px-4 py-3">
+          <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-400" />
+          <p className="text-sm leading-6 text-zinc-300">
+            已提交{done === 'problem' ? '题目' : '解法'}，感谢贡献。管理员审核后会进入正式题库。
+          </p>
         </div>
       )}
 
       {activeContestContext && mode === 'solution' && (
-        <div className="border border-amber-400/25 bg-amber-400/[0.06] p-4">
-          <p className="text-sm font-bold text-amber-100">{activeContestContext.contest.title}</p>
-          <p className="mt-1 text-xs leading-5 text-zinc-500">
-            {activeContestContext.contestProblem
+        <div className="border border-amber-400/35 bg-amber-400/[0.07]">
+          <div className="px-4 py-3">
+            <p className="text-sm font-bold text-amber-200">{activeContestContext.contest.title}</p>
+            <p className="mt-0.5 text-xs leading-5 text-zinc-400">
+              {activeContestContext.contestProblem
               ? `当前投稿会作为 Day ${activeContestContext.contestProblem.dayIndex}「${activeContestContext.contestProblem.title}」的参赛解法进入审核。`
               : '当前投稿会带上比赛上下文，管理员审核后可归入本届思路擂台。'}
           </p>
-          <p className={`mt-3 border px-3 py-2 text-xs leading-5 ${
+          <p className={`mt-2 border px-3 py-1.5 text-xs leading-5 ${
             contestSubmissionState.canSubmit
-              ? 'border-emerald-400/25 bg-emerald-400/[0.06] text-emerald-200'
-              : 'border-red-400/25 bg-red-400/[0.06] text-red-200'
+              ? 'border-emerald-500/40 bg-emerald-500/[0.08] text-emerald-300'
+              : 'border-red-500/40 bg-red-500/[0.08] text-red-300'
           }`}>
             <strong>{contestSubmissionState.label}</strong>：{contestSubmissionState.description}
           </p>
+          </div>
         </div>
       )}
 
