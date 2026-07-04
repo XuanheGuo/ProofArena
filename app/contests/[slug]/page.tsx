@@ -18,7 +18,7 @@ import {
   Trophy,
 } from "lucide-react";
 import { contestStatusMeta, contestSolutionTypeMeta } from "@/lib/contest-meta";
-import { getContest, getContestLeaderboard } from "@/lib/contests";
+import { getContest, getContestLeaderboard, getContestSubmissionStats } from "@/lib/contests";
 import { getProblems, getSolutionAverage } from "@/lib/db";
 import { difficultyBadgeClass } from "@/lib/problem-presentation";
 import { getEffectiveProblemStatus } from "@/lib/types";
@@ -54,9 +54,10 @@ export default async function ContestDetailPage({ params }: PageProps) {
   const contest = await getContest(slug);
   if (!contest) notFound();
 
-  const [problems, leaderboard] = await Promise.all([
+  const [problems, leaderboard, contestStats] = await Promise.all([
     getProblems(),
     getContestLeaderboard(slug),
+    getContestSubmissionStats(slug),
   ]);
   const problemMap = new Map(problems.map((problem) => [problem.id, problem]));
   const linkedContestProblems = contest.problems.map((contestProblem) => ({
@@ -137,12 +138,20 @@ export default async function ContestDetailPage({ params }: PageProps) {
                 <span className="text-[11px] text-zinc-600">赛题</span>
               </div>
               <div className="border-r border-white/10 p-4">
-                <strong className="font-display block text-2xl text-white">{solutionCount}</strong>
-                <span className="text-[11px] text-zinc-600">现有解法</span>
+                <strong className="font-display block text-2xl text-emerald-300">
+                  {contestStats.participantCount > 0 ? contestStats.participantCount : (solutionCount > 0 ? solutionCount : "—")}
+                </strong>
+                <span className="text-[11px] text-zinc-600">
+                  {contestStats.participantCount > 0 ? "参与者" : "现有解法"}
+                </span>
               </div>
               <div className="p-4">
-                <strong className="font-display block text-2xl text-amber-300">{contest.awards.length}</strong>
-                <span className="text-[11px] text-zinc-600">奖项</span>
+                <strong className="font-display block text-2xl text-amber-300">
+                  {contestStats.submissionCount > 0 ? contestStats.submissionCount : contest.awards.length}
+                </strong>
+                <span className="text-[11px] text-zinc-600">
+                  {contestStats.submissionCount > 0 ? "参赛投稿" : "奖项"}
+                </span>
               </div>
             </div>
           </div>
