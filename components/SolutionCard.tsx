@@ -55,7 +55,7 @@ function ThinkingCuesPanel({ solution }: { solution: Solution }) {
           <div className="mt-3 flex flex-wrap gap-2">
             {thinkingCues.observations.map((item) => (
               <span key={item} className="border border-white/10 bg-black/20 px-2.5 py-1 text-xs text-zinc-300">
-                {item}
+                <MathBlock>{item}</MathBlock>
               </span>
             ))}
           </div>
@@ -66,7 +66,7 @@ function ThinkingCuesPanel({ solution }: { solution: Solution }) {
           <div className="mt-3 flex flex-wrap gap-2">
             {thinkingCues.keySignals.map((item) => (
               <span key={item} className="border border-amber-300/30 bg-amber-300/10 px-2.5 py-1 text-xs font-bold text-amber-100">
-                {item}
+                <MathBlock>{item}</MathBlock>
               </span>
             ))}
           </div>
@@ -85,7 +85,7 @@ function ThinkingCuesPanel({ solution }: { solution: Solution }) {
               <div className="mt-2 flex flex-wrap gap-2">
                 {thinkingCues.suggestedMethods.map((method) => (
                   <span key={method} className="border border-cyan-400/20 bg-cyan-400/5 px-2.5 py-1 text-xs text-cyan-100">
-                    {method}
+                    <MathBlock>{method}</MathBlock>
                   </span>
                 ))}
               </div>
