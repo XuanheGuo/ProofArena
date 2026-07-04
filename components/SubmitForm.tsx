@@ -8,15 +8,23 @@ import { createClient } from '@/lib/supabase-client';
 import { contestSolutionTypeMeta } from '@/lib/contest-meta';
 import { ALLOWED_IMAGE_TYPES, MAX_CONTEST_THOUGHT_CHARS, MAX_GENERAL_TEXT_CHARS, MAX_IMAGE_BYTES, MAX_IMAGE_COUNT, MAX_TITLE_CHARS, clampText, extensionForImageType, isAllowedImage } from '@/lib/security';
 import { getEffectiveProblemStatus, type Contest, type ContestProblem, type ContestSolutionType } from '@/lib/types';
+import { CASVerifier } from '@/components/CASVerifier';
+
+type SubmitMode = 'problem' | 'solution';
+type SolutionKind = 'standard' | 'insight' | 'robust' | 'teaching';
 
 type ProblemOption = {
   id: string;
   title: string;
   source: string;
+  solutions?: Array<{
+    id: string;
+    title: string;
+    author: string;
+    kind: SolutionKind;
+    scores?: Record<string, number>;
+  }>;
 };
-
-type SubmitMode = 'problem' | 'solution';
-type SolutionKind = 'standard' | 'insight' | 'robust' | 'teaching';
 
 const KINDS: Array<{ value: SolutionKind; label: string }> = [
   { value: 'standard', label: '标准解' },
@@ -44,6 +52,10 @@ const initialSolutionForm = {
   steps: '',
   insight: '',
   verification: '',
+  challengeTargetSolutionId: '',
+  challengeClaim: '',
+  challengeAdvantages: '',
+  challengeRisk: '',
 };
 
 function getContestSubmissionState(contest?: Contest, contestProblem?: ContestProblem, now = Date.now()) {
@@ -191,6 +203,19 @@ ${problem ? `${problem.source} · ${problem.title}` : form.problemId}
 ## 类型
 ${KINDS.find((kind) => kind.value === form.kind)?.label ?? form.kind}
 
+${form.challengeTargetSolutionId ? `## 挑战对象
+${problem?.solutions?.find((solution) => solution.id === form.challengeTargetSolutionId)?.title ?? form.challengeTargetSolutionId}
+
+## 我比它强在哪里
+${clampText(form.challengeClaim, MAX_GENERAL_TEXT_CHARS) || '（未填写）'}
+
+## 优势标签
+${toLines(form.challengeAdvantages).map((item) => `- ${item}`).join('\n') || '（未填写）'}
+
+## 风险自评
+${clampText(form.challengeRisk, MAX_GENERAL_TEXT_CHARS) || '（未填写）'}
+
+` : ''}
 ## 思路来源
 ${clampText(form.approach, MAX_GENERAL_TEXT_CHARS)}
 
@@ -255,6 +280,10 @@ export function SubmitForm({
     () => availableProblems.find((problem) => problem.id === solutionForm.problemId),
     [availableProblems, solutionForm.problemId]
   );
+  const selectedChallengeSolution = useMemo(
+    () => selectedProblem?.solutions?.find((solution) => solution.id === solutionForm.challengeTargetSolutionId),
+    [selectedProblem, solutionForm.challengeTargetSolutionId],
+  );
   const selectedContestProblem = useMemo(
     () => contestContext?.contest.problems.find((problem) => problem.problemId === solutionForm.problemId) ?? contestContext?.contestProblem,
     [contestContext, solutionForm.problemId]
@@ -286,6 +315,20 @@ export function SubmitForm({
       setSolutionForm((current) => ({ ...current, problemId: availableProblems[0].id }));
     }
   }, [availableProblems, solutionForm.problemId]);
+
+  useEffect(() => {
+    if (!solutionForm.challengeTargetSolutionId) return;
+    const stillExists = selectedProblem?.solutions?.some((solution) => solution.id === solutionForm.challengeTargetSolutionId);
+    if (!stillExists) {
+      setSolutionForm((current) => ({
+        ...current,
+        challengeTargetSolutionId: '',
+        challengeClaim: '',
+        challengeAdvantages: '',
+        challengeRisk: '',
+      }));
+    }
+  }, [selectedProblem, solutionForm.challengeTargetSolutionId]);
 
   function updateImageFiles(files: FileList | null) {
     if (!files) return;
@@ -361,9 +404,23 @@ export function SubmitForm({
       steps: clampText(solutionForm.steps, MAX_GENERAL_TEXT_CHARS),
       insight: clampText(solutionForm.insight, MAX_GENERAL_TEXT_CHARS),
       verification: clampText(solutionForm.verification, MAX_GENERAL_TEXT_CHARS),
+      challengeClaim: clampText(solutionForm.challengeClaim, MAX_GENERAL_TEXT_CHARS),
+      challengeAdvantages: clampText(solutionForm.challengeAdvantages, MAX_GENERAL_TEXT_CHARS),
+      challengeRisk: clampText(solutionForm.challengeRisk, MAX_GENERAL_TEXT_CHARS),
     };
     const markdown = buildSolutionMarkdown(normalizedForm, selectedProblem, activeContestContext, imageUrls);
     const isPostContest = activeContestContext ? contestSubmissionState.isPostContest : false;
+    const challengeAdvantages = toLines(normalizedForm.challengeAdvantages);
+    const challenge = selectedChallengeSolution
+      ? {
+          targetSolutionId: selectedChallengeSolution.id,
+          targetSolutionTitle: selectedChallengeSolution.title,
+          targetSolutionAuthor: selectedChallengeSolution.author,
+          claim: normalizedForm.challengeClaim,
+          advantages: challengeAdvantages,
+          risk: normalizedForm.challengeRisk,
+        }
+      : null;
     return supabase.from('submissions').insert({
       submission_type: 'solution',
       problem_id: solutionForm.problemId,
@@ -371,12 +428,13 @@ export function SubmitForm({
       user_id: user?.id,
       kind: normalizedForm.kind,
       title: normalizedTitle,
-      contest_id: activeContestContext?.contest.id,
-      contest_problem_id: activeContestContext?.contestProblem?.id,
       contest_slug: activeContestContext?.contest.slug,
-      contest_problem_key: activeContestContext?.contestProblem?.id,
       contest_solution_type: activeContestContext ? solutionForm.contestSolutionType : null,
       is_post_contest: isPostContest,
+      challenge_target_solution_id: challenge?.targetSolutionId ?? null,
+      challenge_claim: challenge?.claim ?? null,
+      challenge_advantages: challenge?.advantages ?? [],
+      challenge_risk: challenge?.risk ?? null,
       attachment_urls: imageUrls,
       content: {
         markdown,
@@ -398,6 +456,13 @@ export function SubmitForm({
         steps: normalizedForm.steps,
         insight: normalizedForm.insight,
         verification: normalizedForm.verification,
+        json: challenge
+          ? {
+              solution: {
+                challenge,
+              },
+            }
+          : undefined,
       },
       status: 'pending',
     });
@@ -607,6 +672,70 @@ export function SubmitForm({
             </>
           ) : (
             <>
+            {selectedProblem?.solutions && selectedProblem.solutions.length > 0 && (
+              <section className="rounded border border-amber-400/25 bg-amber-400/[0.055] p-4">
+                <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <h3 className="text-sm font-bold text-amber-100">挑战已有解法</h3>
+                    <p className="mt-1 text-xs leading-5 text-zinc-500">
+                      选择一个已有解法作为对手，说明你的路线在什么场景下更值得进入擂台。
+                    </p>
+                  </div>
+                  {selectedChallengeSolution && (
+                    <span className="shrink-0 border border-amber-400/30 px-2.5 py-1 text-xs font-bold text-amber-200">
+                      正在挑战：{selectedChallengeSolution.title}
+                    </span>
+                  )}
+                </div>
+                <div className="mt-4 grid gap-4 xl:grid-cols-2">
+                  <label className="grid gap-2 text-sm">
+                    <span className="font-bold text-white">挑战对象</span>
+                    <select
+                      value={solutionForm.challengeTargetSolutionId}
+                      onChange={(event) => setSolutionForm({
+                        ...solutionForm,
+                        challengeTargetSolutionId: event.target.value,
+                        challengeClaim: event.target.value ? solutionForm.challengeClaim : '',
+                        challengeAdvantages: event.target.value ? solutionForm.challengeAdvantages : '',
+                        challengeRisk: event.target.value ? solutionForm.challengeRisk : '',
+                      })}
+                      className="h-11 rounded border border-white/10 bg-zinc-900 px-3 text-sm text-white outline-none focus:border-amber-400/50"
+                    >
+                      <option value="">不挑战，作为独立补充解法</option>
+                      {selectedProblem.solutions.map((solution) => (
+                        <option key={solution.id} value={solution.id}>
+                          {solution.title} · {solution.author}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <TextField
+                    label="一句话优势"
+                    value={solutionForm.challengeClaim}
+                    onChange={(challengeClaim) => setSolutionForm({ ...solutionForm, challengeClaim })}
+                    placeholder="例如：更少分类，更适合 15 分钟内完成"
+                  />
+                </div>
+                {solutionForm.challengeTargetSolutionId && (
+                  <div className="mt-4 grid gap-4 xl:grid-cols-2">
+                    <TextArea
+                      label="优势标签"
+                      value={solutionForm.challengeAdvantages}
+                      onChange={(challengeAdvantages) => setSolutionForm({ ...solutionForm, challengeAdvantages })}
+                      rows={3}
+                      placeholder="每行一个：更短、计算量更少、入口更自然、讲解更友好"
+                    />
+                    <TextArea
+                      label="风险自评"
+                      value={solutionForm.challengeRisk}
+                      onChange={(challengeRisk) => setSolutionForm({ ...solutionForm, challengeRisk })}
+                      rows={3}
+                      placeholder="它在哪些情况下不如被挑战的解法？"
+                    />
+                  </div>
+                )}
+              </section>
+            )}
             <div className="grid gap-4 xl:grid-cols-2">
               <TextField
                 required
@@ -653,6 +782,7 @@ export function SubmitForm({
               <TextArea label="最值得学的地方" value={solutionForm.insight} onChange={(insight) => setSolutionForm({ ...solutionForm, insight })} rows={4} />
               <TextArea label="可验证位置" value={solutionForm.verification} onChange={(verification) => setSolutionForm({ ...solutionForm, verification })} rows={4} />
             </div>
+            <CASVerifier steps={solutionForm.steps.split('\n').filter(Boolean)} />
             <ImageUploadField
               files={imageFiles}
               onAdd={updateImageFiles}

@@ -14,7 +14,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE TABLE problems (
   id TEXT PRIMARY KEY,
   year INTEGER NOT NULL,
-  region TEXT NOT NULL CHECK (region IN ('天津卷', '北京卷', '新高考 I 卷', '新高考 II 卷')),
+  region TEXT NOT NULL CHECK (region IN ('天津卷', '北京卷', '新高考 I 卷', '新高考 II 卷', '清华强基', '北大强基')),
   paper TEXT NOT NULL,
   number TEXT NOT NULL,
   difficulty TEXT NOT NULL CHECK (difficulty IN ('基础', '中档', '压轴')),

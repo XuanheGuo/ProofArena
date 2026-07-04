@@ -1,4 +1,4 @@
-export type ExamRegion = "天津卷" | "北京卷" | "新高考 I 卷" | "新高考 II 卷";
+export type ExamRegion = "天津卷" | "北京卷" | "新高考 I 卷" | "新高考 II 卷" | "清华强基" | "北大强基";
 
 export type Difficulty = "基础" | "中档" | "压轴";
 
@@ -148,6 +148,15 @@ export interface ThinkingCues {
   confidence?: number;
 }
 
+export interface SolutionChallenge {
+  targetSolutionId: string;
+  targetSolutionTitle?: string;
+  targetSolutionAuthor?: string;
+  claim: string;
+  advantages: string[];
+  risk: string;
+}
+
 export interface Solution extends PedagogicalAnnotations {
   id: string;
   kind: SolutionKind;
@@ -155,6 +164,8 @@ export interface Solution extends PedagogicalAnnotations {
   author: string;
   authorRole: string;
   authorId?: string | null;
+  sourceSubmissionId?: string | null;
+  challenge?: SolutionChallenge | null;
   contestSolutionType?: ContestSolutionType | null;
   isPostContest?: boolean;
   tags: string[];

@@ -571,6 +571,73 @@ const rawKnowledgeNodes: KnowledgeNode[] = [
       },
     ],
   },
+  {
+    id: "k-random-permutation-stopping",
+    title: "随机排列与停止时刻",
+    category: "概率统计",
+    summary: "把依次抽取、直到某类对象消失的过程补全成完整随机排列，停止后的剩余类型常由最后出现的位置决定。",
+    aliases: ["随机排列", "停止时刻", "最后一球", "负超几何"],
+    prerequisites: ["古典概型", "排列组合", "条件等价"],
+    relatedIds: ["k-probability-modeling", "k-counting-combinatorics"],
+    examples: [
+      "红黑球依次取出直到一种颜色取完，最后剩红球等价于完整排列最后一位是红球。",
+      "若坚持按结束位置分类，最后常会通过组合恒等式收束到同一个位置概率。",
+    ],
+    boundaryNotes: [
+      {
+        title: "停止过程可以补全",
+        note: "虽然真实过程提前停止，但为了判断事件，可以想象把剩余球继续取完；完整排列的尾部信息往往决定停止时剩哪类。",
+        typicalMisuse: "围绕停止时还剩几个球做大量分类，忽略最后位置已经决定事件。",
+      },
+    ],
+  },
+  {
+    id: "k-function-intersection-count",
+    title: "函数图像交点计数",
+    category: "函数与导数",
+    summary: "把方程根数转化为两条曲线或函数与横轴的交点个数，再用单调性、渐近线、符号变化和临界点计数。",
+    aliases: ["交点个数", "方程根数", "图像法", "符号变化"],
+    prerequisites: ["函数图像", "导数单调性", "多项式符号"],
+    relatedIds: ["k-derivative-zero", "k-parameter-separation"],
+    examples: [
+      "有理函数与二次函数交点个数，可以先移项成一个函数的零点问题。",
+      "分母带来定义域断点时，要分区间看极限和符号变化。",
+    ],
+    conceptLinks: [
+      {
+        conceptId: "k-derivative-zero",
+        label: "导数与零点分布",
+        relation: "交点计数常由零点分布完成",
+        note: "图像直观给入口，严格证明仍需单调性、端点符号或符号变化来支撑。",
+      },
+    ],
+  },
+  {
+    id: "k-conflict-graph-counting",
+    title: "冲突图与补集计数",
+    category: "概率统计",
+    summary: "把不能同时选择的关系画成图，合法选择就是独立集；当直接数合法集困难时，改数含冲突的补集。",
+    aliases: ["图模型", "冲突图", "独立集", "补集计数"],
+    prerequisites: ["组合计数", "补集思想", "简单图"],
+    relatedIds: ["k-counting-combinatorics"],
+    examples: [
+      "两两互素三元组可把有公共因子的数连边，合法三元组就是无边三点集。",
+      "若冲突边很少，先数所有选择，再减去至少含一条冲突边的选择。",
+    ],
+  },
+  {
+    id: "k-cycle-permutation-graph",
+    title: "环排列与回路模型",
+    category: "概率统计",
+    summary: "把循环排列、相邻差平方和等循环结构看成完全图中的回路，利用旋转、翻转对称减少重复。",
+    aliases: ["环排列", "Hamilton 回路", "循环对称", "完全图"],
+    prerequisites: ["排列组合", "图模型", "对称性"],
+    relatedIds: ["k-counting-combinatorics", "k-conflict-graph-counting"],
+    examples: [
+      "四个数围成一圈时，只关心相邻边的集合，旋转和翻转不产生新构型。",
+      "平方差和可看成回路边权总和，转成图上的回路枚举。",
+    ],
+  },
 ];
 
 export const knowledgeNodes: KnowledgeNode[] = rawKnowledgeNodes.map((node) =>

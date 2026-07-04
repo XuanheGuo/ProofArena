@@ -23,7 +23,7 @@ ProofArena 的核心资产不是题目数量，而是可学习、可比较、可
 | --- | --- |
 | `id` | 稳定路由 ID，例如 `tj-2026-18` |
 | `year` | 考试年份 |
-| `region` | 卷别，受 `ExamRegion` 类型约束 |
+| `region` | 卷别或题源，如“天津卷”“清华强基”“北大强基”，受 `ExamRegion` 类型约束 |
 | `paper` | 科目或试卷名称 |
 | `number` | 面向用户的题号 |
 | `difficulty` | 基础 / 中档 / 压轴 |

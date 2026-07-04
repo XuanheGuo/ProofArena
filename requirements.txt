@@ -1,0 +1,3 @@
+fastapi==0.115.6
+sympy==1.13.3
+antlr4-python3-runtime==4.11.1

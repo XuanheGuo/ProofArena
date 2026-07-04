@@ -35,6 +35,10 @@ type Submission = {
   contest_solution_type?: string | null;
   is_post_contest?: boolean | null;
   attachment_urls?: string[] | null;
+  challenge_target_solution_id?: string | null;
+  challenge_claim?: string | null;
+  challenge_advantages?: string[] | null;
+  challenge_risk?: string | null;
 };
 
 async function requireModerator() {
@@ -223,6 +227,9 @@ async function publishSolution(submission: Submission): Promise<{
     }
 
     const solutionData = submission.content.json?.solution ?? {};
+    const challenge = solutionData.challenge && typeof solutionData.challenge === 'object'
+      ? solutionData.challenge as Record<string, unknown>
+      : {};
     const solutionId = generateId('sol');
 
     const { data: profile } = await supabase
@@ -236,6 +243,12 @@ async function publishSolution(submission: Submission): Promise<{
       problem_id: submission.problem_id,
       author_id: submission.user_id,
       source_submission_id: submission.id,
+      challenge_target_solution_id: (challenge.targetSolutionId as string) || submission.challenge_target_solution_id || null,
+      challenge_target_solution_title: (challenge.targetSolutionTitle as string) || null,
+      challenge_target_solution_author: (challenge.targetSolutionAuthor as string) || null,
+      challenge_claim: (challenge.claim as string) || submission.challenge_claim || null,
+      challenge_advantages: Array.isArray(challenge.advantages) ? challenge.advantages : submission.challenge_advantages ?? [],
+      challenge_risk: (challenge.risk as string) || submission.challenge_risk || null,
       contest_id: submission.contest_id ?? null,
       contest_problem_id: submission.contest_problem_id ?? null,
       contest_slug: submission.contest_slug ?? null,
