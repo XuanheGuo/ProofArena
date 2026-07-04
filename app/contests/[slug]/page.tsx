@@ -18,7 +18,7 @@ import {
   Trophy,
 } from "lucide-react";
 import { contestStatusMeta, contestSolutionTypeMeta } from "@/lib/contest-meta";
-import { getContest, getContestLeaderboard, getContestSubmissionStats } from "@/lib/contests";
+import { getContest, getContestLeaderboard, getContestSubmissionStats, getContestUserRankings } from "@/lib/contests";
 import { getProblems, getSolutionAverage } from "@/lib/db";
 import { difficultyBadgeClass } from "@/lib/problem-presentation";
 import { getEffectiveProblemStatus } from "@/lib/types";
@@ -54,10 +54,11 @@ export default async function ContestDetailPage({ params }: PageProps) {
   const contest = await getContest(slug);
   if (!contest) notFound();
 
-  const [problems, leaderboard, contestStats] = await Promise.all([
+  const [problems, leaderboard, contestStats, userRankings] = await Promise.all([
     getProblems(),
     getContestLeaderboard(slug),
     getContestSubmissionStats(slug),
+    getContestUserRankings(slug, contest.awards),
   ]);
   const problemMap = new Map(problems.map((problem) => [problem.id, problem]));
   const linkedContestProblems = contest.problems.map((contestProblem) => ({
@@ -361,6 +362,43 @@ export default async function ContestDetailPage({ params }: PageProps) {
               </div>
             )}
           </section>
+
+          {!hideLeaderboard && userRankings.length > 0 && (
+            <section className="border border-white/10 bg-zinc-950 p-5 md:p-6">
+              <div className="flex items-center gap-2 text-sm font-bold text-white">
+                <Crown className="size-4 text-amber-300" />
+                用户总榜
+              </div>
+              <p className="mt-2 text-sm leading-6 text-zinc-500">
+                以最高分解法为基准 + 奖项加分。
+              </p>
+              <div className="mt-4 divide-y divide-white/10 border border-white/10">
+                {userRankings.slice(0, 10).map((entry, index) => (
+                  <div key={entry.userId} className="grid items-center gap-3 p-3 sm:grid-cols-[2.5rem_minmax(0,1fr)_6rem]">
+                    <span className={`font-mono text-sm ${index === 0 ? "text-amber-300" : index === 1 ? "text-zinc-300" : index === 2 ? "text-amber-700" : "text-zinc-600"}`}>
+                      #{index + 1}
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block font-bold text-white">{entry.author}</span>
+                      <span className="mt-0.5 block text-xs text-zinc-600">
+                        {entry.solutionCount} 个解法
+                        {entry.ratedSolutionCount > 0 && ` · ${entry.ratedSolutionCount} 个已评分`}
+                        {entry.awardPoints > 0 && ` · +${entry.awardPoints}奖项分`}
+                      </span>
+                    </span>
+                    <span className="text-right">
+                      <span className="font-display text-lg text-amber-300">
+                        {entry.grandTotal.toFixed(1)}
+                      </span>
+                      {entry.awardPoints > 0 && (
+                        <span className="ml-1 text-xs text-zinc-600">分</span>
+                      )}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
         </div>
 
         <aside className="space-y-4 lg:sticky lg:top-24 lg:self-start">

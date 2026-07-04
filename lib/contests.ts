@@ -200,6 +200,97 @@ export async function getContestSubmissionStats(contestSlug: string) {
   };
 }
 
+export type ContestUserRankEntry = {
+  userId: string;
+  author: string;
+  solutionCount: number;
+  ratedSolutionCount: number;
+  bestAvgTotal: number;
+  totalScore: number;
+  awardPoints: number;
+  grandTotal: number;
+};
+
+export async function getContestUserRankings(contestSlug: string, awards: import("@/lib/types").ContestAward[]): Promise<ContestUserRankEntry[]> {
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) return [];
+
+  const supabase = await createClient();
+
+  const { data: solutions } = await supabase
+    .from("solutions")
+    .select("id, author, author_id, problem_id")
+    .eq("contest_slug", contestSlug);
+
+  if (!solutions || solutions.length === 0) return [];
+
+  const solutionIds = solutions.map((s) => s.id as string);
+
+  const { data: ratings } = await supabase
+    .from("solution_ratings")
+    .select("solution_id, correctness, clarity, elegance, insight, exam_usability")
+    .in("solution_id", solutionIds);
+
+  type RatingRow = { correctness: number; clarity: number; elegance: number; insight: number; exam_usability: number };
+  const ratingMap = new Map<string, RatingRow[]>();
+  for (const r of ratings ?? []) {
+    const id = r.solution_id as string;
+    if (!ratingMap.has(id)) ratingMap.set(id, []);
+    ratingMap.get(id)!.push({
+      correctness: Number(r.correctness),
+      clarity: Number(r.clarity),
+      elegance: Number(r.elegance),
+      insight: Number(r.insight),
+      exam_usability: Number(r.exam_usability),
+    });
+  }
+
+  const userMap = new Map<string, ContestUserRankEntry>();
+
+  for (const s of solutions) {
+    const authorId = (s.author_id as string | null) ?? `anon-${s.author}`;
+    const author = (s.author as string) || "匿名";
+    const sRatings = ratingMap.get(s.id as string) ?? [];
+    const count = sRatings.length;
+    const avgTotal = count > 0
+      ? sRatings.reduce((sum, r) => sum + r.correctness + r.clarity + r.elegance + r.insight + r.exam_usability, 0) / count
+      : 0;
+
+    if (!userMap.has(authorId)) {
+      userMap.set(authorId, {
+        userId: authorId,
+        author,
+        solutionCount: 0,
+        ratedSolutionCount: 0,
+        bestAvgTotal: 0,
+        totalScore: 0,
+        awardPoints: 0,
+        grandTotal: 0,
+      });
+    }
+    const entry = userMap.get(authorId)!;
+    entry.solutionCount++;
+    if (count > 0) {
+      entry.ratedSolutionCount++;
+      if (avgTotal > entry.bestAvgTotal) entry.bestAvgTotal = avgTotal;
+    }
+  }
+
+  for (const award of awards) {
+    if (!award.userId) continue;
+    const entry = userMap.get(award.userId);
+    if (entry) entry.awardPoints += award.points;
+  }
+
+  const rankings = [...userMap.values()].map((entry) => ({
+    ...entry,
+    totalScore: entry.bestAvgTotal,
+    grandTotal: entry.bestAvgTotal + entry.awardPoints,
+  }));
+
+  rankings.sort((a, b) => b.grandTotal - a.grandTotal || b.ratedSolutionCount - a.ratedSolutionCount);
+  return rankings;
+}
+
 export type ContestSolutionEntry = {
   solutionId: string;
   problemId: string | null;
