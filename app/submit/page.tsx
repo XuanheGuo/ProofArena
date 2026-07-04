@@ -42,6 +42,13 @@ export default async function SubmitPage({
     id: problem.id,
     title: problem.title,
     source: `${problem.year} ${problem.region} · ${problem.paper}${problem.number ? ` · ${problem.number}` : ""}`,
+    solutions: problem.solutions.map((solution) => ({
+      id: solution.id,
+      title: solution.title,
+      author: solution.author,
+      kind: solution.kind,
+      scores: solution.scores,
+    })),
   }));
 
   return (

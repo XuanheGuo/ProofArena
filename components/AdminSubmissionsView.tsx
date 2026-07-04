@@ -62,6 +62,10 @@ type Submission = {
   contest_solution_type?: ContestSolutionType | null;
   is_post_contest?: boolean | null;
   attachment_urls?: string[] | null;
+  challenge_target_solution_id?: string | null;
+  challenge_claim?: string | null;
+  challenge_advantages?: string[] | null;
+  challenge_risk?: string | null;
 };
 
 type ReviewForm = {
@@ -77,6 +81,12 @@ type ReviewForm = {
   tradeoffs: string;
   pitfalls: string;
   verifiableSteps: string;
+  challengeTargetSolutionId: string;
+  challengeTargetSolutionTitle: string;
+  challengeTargetSolutionAuthor: string;
+  challengeClaim: string;
+  challengeAdvantages: string;
+  challengeRisk: string;
   scores: SolutionScores;
   scoringReason: string;
   moderatorNotes: string;
@@ -168,6 +178,19 @@ ${submission.problem_source ?? submission.problem_id ?? '（未绑定）'}
 ## 类型
 ${kindLabels[form.kind]}
 
+${form.challengeTargetSolutionId ? `## 挑战对象
+${form.challengeTargetSolutionTitle || form.challengeTargetSolutionId}${form.challengeTargetSolutionAuthor ? ` / ${form.challengeTargetSolutionAuthor}` : ''}
+
+## 我比它强在哪里
+${form.challengeClaim || '（未填写）'}
+
+## 优势标签
+${splitList(form.challengeAdvantages).map((item) => `- ${item}`).join('\n') || '（未填写）'}
+
+## 风险自评
+${form.challengeRisk || '（未填写）'}
+
+` : ''}
 ## 标签
 ${splitList(form.tags).map((tag) => `- ${tag}`).join('\n') || '（未填写）'}
 
@@ -208,6 +231,9 @@ ${form.scoringReason || '（未填写）'}
 
 function formFromSubmission(submission: Submission): ReviewForm {
   const solution = submission.content.json?.solution ?? {};
+  const challenge = solution.challenge && typeof solution.challenge === 'object'
+    ? solution.challenge as Record<string, unknown>
+    : {};
   const scores = normalizeScores(solution.scores);
 
   return {
@@ -223,6 +249,12 @@ function formFromSubmission(submission: Submission): ReviewForm {
     tradeoffs: joinList(solution.tradeoffs),
     pitfalls: joinList(solution.pitfalls),
     verifiableSteps: joinList(solution.verifiableSteps ?? submission.content.verification),
+    challengeTargetSolutionId: String(challenge.targetSolutionId ?? submission.challenge_target_solution_id ?? ''),
+    challengeTargetSolutionTitle: String(challenge.targetSolutionTitle ?? ''),
+    challengeTargetSolutionAuthor: String(challenge.targetSolutionAuthor ?? ''),
+    challengeClaim: String(challenge.claim ?? submission.challenge_claim ?? ''),
+    challengeAdvantages: joinList(challenge.advantages ?? submission.challenge_advantages),
+    challengeRisk: String(challenge.risk ?? submission.challenge_risk ?? ''),
     scores,
     scoringReason: String(solution.scoringReason ?? ''),
     moderatorNotes: submission.moderator_notes ?? '',
@@ -246,6 +278,16 @@ function contentFromForm(submission: Submission, form: ReviewForm): SubmissionCo
     tradeoffs: splitList(form.tradeoffs),
     pitfalls: splitList(form.pitfalls),
     verifiableSteps: splitList(form.verifiableSteps),
+    challenge: form.challengeTargetSolutionId
+      ? {
+          targetSolutionId: form.challengeTargetSolutionId,
+          targetSolutionTitle: form.challengeTargetSolutionTitle,
+          targetSolutionAuthor: form.challengeTargetSolutionAuthor,
+          claim: form.challengeClaim,
+          advantages: splitList(form.challengeAdvantages),
+          risk: form.challengeRisk,
+        }
+      : null,
     scores: form.scores,
     scoringReason: form.scoringReason,
   };
@@ -363,6 +405,10 @@ export function AdminSubmissionsView() {
       kind: form.kind,
       content: nextContent,
       moderator_notes: form.moderatorNotes.trim() || null,
+      challenge_target_solution_id: form.challengeTargetSolutionId || null,
+      challenge_claim: form.challengeClaim.trim() || null,
+      challenge_advantages: splitList(form.challengeAdvantages),
+      challenge_risk: form.challengeRisk.trim() || null,
       ...(nextStatus ? { status: nextStatus } : {}),
     };
 
@@ -643,6 +689,26 @@ export function AdminSubmissionsView() {
                         </div>
                       </section>
 
+                      {form.challengeTargetSolutionId && (
+                        <section className="space-y-4 rounded border border-amber-400/25 bg-amber-400/[0.055] p-4">
+                          <div className="flex items-center gap-2">
+                            <Route className="size-4 text-amber-300" />
+                            <h3 className="text-sm font-bold text-white">解法挑战</h3>
+                            <span className="text-xs text-zinc-600">审核通过后会显示在正式题解卡片中</span>
+                          </div>
+                          <div className="grid gap-4 md:grid-cols-2">
+                            <TextField label="挑战对象 ID" value={form.challengeTargetSolutionId} onChange={(value) => updateField('challengeTargetSolutionId', value)} />
+                            <TextField label="挑战对象标题" value={form.challengeTargetSolutionTitle} onChange={(value) => updateField('challengeTargetSolutionTitle', value)} />
+                            <TextField label="挑战对象作者" value={form.challengeTargetSolutionAuthor} onChange={(value) => updateField('challengeTargetSolutionAuthor', value)} />
+                            <TextField label="一句话优势" value={form.challengeClaim} onChange={(value) => updateField('challengeClaim', value)} />
+                          </div>
+                          <div className="grid gap-4 md:grid-cols-2">
+                            <TextArea label="优势标签" value={form.challengeAdvantages} onChange={(value) => updateField('challengeAdvantages', value)} rows={4} />
+                            <TextArea label="风险自评" value={form.challengeRisk} onChange={(value) => updateField('challengeRisk', value)} rows={4} />
+                          </div>
+                        </section>
+                      )}
+
                       <section className="grid gap-4 md:grid-cols-2">
                         <TextArea label="思路来源" value={form.origin} onChange={(value) => updateField('origin', value)} rows={5} />
                         <TextArea label="关键转化" value={form.keyTransform} onChange={(value) => updateField('keyTransform', value)} rows={5} />
@@ -836,6 +902,12 @@ function ReviewCardPreview({ submission, form }: { submission: Submission; form:
           </div>
           <h3 className="mt-4 text-xl font-bold text-white">{form.title || '未命名解法'}</h3>
           <p className="mt-2 text-sm text-zinc-500">投稿内容 <span className="mx-2 text-zinc-700">/</span> {meta.label}</p>
+          {form.challengeTargetSolutionId && (
+            <div className="mt-4 rounded border border-amber-400/25 bg-amber-400/[0.06] px-3 py-2">
+              <p className="text-xs font-bold text-amber-200">挑战 {form.challengeTargetSolutionTitle || form.challengeTargetSolutionId}</p>
+              <p className="mt-1 text-xs leading-5 text-zinc-400">{form.challengeClaim || '待补一句话优势'}</p>
+            </div>
+          )}
           <p className="mt-4 text-sm leading-7 text-zinc-300">
             <MathBlock>{form.inspiration || '这里会展示这条解法最值得学习的观察。'}</MathBlock>
           </p>

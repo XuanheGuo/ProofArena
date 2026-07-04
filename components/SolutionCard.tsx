@@ -6,6 +6,7 @@ import {
   BookOpen,
   Clock3,
   Compass,
+  Swords,
   Focus,
   Lightbulb,
   MessageSquareQuote,
@@ -129,6 +130,18 @@ export function SolutionCard({ solution, rank }: { solution: Solution; rank: num
           <p className="mt-2 text-sm text-zinc-500">
             {solution.author} <span className="mx-2 text-zinc-700">/</span> {solution.authorRole}
           </p>
+          {solution.challenge && (
+            <div className="mt-4 rounded border border-amber-400/25 bg-amber-400/[0.06] px-3 py-2">
+              <div className="flex flex-wrap items-center gap-2 text-xs font-bold text-amber-200">
+                <Swords className="size-3.5" />
+                <span>挑战 {solution.challenge.targetSolutionTitle ?? solution.challenge.targetSolutionId}</span>
+                {solution.challenge.targetSolutionAuthor && <span className="text-zinc-500">/ {solution.challenge.targetSolutionAuthor}</span>}
+              </div>
+              <p className="mt-1 text-xs leading-5 text-zinc-400">
+                {solution.challenge.claim}
+              </p>
+            </div>
+          )}
         </div>
         <div className="flex items-center justify-between border-t border-white/10 px-5 py-4 lg:min-w-44 lg:flex-col lg:justify-center lg:border-t-0 lg:border-l">
           <span className="font-mono text-xs uppercase text-zinc-500">参考均分</span>
@@ -224,6 +237,51 @@ export function SolutionCard({ solution, rank }: { solution: Solution; rank: num
               </div>
             </div>
           </section>}
+
+          {view !== "idea" && solution.challenge && (
+            <section className="mt-6 border border-amber-400/20 bg-amber-400/[0.045]">
+              <div className="flex items-center gap-2 border-b border-white/10 px-4 py-3">
+                <Swords className="size-4 text-amber-300" />
+                <h3 className="text-sm font-bold text-white">解法擂台</h3>
+                <span className="font-mono text-[10px] uppercase tracking-widest text-zinc-600">challenge</span>
+              </div>
+              <div className="grid gap-px bg-white/10 md:grid-cols-[1fr_1fr]">
+                <div className="bg-zinc-950 p-4">
+                  <h4 className="text-xs font-bold text-amber-300">挑战对象</h4>
+                  <p className="mt-2 text-sm font-bold text-white">{solution.challenge.targetSolutionTitle ?? solution.challenge.targetSolutionId}</p>
+                  {solution.challenge.targetSolutionAuthor && (
+                    <p className="mt-1 text-xs text-zinc-500">{solution.challenge.targetSolutionAuthor}</p>
+                  )}
+                </div>
+                <div className="bg-zinc-950 p-4">
+                  <h4 className="text-xs font-bold text-amber-300">优势声明</h4>
+                  <p className="mt-2 text-sm leading-7 text-zinc-300">
+                    <MathBlock>{solution.challenge.claim}</MathBlock>
+                  </p>
+                </div>
+                {solution.challenge.advantages.length > 0 && (
+                  <div className="bg-zinc-950 p-4">
+                    <h4 className="text-xs font-bold text-zinc-500">优势标签</h4>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {solution.challenge.advantages.map((item) => (
+                        <span key={item} className="border border-amber-400/25 bg-amber-400/5 px-2.5 py-1.5 text-xs text-amber-100">
+                          {item}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {solution.challenge.risk && (
+                  <div className="bg-zinc-950 p-4">
+                    <h4 className="text-xs font-bold text-zinc-500">风险自评</h4>
+                    <p className="mt-2 text-sm leading-7 text-zinc-300">
+                      <MathBlock>{solution.challenge.risk}</MathBlock>
+                    </p>
+                  </div>
+                )}
+              </div>
+            </section>
+          )}
 
           {view !== "idea" && (knowledgeNodes.length > 0 || insightNodes.length > 0) && (
             <section className="mt-6 border border-white/10 bg-black/20 p-4">

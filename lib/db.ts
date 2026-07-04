@@ -12,6 +12,17 @@ function toSolution(row: Record<string, unknown>): Solution {
     author: row.author as string,
     authorRole: row.author_role as string,
     authorId: row.author_id as string | null,
+    sourceSubmissionId: row.source_submission_id as string | null,
+    challenge: row.challenge_target_solution_id
+      ? {
+          targetSolutionId: row.challenge_target_solution_id as string,
+          targetSolutionTitle: row.challenge_target_solution_title as string | undefined,
+          targetSolutionAuthor: row.challenge_target_solution_author as string | undefined,
+          claim: (row.challenge_claim as string) ?? '',
+          advantages: (row.challenge_advantages as string[]) ?? [],
+          risk: (row.challenge_risk as string) ?? '',
+        }
+      : null,
     contestSolutionType: row.contest_solution_type as Solution['contestSolutionType'],
     isPostContest: Boolean(row.is_post_contest),
     tags: (row.tags as string[]) ?? [],

@@ -148,6 +148,15 @@ export interface ThinkingCues {
   confidence?: number;
 }
 
+export interface SolutionChallenge {
+  targetSolutionId: string;
+  targetSolutionTitle?: string;
+  targetSolutionAuthor?: string;
+  claim: string;
+  advantages: string[];
+  risk: string;
+}
+
 export interface Solution extends PedagogicalAnnotations {
   id: string;
   kind: SolutionKind;
@@ -155,6 +164,8 @@ export interface Solution extends PedagogicalAnnotations {
   author: string;
   authorRole: string;
   authorId?: string | null;
+  sourceSubmissionId?: string | null;
+  challenge?: SolutionChallenge | null;
   contestSolutionType?: ContestSolutionType | null;
   isPostContest?: boolean;
   tags: string[];
