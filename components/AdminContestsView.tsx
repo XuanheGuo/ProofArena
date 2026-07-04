@@ -346,83 +346,96 @@ export function AdminContestsView({ problems }: { problems: ProblemOption[] }) {
   }
 
   if (loading) {
-    return <div className="mt-10 h-64 animate-pulse border border-white/10 bg-white/[0.03]" />;
+    return (
+      <div className="mt-10 space-y-3">
+        {[1, 2, 3].map((i) => <div key={i} className="h-20 animate-pulse border border-white/10 bg-white/[0.03]" />)}
+      </div>
+    );
   }
 
   return (
-    <div className="mt-8 grid gap-6 lg:grid-cols-[18rem_minmax(0,1fr)]">
-      <aside className="space-y-4 lg:sticky lg:top-24 lg:self-start">
-        <section className="border border-white/10 bg-black/20 p-4">
-          <div className="flex items-center gap-2 text-sm font-bold text-white">
-            <Trophy className="size-4 text-amber-300" />
-            比赛后台
-          </div>
-          <p className="mt-2 text-xs leading-5 text-zinc-500">
-            管理比赛信息、赛题安排和奖项。投稿审核仍在“投稿审核”页面完成。
-          </p>
+    <div className="mt-8 grid gap-6 lg:grid-cols-[17rem_minmax(0,1fr)]">
+      <aside className="space-y-3 lg:sticky lg:top-24 lg:self-start">
+        {/* Quick actions */}
+        <section className="border border-white/10 bg-zinc-950 p-4">
+          <p className="mb-3 text-[11px] uppercase tracking-wide text-zinc-500">快捷操作</p>
           <button
             type="button"
             onClick={syncSeedContest}
             disabled={saving}
-            className="mt-4 inline-flex h-10 w-full items-center justify-center gap-2 bg-cyan-400 px-3 text-xs font-bold text-zinc-950 disabled:opacity-50"
+            className="inline-flex h-9 w-full items-center justify-center gap-2 bg-cyan-400 px-3 text-xs font-bold text-zinc-950 transition hover:bg-cyan-300 disabled:opacity-50"
           >
-            <Database className="size-4" />
-            同步默认比赛
+            <Database className="size-3.5" />
+            同步默认比赛数据
           </button>
         </section>
 
+        {/* Contest list */}
         <section className="border border-white/10 bg-zinc-950">
-          <div className="border-b border-white/10 px-4 py-3 text-sm font-bold text-white">比赛列表</div>
-          <div className="divide-y divide-white/10">
+          <div className="flex items-center justify-between border-b border-white/10 px-4 py-2.5">
+            <span className="text-xs font-bold uppercase tracking-wide text-zinc-400">比赛列表</span>
+            <span className="text-[11px] text-zinc-600">{contests.length} 场</span>
+          </div>
+          <div className="divide-y divide-white/[0.07]">
             {contests.map((contest) => {
               const status = contestStatusMeta[contest.status];
+              const isSelected = selectedId === contest.id;
               return (
                 <button
                   key={contest.id}
                   type="button"
                   onClick={() => setSelectedId(contest.id)}
-                  className={`block w-full px-4 py-3 text-left transition ${selectedId === contest.id ? "bg-cyan-400/[0.08]" : "hover:bg-white/[0.03]"}`}
+                  className={`block w-full px-4 py-3 text-left transition ${
+                    isSelected
+                      ? "bg-cyan-400/10 border-l-2 border-l-cyan-400"
+                      : "border-l-2 border-l-transparent hover:bg-white/[0.03]"
+                  }`}
                 >
                   <span className="block text-sm font-bold text-white">{contest.title}</span>
-                  <span className={`mt-2 inline-flex border px-2 py-1 text-[11px] font-bold ${status.className}`}>{status.label}</span>
+                  <span className={`mt-1.5 inline-flex items-center border px-2 py-0.5 text-[11px] font-bold ${status.className}`}>
+                    {status.label}
+                  </span>
                 </button>
               );
             })}
-            {contests.length === 0 && <p className="px-4 py-8 text-sm text-zinc-500">还没有线上比赛。</p>}
+            {contests.length === 0 && (
+              <p className="px-4 py-6 text-sm text-zinc-500">还没有比赛。点击"同步默认比赛"开始。</p>
+            )}
           </div>
         </section>
 
         <button
           type="button"
-          onClick={() => {
-            setSelectedId("");
-            setContestForm(emptyContest);
-          }}
-          className="inline-flex h-10 w-full items-center justify-center gap-2 border border-white/10 text-sm font-bold text-zinc-300 hover:border-cyan-400/40"
+          onClick={() => { setSelectedId(""); setContestForm(emptyContest); }}
+          className="inline-flex h-9 w-full items-center justify-center gap-2 border border-dashed border-white/15 text-sm text-zinc-400 transition hover:border-white/30 hover:text-white"
         >
           <Plus className="size-4" />
           新建比赛
         </button>
       </aside>
 
-      <div className="space-y-6">
-        <header className="border border-white/10 bg-zinc-950 p-5">
-          <h1 className="text-2xl font-black text-white">比赛运营</h1>
-          <p className="mt-2 text-sm text-zinc-500">
-            第一届思路擂台需要的后台闭环：创建比赛、关联题目、设置状态、标记获奖解法。
-          </p>
-          <div className="mt-4 flex flex-wrap gap-2 text-xs">
-            <Link href="/admin/submissions" className="border border-white/10 px-3 py-1.5 text-zinc-300 hover:border-cyan-400/40">
+      <div className="min-w-0 space-y-5">
+        <header className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <h1 className="text-xl font-black text-white">
+              {selectedContest ? selectedContest.title : "新建比赛"}
+            </h1>
+            <p className="mt-1 text-sm text-zinc-500">
+              {selectedContest ? `比赛 ID: ${selectedContest.id.slice(0, 8)}…` : "填写信息后保存"}
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            <Link href="/admin/submissions" className="inline-flex h-7 items-center border border-white/15 px-3 text-zinc-300 transition hover:border-white/30 hover:text-white">
               投稿审核
             </Link>
             {selectedContest && (
               <>
-                <Link href={`/contests/${selectedContest.slug}`} className="border border-white/10 px-3 py-1.5 text-zinc-300 hover:border-cyan-400/40">
-                  查看前台
+                <Link href={`/contests/${selectedContest.slug}`} className="inline-flex h-7 items-center border border-white/15 px-3 text-zinc-300 transition hover:border-white/30 hover:text-white" target="_blank">
+                  前台预览 ↗
                 </Link>
                 <Link
                   href={`/admin/submissions?contest=${selectedContest.slug}`}
-                  className="border border-amber-400/25 bg-amber-400/[0.06] px-3 py-1.5 font-bold text-amber-200 hover:border-amber-400/50"
+                  className="inline-flex h-7 items-center border border-amber-400/40 bg-amber-400/10 px-3 font-bold text-amber-300 transition hover:bg-amber-400/15"
                 >
                   查看比赛投稿
                 </Link>
@@ -431,8 +444,15 @@ export function AdminContestsView({ problems }: { problems: ProblemOption[] }) {
           </div>
         </header>
 
-        {message && <p className="border border-emerald-400/30 bg-emerald-400/[0.06] px-4 py-3 text-sm text-emerald-300">{message}</p>}
-        {error && <p className="border border-red-400/30 bg-red-400/[0.06] px-4 py-3 text-sm text-red-300">{error}</p>}
+        {message && (
+          <div className="flex items-center gap-2 border border-emerald-500/40 bg-emerald-500/[0.08] px-4 py-2.5">
+            <CheckCircle2 className="size-4 shrink-0 text-emerald-400" />
+            <p className="text-sm text-emerald-300">{message}</p>
+          </div>
+        )}
+        {error && (
+          <div className="border border-red-500/40 bg-red-500/[0.08] px-4 py-2.5 text-sm text-red-300">{error}</div>
+        )}
 
         <section className="border border-white/10 bg-zinc-950 p-5">
           <div className="mb-5 flex items-center gap-2 text-sm font-bold text-white">
@@ -482,62 +502,63 @@ export function AdminContestsView({ problems }: { problems: ProblemOption[] }) {
                 <CalendarDays className="size-4 text-cyan-300" />
                 赛题安排
               </div>
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {(selectedContest.contest_problems ?? []).sort((a, b) => a.day_index - b.day_index).map((item) => (
-                  <div key={item.id} className="space-y-3 border border-white/10 bg-black/20 p-4">
-                    <div className="flex flex-wrap items-start gap-3">
-                      <span className="mt-0.5 shrink-0 font-mono text-sm text-cyan-300">Day {item.day_index}</span>
+                  <div key={item.id} className="border border-white/10 bg-zinc-950">
+                    <div className="flex flex-wrap items-start gap-3 p-4">
+                      <span className="mt-0.5 shrink-0 border border-cyan-400/30 bg-cyan-400/10 px-2 py-0.5 font-mono text-xs font-bold text-cyan-300">
+                        Day {item.day_index}
+                      </span>
                       <div className="min-w-0 flex-1">
                         <p className="font-bold text-white">{item.title}</p>
-                        <p className="mt-0.5 text-xs text-zinc-500">{item.theme}</p>
-                        <p className="mt-0.5 text-xs text-zinc-600">{item.problem_id ?? "未关联题目"}</p>
-                        <p className="mt-1 inline-flex items-center gap-1 text-xs text-zinc-600">
+                        <p className="mt-0.5 text-xs text-zinc-400">{item.theme}</p>
+                        <p className="mt-1 text-xs text-zinc-500">{item.problem_id ?? <span className="text-zinc-600 italic">未关联题目</span>}</p>
+                        <p className="mt-1 inline-flex items-center gap-1 text-xs text-zinc-500">
                           <Clock className="size-3" />
-                          {toInputDate(item.open_at) || "—"} → {toInputDate(item.close_at) || "—"}
+                          {toInputDate(item.open_at) || "未设置"} → {toInputDate(item.close_at) || "未设置"}
                         </p>
                       </div>
                     </div>
-                    <div className="flex flex-wrap items-center gap-2 border-t border-white/10 pt-3">
+                    <div className="flex flex-wrap items-center gap-2 border-t border-white/[0.07] px-4 py-2.5">
                       <select
                         value={item.unlock_mode ?? "manual"}
                         onChange={(event) => updateContestProblem(item, { unlock_mode: event.target.value as DbContestProblem["unlock_mode"] })}
-                        className="h-9 border border-cyan-400/20 bg-zinc-950 px-2 text-xs text-cyan-200"
+                        className="h-8 border border-white/15 bg-zinc-950 px-2 text-xs text-zinc-300 outline-none"
                         title="解锁方式"
                       >
                         <option value="manual">手动控制</option>
-                        <option value="auto_time">到时自动解锁</option>
+                        <option value="auto_time">自动解锁</option>
                       </select>
                       <select
                         value={item.status}
                         onChange={(event) => updateContestProblem(item, { status: event.target.value as DbContestProblem["status"] })}
-                        className="h-9 border border-white/10 bg-zinc-950 px-2 text-xs text-zinc-200"
-                        title="当前状态"
+                        className="h-8 border border-white/15 bg-zinc-950 px-2 text-xs text-zinc-300 outline-none"
+                        title="状态"
                       >
                         {["locked", "open", "reviewing", "closed"].map((s) => <option key={s}>{s}</option>)}
                       </select>
                       <button
                         type="button"
                         onClick={() => updateContestProblem(item, { status: "open" })}
-                        className="inline-flex h-9 items-center gap-1.5 border border-emerald-400/30 px-3 text-xs font-bold text-emerald-300 hover:bg-emerald-400/10"
+                        className="inline-flex h-8 items-center gap-1.5 border border-emerald-500/40 bg-emerald-500/10 px-3 text-xs font-bold text-emerald-300 transition hover:bg-emerald-500/15"
                       >
                         <LockOpen className="size-3.5" />
-                        立即解锁
+                        解锁
                       </button>
                       <button
                         type="button"
                         onClick={() => updateContestProblem(item, { status: "locked" })}
-                        className="inline-flex h-9 items-center gap-1.5 border border-amber-400/30 px-3 text-xs font-bold text-amber-300 hover:bg-amber-400/10"
+                        className="inline-flex h-8 items-center gap-1.5 border border-amber-500/40 bg-amber-500/10 px-3 text-xs font-bold text-amber-300 transition hover:bg-amber-500/15"
                       >
                         <Lock className="size-3.5" />
-                        立即锁定
+                        锁定
                       </button>
                       <button
                         type="button"
                         onClick={() => deleteContestProblem(item.id)}
-                        className="ml-auto inline-flex h-9 items-center gap-1.5 border border-red-400/30 px-3 text-xs font-bold text-red-300"
+                        className="ml-auto inline-flex h-8 items-center gap-1.5 border border-red-500/30 px-3 text-xs font-bold text-red-400 transition hover:bg-red-500/10"
                       >
                         <Trash2 className="size-3.5" />
-                        删除
                       </button>
                     </div>
                   </div>
