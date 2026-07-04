@@ -416,9 +416,17 @@ export function AdminContestsView({ problems }: { problems: ProblemOption[] }) {
               投稿审核
             </Link>
             {selectedContest && (
-              <Link href={`/contests/${selectedContest.slug}`} className="border border-white/10 px-3 py-1.5 text-zinc-300 hover:border-cyan-400/40">
-                查看前台
-              </Link>
+              <>
+                <Link href={`/contests/${selectedContest.slug}`} className="border border-white/10 px-3 py-1.5 text-zinc-300 hover:border-cyan-400/40">
+                  查看前台
+                </Link>
+                <Link
+                  href={`/admin/submissions?contest=${selectedContest.slug}`}
+                  className="border border-amber-400/25 bg-amber-400/[0.06] px-3 py-1.5 font-bold text-amber-200 hover:border-amber-400/50"
+                >
+                  查看比赛投稿
+                </Link>
+              </>
             )}
           </div>
         </header>
