@@ -3,12 +3,13 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BookOpenCheck, Code2, Crosshair, Hammer, Info, Menu, Send, Swords, X } from "lucide-react";
+import { BookOpenCheck, Code2, Crosshair, Hammer, Info, Menu, Send, Swords, Trophy, X } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { AuthButton } from "@/components/AuthButton";
 
 const navigation = [
   { href: "/problems", label: "题目", description: "浏览真题并进入解法对比", icon: Swords },
+  { href: "/contests", label: "比赛", description: "进入思路擂台和活动合集", icon: Trophy },
   { href: "/library", label: "思路库", description: "查看知识点、方法边界和关联题", icon: BookOpenCheck },
   { href: "/studio", label: "Studio", description: "内部内容整理工作台", icon: Hammer, badge: "内部" },
   { href: "/submit", label: "投稿", description: "提交题目、解法或改进建议", icon: Send },

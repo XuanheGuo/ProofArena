@@ -12,8 +12,9 @@ import {
   Plus,
   Send,
   Target,
+  Trophy,
 } from "lucide-react";
-import type { KnowledgeNode, Problem, Solution } from "@/lib/types";
+import type { Contest, ContestProblem, KnowledgeNode, Problem, Solution } from "@/lib/types";
 import { MathBlock } from "@/components/MathBlock";
 import { ScoreBar } from "@/components/ScoreBar";
 import { VerificationPanel } from "@/components/VerificationPanel";
@@ -180,10 +181,15 @@ export function ProblemDetailExperience({
   problem,
   knowledgeNodes,
   relatedProblems,
+  contestContext,
 }: {
   problem: Problem;
   knowledgeNodes: KnowledgeNode[];
   relatedProblems: Problem[];
+  contestContext?: {
+    contest: Contest;
+    contestProblem: ContestProblem;
+  };
 }) {
   const graphSpec = graphSpecRegistry[problem.id];
   const hasMathViz = mathVizProblemIds.has(problem.id);
@@ -218,6 +224,10 @@ export function ProblemDetailExperience({
     () => [...problem.learningGuide.observation.slice(0, 2), ...problem.learningGuide.triggers.slice(0, 2)],
     [problem],
   );
+  const submitHref = contestContext
+    ? `/submit?contest=${contestContext.contest.slug}&problem=${problem.id}`
+    : "/submit";
+  const hideSolutionsForContest = contestContext?.contest.status === "active";
 
   return (
     <main className="grid-surface min-h-screen">
@@ -229,6 +239,42 @@ export function ProblemDetailExperience({
               <button type="button" onClick={dismissGuide} className="text-left text-xs font-bold text-cyan-300 sm:text-right">
                 知道了
               </button>
+            </div>
+          )}
+
+          {contestContext && (
+            <div className="mb-5 border border-amber-400/25 bg-amber-400/[0.06] p-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2 text-xs">
+                    <span className="inline-flex items-center gap-1.5 font-bold text-amber-200">
+                      <Trophy className="size-3.5" />
+                      {contestContext.contest.title}
+                    </span>
+                    <span className="border border-amber-400/20 px-2 py-1 text-amber-100/80">
+                      Day {contestContext.contestProblem.dayIndex} · {contestContext.contestProblem.title}
+                    </span>
+                  </div>
+                  <p className="mt-2 text-sm leading-6 text-zinc-400">
+                    {contestContext.contestProblem.theme}。当前题目会按比赛解法类型提交，赛后优秀解法将回流到题目页。
+                  </p>
+                </div>
+                <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
+                  <Link
+                    href={`/contests/${contestContext.contest.slug}`}
+                    className="inline-flex h-9 items-center justify-center gap-2 border border-amber-400/25 px-3 text-xs font-bold text-amber-200 transition hover:bg-amber-400/10"
+                  >
+                    返回比赛主页
+                  </Link>
+                  <Link
+                    href={submitHref}
+                    className="inline-flex h-9 items-center justify-center gap-2 bg-amber-300 px-3 text-xs font-bold text-zinc-950 transition hover:bg-amber-200"
+                  >
+                    <Send className="size-3.5" />
+                    提交参赛解法
+                  </Link>
+                </div>
+              </div>
             </div>
           )}
 
@@ -274,11 +320,11 @@ export function ProblemDetailExperience({
               直接看解法
             </button>
             <Link
-              href="/submit"
+              href={submitHref}
               className="inline-flex h-11 items-center justify-center gap-2 border border-white/10 bg-black/20 px-4 text-sm font-bold text-zinc-200 transition hover:border-cyan-400/40 hover:text-cyan-200"
             >
               <Send className="size-4" />
-              提交解法
+              {contestContext ? "提交参赛解法" : "提交解法"}
             </Link>
           </div>
 
@@ -315,11 +361,11 @@ export function ProblemDetailExperience({
                   查看解法
                 </button>
                 <Link
-                  href="/submit"
+                  href={submitHref}
                   className="inline-flex h-11 items-center justify-center gap-2 border border-white/10 bg-black/20 px-4 text-sm font-bold text-zinc-200 transition hover:border-cyan-400/40 hover:text-cyan-200"
                 >
                   <Send className="size-4" />
-                  提交解法
+                  {contestContext ? "提交参赛解法" : "提交解法"}
                 </Link>
               </div>
             </aside>
@@ -397,13 +443,31 @@ export function ProblemDetailExperience({
               <div className="mb-4 flex flex-col gap-2 border border-white/10 bg-zinc-950 p-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <h2 className="font-bold text-white">解法对比</h2>
-                  <p className="mt-1 text-xs text-zinc-600">先比较核心思路和五维指标，再展开完整解析。</p>
+                  <p className="mt-1 text-xs text-zinc-600">
+                    {hideSolutionsForContest
+                      ? "比赛进行中，题解暂时隐藏，避免提前形成路径暗示。"
+                      : "先比较核心思路和五维指标，再展开完整解析。"}
+                  </p>
                 </div>
-                <Link href="/submit" className="inline-flex h-9 items-center justify-center gap-2 border border-cyan-400/30 px-3 text-xs font-bold text-cyan-300">
+                <Link href={submitHref} className="inline-flex h-9 items-center justify-center gap-2 border border-cyan-400/30 px-3 text-xs font-bold text-cyan-300">
                   <Plus className="size-3.5" />
-                  提交新解法
+                  {contestContext ? "提交参赛解法" : "提交新解法"}
                 </Link>
               </div>
+              {hideSolutionsForContest ? (
+                <div className="border border-amber-400/25 bg-amber-400/[0.06] px-6 py-12 text-center">
+                  <Trophy className="mx-auto size-7 text-amber-300" />
+                  <h3 className="mt-4 font-bold text-white">比赛进行中，题解暂时隐藏</h3>
+                  <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-zinc-500">
+                    先把自己的观察写下来。哪怕只是一个入口、一种直觉、一个卡点，也比被已有题解牵着走更有价值。
+                  </p>
+                  <Link href={submitHref} className="mt-5 inline-flex h-10 items-center justify-center gap-2 bg-amber-300 px-4 text-sm font-bold text-zinc-950">
+                    <Send className="size-4" />
+                    提交参赛思路
+                  </Link>
+                </div>
+              ) : (
+                <>
               <SolutionTreePanel problem={problem} />
               {problem.solutions.length ? (
                 <div className="space-y-4">
@@ -415,8 +479,10 @@ export function ProblemDetailExperience({
                 <EmptyState
                   title="还没有解法"
                   description="你可以提交第一个思路，让这道题真正进入擂台。"
-                  action={<Link href="/submit" className="text-sm font-bold text-cyan-300">提交第一个解法</Link>}
+                  action={<Link href={submitHref} className="text-sm font-bold text-cyan-300">提交第一个解法</Link>}
                 />
+              )}
+                </>
               )}
             </div>
           </section>

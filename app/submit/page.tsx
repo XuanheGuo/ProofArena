@@ -11,6 +11,7 @@ import {
   Tags,
 } from "lucide-react";
 import { SubmitForm } from "@/components/SubmitForm";
+import { getContest } from "@/lib/contests";
 import { getProblems } from "@/lib/db";
 
 export const metadata: Metadata = {
@@ -25,10 +26,18 @@ const acceptedSolutionTraits = [
   ["能迁移", "不只停在本题结论，还说明这条观察能带到哪里。"],
 ];
 
-export const revalidate = 3600;
+export const dynamic = "force-dynamic";
 
-export default async function SubmitPage() {
-  const problems = await getProblems();
+export default async function SubmitPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const [params, problems] = await Promise.all([searchParams, getProblems()]);
+  const contestSlug = typeof params.contest === "string" ? params.contest : undefined;
+  const initialProblemId = typeof params.problem === "string" ? params.problem : undefined;
+  const contest = contestSlug ? await getContest(contestSlug) : undefined;
+  const contestProblem = contest?.problems.find((item) => item.problemId === initialProblemId);
   const problemOptions = problems.map((problem) => ({
     id: problem.id,
     title: problem.title,
@@ -103,7 +112,11 @@ export default async function SubmitPage() {
               </p>
             </div>
           </div>
-          <SubmitForm problems={problemOptions} />
+          <SubmitForm
+            problems={problemOptions}
+            initialProblemId={initialProblemId}
+            contestContext={contest ? { contest, contestProblem } : undefined}
+          />
         </section>
 
         <aside className="space-y-4 lg:sticky lg:top-24 lg:self-start">

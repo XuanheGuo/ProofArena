@@ -27,6 +27,10 @@ type Submission = {
   status: SubmissionStatus;
   user_id: string;
   moderator_notes?: string | null;
+  contest_slug?: string | null;
+  contest_problem_key?: string | null;
+  contest_solution_type?: string | null;
+  is_post_contest?: boolean | null;
 };
 
 function splitProcessSteps(value: string): string[] {
@@ -187,6 +191,12 @@ async function publishSolution(submission: Submission): Promise<{
     const solution = {
       id: solutionId,
       problem_id: submission.problem_id,
+      author_id: submission.user_id,
+      source_submission_id: submission.id,
+      contest_slug: submission.contest_slug ?? null,
+      contest_problem_key: submission.contest_problem_key ?? null,
+      contest_solution_type: submission.contest_solution_type ?? null,
+      is_post_contest: Boolean(submission.is_post_contest),
       kind: submission.kind,
       title: submission.title,
       author: (profile?.display_name as string) || '匿名用户',

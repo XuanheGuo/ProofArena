@@ -10,6 +10,30 @@ export type TagMatchSource = "auto" | "manual";
 
 export type SolutionKind = "standard" | "insight" | "robust" | "teaching";
 
+export type ContestStatus = "draft" | "active" | "judging" | "finished";
+
+export type ContestSolutionType =
+  | "standard"
+  | "clever"
+  | "teaching"
+  | "geometry"
+  | "algebra"
+  | "construction"
+  | "wrong_analysis"
+  | "variant"
+  | "supplement";
+
+export type ContestAwardType =
+  | "fastest"
+  | "best_standard"
+  | "best_clever"
+  | "best_teaching"
+  | "best_wrong_analysis"
+  | "best_comment"
+  | "best_overall"
+  | "best_variant"
+  | "best_contributor";
+
 export const SCORE_DIMS = ["correctness", "examReady", "elegance", "calculation", "explanation"] as const;
 export type ScoreDim = typeof SCORE_DIMS[number];
 export type SolutionScores = Record<ScoreDim, number>;
@@ -145,6 +169,60 @@ export interface Solution extends PedagogicalAnnotations {
   scoringReason: string;
   verification: Verification;
   estimatedMinutes: number;
+}
+
+export type ContestProblemStatus = "locked" | "open" | "reviewing" | "closed";
+export type ContestProblemUnlockMode = "manual" | "auto_time";
+
+export interface ContestProblem {
+  id: string;
+  contestId: string;
+  problemId: string | null;
+  dayIndex: number;
+  title: string;
+  theme: string;
+  openAt: string;
+  closeAt: string;
+  weight: number;
+  status: ContestProblemStatus;
+  unlockMode: ContestProblemUnlockMode;
+}
+
+/** Compute the effective display status based on unlock mode and current time. */
+export function getEffectiveProblemStatus(problem: ContestProblem, now = new Date()): ContestProblemStatus {
+  if (problem.unlockMode === "auto_time") {
+    if (now >= new Date(problem.closeAt)) return "closed";
+    if (now >= new Date(problem.openAt)) return "open";
+    return "locked";
+  }
+  return problem.status;
+}
+
+export interface ContestAward {
+  id: string;
+  contestId: string;
+  problemId?: string;
+  solutionId?: string;
+  userId?: string;
+  type: ContestAwardType;
+  title: string;
+  reason: string;
+  points: number;
+  createdAt: string;
+}
+
+export interface Contest {
+  id: string;
+  slug: string;
+  title: string;
+  description: string;
+  tagline: string;
+  rules: string[];
+  startAt: string;
+  endAt: string;
+  status: ContestStatus;
+  problems: ContestProblem[];
+  awards: ContestAward[];
 }
 
 export interface LearningGuide {

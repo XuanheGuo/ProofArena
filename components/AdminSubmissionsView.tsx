@@ -23,7 +23,8 @@ import { MathBlock } from '@/components/MathBlock';
 import { ScoreBar } from '@/components/ScoreBar';
 import { convertPlainMathTextToLatex } from '@/lib/math-normalizer';
 import { getSolutionKindMeta } from '@/lib/solution-kinds';
-import type { SolutionScores } from '@/lib/types';
+import { contestSolutionTypeMeta } from '@/lib/contest-meta';
+import type { ContestSolutionType, SolutionScores } from '@/lib/types';
 
 type SubmissionStatus = 'pending' | 'approved' | 'rejected' | 'needs_revision';
 type SolutionKind = 'standard' | 'insight' | 'robust' | 'teaching';
@@ -54,6 +55,10 @@ type Submission = {
   created_at: string;
   user_id: string;
   moderator_notes?: string | null;
+  contest_slug?: string | null;
+  contest_problem_key?: string | null;
+  contest_solution_type?: ContestSolutionType | null;
+  is_post_contest?: boolean | null;
 };
 
 type ReviewForm = {
@@ -267,6 +272,7 @@ export function AdminSubmissionsView() {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [publishing, setPublishing] = useState<string | null>(null);
+  const [scopeFilter, setScopeFilter] = useState<'all' | 'regular' | 'contest'>('all');
   const supabase = createClient();
 
   useEffect(() => {
@@ -427,6 +433,11 @@ export function AdminSubmissionsView() {
   };
 
   const getTypeLabel = (submission: Submission) => submission.submission_type === 'problem' ? '题目投稿' : '解法投稿';
+  const getScopeLabel = (submission: Submission) => {
+    if (!submission.contest_slug) return '普通投稿';
+    const type = submission.contest_solution_type ? contestSolutionTypeMeta[submission.contest_solution_type]?.label : '参赛解法';
+    return `${submission.is_post_contest ? '赛后补充' : '比赛投稿'} · ${type}`;
+  };
   const getTargetLabel = (submission: Submission) => {
     if (submission.submission_type === 'problem') return submission.problem_source ?? '新题';
     return submission.problem_source ? `${submission.problem_source} · ${submission.problem_id ?? '未绑定题目'}` : submission.problem_id ?? '未绑定题目';
@@ -436,6 +447,11 @@ export function AdminSubmissionsView() {
     if (!selectedSubmission || !form) return '';
     return buildMarkdown(selectedSubmission, form);
   }, [selectedSubmission, form]);
+  const visibleSubmissions = useMemo(() => {
+    if (scopeFilter === 'regular') return submissions.filter((submission) => !submission.contest_slug);
+    if (scopeFilter === 'contest') return submissions.filter((submission) => submission.contest_slug);
+    return submissions;
+  }, [scopeFilter, submissions]);
 
   if (loading) {
     return (
@@ -457,6 +473,9 @@ export function AdminSubmissionsView() {
           <div>
             <h1 className="text-2xl font-black text-white">投稿审核</h1>
             <p className="mt-2 text-sm text-zinc-500">先修改内容，再写审核评语，最后给出通过、退回或拒绝结论。</p>
+            <a href="/admin/contests" className="mt-3 inline-flex border border-white/10 px-3 py-1.5 text-xs font-bold text-zinc-300 transition hover:border-cyan-400/40 hover:text-cyan-200">
+              管理比赛
+            </a>
           </div>
           <div className="flex gap-2 text-xs">
             <span className="text-zinc-500">
@@ -469,18 +488,45 @@ export function AdminSubmissionsView() {
           </div>
         </div>
 
+        <div className="mb-5 flex flex-wrap gap-2 border border-white/10 bg-black/20 p-2">
+          {[
+            ['all', '全部投稿'],
+            ['regular', '普通投稿'],
+            ['contest', '比赛投稿'],
+          ].map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => setScopeFilter(value as typeof scopeFilter)}
+              className={`h-9 border px-3 text-xs font-bold transition ${
+                scopeFilter === value
+                  ? 'border-cyan-400 bg-cyan-400 text-zinc-950'
+                  : 'border-white/10 text-zinc-400 hover:border-cyan-400/30 hover:text-cyan-200'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
         <div className="space-y-3">
-          {submissions.map((sub) => (
+          {visibleSubmissions.map((sub) => (
             <div key={sub.id} className="rounded border border-white/10 bg-white/[0.02] p-5 transition hover:bg-white/[0.04]">
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0 flex-1">
                   <div className="mb-2 flex items-center gap-2">
                     {getStatusBadge(sub.status)}
+                    <span className={`rounded border px-2 py-1 text-xs font-bold ${sub.contest_slug ? 'border-amber-400/30 bg-amber-400/[0.06] text-amber-300' : 'border-white/10 text-zinc-500'}`}>
+                      {getScopeLabel(sub)}
+                    </span>
                     <span className="text-xs text-zinc-600">{new Date(sub.created_at).toLocaleDateString('zh-CN')}</span>
                     {sub.moderator_notes && <span className="rounded border border-white/10 px-2 py-1 text-xs text-zinc-500">已有评语</span>}
                   </div>
                   <h3 className="truncate font-bold text-white">{sub.title}</h3>
-                  <p className="mt-1 text-sm text-zinc-500">{getTypeLabel(sub)} · {getTargetLabel(sub)} · 类型: {kindLabels[sub.kind] ?? sub.kind}</p>
+                  <p className="mt-1 text-sm text-zinc-500">
+                    {getTypeLabel(sub)} · {getTargetLabel(sub)} · 类型: {kindLabels[sub.kind] ?? sub.kind}
+                    {sub.contest_slug && ` · ${sub.contest_slug}${sub.contest_problem_key ? ` / ${sub.contest_problem_key}` : ''}`}
+                  </p>
                 </div>
                 <div className="flex shrink-0 gap-2">
                   {sub.status === 'approved' && (
@@ -507,7 +553,7 @@ export function AdminSubmissionsView() {
             </div>
           ))}
 
-          {submissions.length === 0 && (
+          {visibleSubmissions.length === 0 && (
             <div className="rounded border border-white/10 bg-white/[0.02] p-12 text-center">
               <p className="text-zinc-500">暂无投稿</p>
             </div>
@@ -521,6 +567,9 @@ export function AdminSubmissionsView() {
                 <div className="min-w-0">
                   <div className="mb-2 flex items-center gap-2">
                     {getStatusBadge(selectedSubmission.status)}
+                    <span className={`rounded border px-2 py-1 text-xs font-bold ${selectedSubmission.contest_slug ? 'border-amber-400/30 bg-amber-400/[0.06] text-amber-300' : 'border-white/10 text-zinc-500'}`}>
+                      {getScopeLabel(selectedSubmission)}
+                    </span>
                     <span className="text-xs text-zinc-600">{new Date(selectedSubmission.created_at).toLocaleString('zh-CN')}</span>
                   </div>
                   <h2 className="truncate text-xl font-black text-white">{form.title || selectedSubmission.title}</h2>

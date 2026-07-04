@@ -2,13 +2,14 @@ import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, CheckCircle2, Compass, Send, Swords, Trophy } from "lucide-react";
 import { getLearningIndex, getProblems } from "@/lib/db";
+import { getFeaturedContest } from "@/lib/contests";
 import { difficultyBadgeClass } from "@/lib/problem-presentation";
 import { MathBlock } from "@/components/MathBlock";
 
 export const revalidate = 3600;
 
 export default async function HomePage() {
-  const problems = await getProblems();
+  const [problems, currentContest] = await Promise.all([getProblems(), getFeaturedContest()]);
   const solutionCount = problems.reduce((sum, problem) => sum + problem.solutions.length, 0);
   const featuredProblems = ["ng2-2026-18", "ng1-2026-18", "tj-2026-09"]
     .map((id) => problems.find((problem) => problem.id === id))
@@ -189,6 +190,24 @@ export default async function HomePage() {
           </span>
         </div>
       </footer>
+
+      {currentContest && (
+        <Link
+          href={`/contests/${currentContest.slug}`}
+          className="fixed bottom-4 right-4 z-50 w-[calc(100vw-2rem)] max-w-[20rem] border border-amber-400/25 bg-zinc-950/95 p-3 shadow-2xl shadow-black/30 transition hover:border-amber-300/50 sm:bottom-5 sm:right-5"
+        >
+          <div className="flex items-start gap-3">
+            <span className="grid size-9 shrink-0 place-items-center bg-amber-300 text-zinc-950">
+              <Trophy className="size-4" />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-bold text-white">{currentContest.title}</span>
+              <span className="mt-1 line-clamp-2 block text-xs leading-5 text-zinc-500">{currentContest.tagline}</span>
+            </span>
+            <ArrowRight className="mt-1 size-4 shrink-0 text-zinc-500" />
+          </div>
+        </Link>
+      )}
     </main>
   );
 }
