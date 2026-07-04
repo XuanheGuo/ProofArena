@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { publishSubmission } from '@/lib/publish-submission';
 import { createClient } from '@/lib/supabase-client';
 import {
@@ -263,6 +264,8 @@ function contentFromForm(submission: Submission, form: ReviewForm): SubmissionCo
 }
 
 export function AdminSubmissionsView() {
+  const searchParams = useSearchParams();
+  const contestParam = searchParams.get('contest');
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null);
@@ -272,7 +275,9 @@ export function AdminSubmissionsView() {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [publishing, setPublishing] = useState<string | null>(null);
-  const [scopeFilter, setScopeFilter] = useState<'all' | 'regular' | 'contest'>('all');
+  const [scopeFilter, setScopeFilter] = useState<'all' | 'regular' | 'contest'>(() =>
+    contestParam ? 'contest' : 'all'
+  );
   const supabase = createClient();
 
   useEffect(() => {
@@ -448,10 +453,14 @@ export function AdminSubmissionsView() {
     return buildMarkdown(selectedSubmission, form);
   }, [selectedSubmission, form]);
   const visibleSubmissions = useMemo(() => {
-    if (scopeFilter === 'regular') return submissions.filter((submission) => !submission.contest_slug);
-    if (scopeFilter === 'contest') return submissions.filter((submission) => submission.contest_slug);
-    return submissions;
-  }, [scopeFilter, submissions]);
+    let result = submissions;
+    if (scopeFilter === 'regular') result = result.filter((s) => !s.contest_slug);
+    else if (scopeFilter === 'contest') result = result.filter((s) => Boolean(s.contest_slug));
+    if (contestParam && scopeFilter === 'contest') {
+      result = result.filter((s) => s.contest_slug === contestParam);
+    }
+    return result;
+  }, [scopeFilter, submissions, contestParam]);
 
   if (loading) {
     return (
