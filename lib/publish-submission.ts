@@ -1,6 +1,7 @@
 'use server';
 
 import { createClient, createServiceClient } from '@/lib/supabase-server';
+import { MAX_TITLE_CHARS, clampText } from '@/lib/security';
 import type { SolutionScores } from '@/lib/types';
 
 type SubmissionStatus = 'pending' | 'approved' | 'rejected' | 'needs_revision';
@@ -35,6 +36,32 @@ type Submission = {
   is_post_contest?: boolean | null;
   attachment_urls?: string[] | null;
 };
+
+async function requireModerator() {
+  const supabase = await createClient();
+  const { data: auth, error: authError } = await supabase.auth.getUser();
+  const user = auth.user;
+
+  if (authError || !user) {
+    return { ok: false as const, error: '需要登录后才能发布投稿。', supabase };
+  }
+
+  if (user.email === 'xuanheguo@icloud.com') {
+    return { ok: true as const, supabase };
+  }
+
+  const { data: profile, error: profileError } = await supabase
+    .from('user_profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single();
+
+  if (profileError || !profile || !['moderator', 'admin'].includes(profile.role as string)) {
+    return { ok: false as const, error: '当前账号没有发布投稿的权限。', supabase };
+  }
+
+  return { ok: true as const, supabase };
+}
 
 function splitProcessSteps(value: string): string[] {
   if (!value.trim()) return [];
@@ -77,7 +104,10 @@ export async function publishSubmission(submissionId: string): Promise<{
   solutionId?: string;
 }> {
   try {
-    const supabase = await createClient();
+    const moderator = await requireModerator();
+    if (!moderator.ok) return { success: false, error: moderator.error };
+
+    const supabase = moderator.supabase;
 
     const { data: submission, error: fetchError } = await supabase
       .from('submissions')
@@ -125,13 +155,13 @@ async function publishProblem(submission: Submission): Promise<{
     const problem = {
       id: problemId,
       year: Number(problemData.year) || new Date().getFullYear(),
-      region: (problemData.region as string) || '其他',
+      region: (problemData.region as string) || '天津卷',
       paper: (problemData.paper as string) || '',
       number: (problemData.number as string) || '',
-      difficulty: (problemData.difficulty as string) || 'medium',
-      question_type: (problemData.questionType as string) || 'general',
+      difficulty: (problemData.difficulty as string) || '中档',
+      question_type: (problemData.questionType as string) || '解答',
       tags: Array.isArray(problemData.tags) ? problemData.tags : [],
-      title: submission.title,
+      title: clampText(submission.title, MAX_TITLE_CHARS),
       statement: Array.isArray(problemData.statement)
         ? problemData.statement
         : [problemData.statement || ''].filter(Boolean),
@@ -182,6 +212,16 @@ async function publishSolution(submission: Submission): Promise<{
       return { success: false, error: '解法投稿必须绑定题目 ID' };
     }
 
+    const { data: existingSolution } = await supabase
+      .from('solutions')
+      .select('id')
+      .eq('source_submission_id', submission.id)
+      .maybeSingle();
+
+    if (existingSolution?.id) {
+      return { success: true, solutionId: existingSolution.id as string };
+    }
+
     const solutionData = submission.content.json?.solution ?? {};
     const solutionId = generateId('sol');
 
@@ -203,7 +243,7 @@ async function publishSolution(submission: Submission): Promise<{
       contest_solution_type: submission.contest_solution_type ?? null,
       is_post_contest: Boolean(submission.is_post_contest),
       kind: submission.kind,
-      title: submission.title,
+      title: clampText(submission.title, MAX_TITLE_CHARS),
       author: (profile?.display_name as string) || '匿名用户',
       author_role: (profile?.role as string) || 'user',
       tags: Array.isArray(solutionData.tags) ? solutionData.tags : [],

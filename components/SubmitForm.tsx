@@ -6,6 +6,7 @@ import { AlertCircle, CheckCircle2, FileImage, FilePlus2, Lightbulb, LogIn, Send
 import type { User } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase-client';
 import { contestSolutionTypeMeta } from '@/lib/contest-meta';
+import { ALLOWED_IMAGE_TYPES, MAX_CONTEST_THOUGHT_CHARS, MAX_GENERAL_TEXT_CHARS, MAX_IMAGE_BYTES, MAX_IMAGE_COUNT, MAX_TITLE_CHARS, clampText, extensionForImageType, isAllowedImage } from '@/lib/security';
 import { getEffectiveProblemStatus, type Contest, type ContestProblem, type ContestSolutionType } from '@/lib/types';
 
 type ProblemOption = {
@@ -44,8 +45,6 @@ const initialSolutionForm = {
   insight: '',
   verification: '',
 };
-
-const maxImageCount = 4;
 
 function getContestSubmissionState(contest?: Contest, contestProblem?: ContestProblem, now = Date.now()) {
   if (!contest) {
@@ -142,22 +141,22 @@ function toLines(value: string) {
 }
 
 function buildProblemMarkdown(form: typeof initialProblemForm) {
-  return `# 题目投稿：${form.title}
+  return `# 题目投稿：${clampText(form.title, MAX_TITLE_CHARS)}
 
 ## 来源
-${form.source}
+${clampText(form.source, MAX_TITLE_CHARS)}
 
 ## 题干
-${form.statement}
+${clampText(form.statement, MAX_GENERAL_TEXT_CHARS)}
 
 ## 答案
-${form.answer || '（未填写）'}
+${clampText(form.answer, MAX_GENERAL_TEXT_CHARS) || '（未填写）'}
 
 ## 标签
 ${toLines(form.tags).map((tag) => `- ${tag}`).join('\n') || '（未填写）'}
 
 ## 备注
-${form.note || '（无）'}
+${clampText(form.note, MAX_GENERAL_TEXT_CHARS) || '（无）'}
 `;
 }
 
@@ -177,7 +176,7 @@ ${problem ? `${problem.source} · ${problem.title}` : form.problemId}
 ${contestContext.contest.title}${contestContext.contestProblem ? ` · Day ${contestContext.contestProblem.dayIndex} ${contestContext.contestProblem.title}` : ''}
 
 ## 我的思路
-${form.approach}
+${clampText(form.approach, MAX_CONTEST_THOUGHT_CHARS)}
 
 ${imageUrls.length ? `## 图片
 ${imageUrls.map((url) => `- ${url}`).join('\n')}
@@ -193,19 +192,19 @@ ${problem ? `${problem.source} · ${problem.title}` : form.problemId}
 ${KINDS.find((kind) => kind.value === form.kind)?.label ?? form.kind}
 
 ## 思路来源
-${form.approach}
+${clampText(form.approach, MAX_GENERAL_TEXT_CHARS)}
 
 ## 关键转化
-${form.keyTransform || '（未填写）'}
+${clampText(form.keyTransform, MAX_GENERAL_TEXT_CHARS) || '（未填写）'}
 
 ## 完整步骤
-${form.steps}
+${clampText(form.steps, MAX_GENERAL_TEXT_CHARS)}
 
 ## 最值得学的地方
-${form.insight || '（未填写）'}
+${clampText(form.insight, MAX_GENERAL_TEXT_CHARS) || '（未填写）'}
 
 ## 可验证位置
-${form.verification || '（未填写）'}
+${clampText(form.verification, MAX_GENERAL_TEXT_CHARS) || '（未填写）'}
 
 ${imageUrls.length ? `## 图片
 ${imageUrls.map((url) => `- ${url}`).join('\n')}
@@ -291,8 +290,12 @@ export function SubmitForm({
   function updateImageFiles(files: FileList | null) {
     if (!files) return;
     const next = [...imageFiles, ...Array.from(files)]
-      .filter((file) => file.type.startsWith('image/'))
-      .slice(0, maxImageCount);
+      .filter(isAllowedImage)
+      .slice(0, MAX_IMAGE_COUNT);
+    if (next.length === imageFiles.length && files.length > 0) {
+      setError(`图片需为 JPG/PNG/WebP/GIF，且单张不超过 ${Math.round(MAX_IMAGE_BYTES / 1024 / 1024)}MB。`);
+      return;
+    }
     setImageFiles(next);
     setError('');
   }
@@ -302,11 +305,12 @@ export function SubmitForm({
 
     const urls: string[] = [];
     for (const file of imageFiles) {
-      const ext = file.name.split('.').pop()?.toLowerCase() || 'png';
+      if (!isAllowedImage(file)) throw new Error(`图片需为 JPG/PNG/WebP/GIF，且单张不超过 ${Math.round(MAX_IMAGE_BYTES / 1024 / 1024)}MB。`);
+      const ext = extensionForImageType(file.type);
       const path = `${user.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
       const { error: uploadError } = await supabase.storage
         .from('submission-images')
-        .upload(path, file, { cacheControl: '3600', upsert: false });
+        .upload(path, file, { cacheControl: '3600', contentType: file.type, upsert: false });
 
       if (uploadError) throw new Error(uploadError.message || '图片上传失败');
 
@@ -322,18 +326,18 @@ export function SubmitForm({
     return supabase.from('submissions').insert({
       submission_type: 'problem',
       problem_id: null,
-      problem_source: problemForm.source,
+      problem_source: clampText(problemForm.source, MAX_TITLE_CHARS),
       user_id: user?.id,
       kind: 'standard',
-      title: problemForm.title,
+      title: clampText(problemForm.title, MAX_TITLE_CHARS),
       content: {
         markdown,
         imageUrls,
-        source: problemForm.source,
-        statement: problemForm.statement,
-        answer: problemForm.answer,
+        source: clampText(problemForm.source, MAX_TITLE_CHARS),
+        statement: clampText(problemForm.statement, MAX_GENERAL_TEXT_CHARS),
+        answer: clampText(problemForm.answer, MAX_GENERAL_TEXT_CHARS),
         tags: toLines(problemForm.tags),
-        note: problemForm.note,
+        note: clampText(problemForm.note, MAX_GENERAL_TEXT_CHARS),
       },
       attachment_urls: imageUrls,
       status: 'pending',
@@ -345,11 +349,19 @@ export function SubmitForm({
       return { error: { message: contestSubmissionState.description } };
     }
 
-    const normalizedTitle = solutionForm.title.trim()
+    const normalizedTitle = clampText(solutionForm.title, MAX_TITLE_CHARS)
       || (activeContestContext?.contestProblem
         ? `思路投稿：${activeContestContext.contestProblem.title}`
         : `${contestSolutionTypeMeta[solutionForm.contestSolutionType].label}投稿`);
-    const normalizedForm = { ...solutionForm, title: normalizedTitle };
+    const normalizedForm = {
+      ...solutionForm,
+      title: normalizedTitle,
+      approach: clampText(solutionForm.approach, activeContestContext ? MAX_CONTEST_THOUGHT_CHARS : MAX_GENERAL_TEXT_CHARS),
+      keyTransform: clampText(solutionForm.keyTransform, MAX_GENERAL_TEXT_CHARS),
+      steps: clampText(solutionForm.steps, MAX_GENERAL_TEXT_CHARS),
+      insight: clampText(solutionForm.insight, MAX_GENERAL_TEXT_CHARS),
+      verification: clampText(solutionForm.verification, MAX_GENERAL_TEXT_CHARS),
+    };
     const markdown = buildSolutionMarkdown(normalizedForm, selectedProblem, activeContestContext, imageUrls);
     const isPostContest = activeContestContext ? contestSubmissionState.isPostContest : false;
     return supabase.from('submissions').insert({
@@ -745,7 +757,9 @@ function ImageUploadField({
           <FileImage className="mt-0.5 size-4 shrink-0 text-cyan-300" />
           <div>
             <p className="text-sm font-bold text-white">图片</p>
-            <p className="mt-1 text-xs leading-5 text-zinc-600">最多 {maxImageCount} 张，适合草稿、截图或题目图片。</p>
+            <p className="mt-1 text-xs leading-5 text-zinc-600">
+              最多 {MAX_IMAGE_COUNT} 张，支持 {ALLOWED_IMAGE_TYPES.map((type) => type.replace("image/", "").toUpperCase()).join(" / ")}，单张不超过 {Math.round(MAX_IMAGE_BYTES / 1024 / 1024)}MB。
+            </p>
           </div>
         </div>
         <label className="inline-flex h-9 cursor-pointer items-center justify-center border border-cyan-400/30 px-3 text-xs font-bold text-cyan-300 transition hover:bg-cyan-400/10">

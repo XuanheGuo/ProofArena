@@ -1,4 +1,5 @@
 import { contests as staticContests, getContest as getStaticContest } from "@/data/contests";
+import { isPublicSubmissionImageUrl } from "@/lib/security";
 import { createClient } from "@/lib/supabase-server";
 import type { Contest, ContestAward, ContestProblem } from "@/lib/types";
 
@@ -316,7 +317,9 @@ export async function getContestThoughts(contestSlug: string): Promise<ContestTh
 
   return (submissions as unknown as ContestThoughtRow[]).map((submission) => {
     const profile = firstProfile(submission.user_profiles);
-    const imageUrls = submission.attachment_urls ?? submission.content?.imageUrls ?? submission.content?.images ?? [];
+    const imageUrls = (submission.attachment_urls ?? submission.content?.imageUrls ?? submission.content?.images ?? [])
+      .filter((url): url is string => typeof url === "string" && isPublicSubmissionImageUrl(url))
+      .slice(0, 4);
     const submissionRatings = ratingMap.get(submission.id) ?? [];
     const rating = submissionRatings.length
       ? {

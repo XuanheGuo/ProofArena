@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { CheckCircle2, ImageIcon, MessageSquareText, Send, Star } from "lucide-react";
 import { createClient } from "@/lib/supabase-client";
 import { MathBlock } from "@/components/MathBlock";
+import { MAX_COMMENT_CHARS, clampText } from "@/lib/security";
 import type { ContestThoughtEntry } from "@/lib/contests";
 import type { Contest } from "@/lib/types";
 
@@ -64,6 +65,10 @@ export function ContestThoughtArena({
   async function submitRating(thought: ContestThoughtEntry) {
     setError("");
     setMessage("");
+    if (!discussionOpen) {
+      setError("讨论时间尚未开放。");
+      return;
+    }
     const { data: auth } = await supabase.auth.getUser();
     const user = auth.user;
     if (!user) {
@@ -76,7 +81,7 @@ export function ContestThoughtArena({
     }
 
     const draft = draftFor(thought.id);
-    if (ratingDims.some((dim) => draft[dim.key] < 1)) {
+    if (ratingDims.some((dim) => !Number.isInteger(draft[dim.key]) || draft[dim.key] < 1 || draft[dim.key] > 5)) {
       setError("请把三个维度都打完分。");
       return;
     }
@@ -101,7 +106,11 @@ export function ContestThoughtArena({
   async function submitComment(thought: ContestThoughtEntry) {
     setError("");
     setMessage("");
-    const content = commentText.trim();
+    if (!discussionOpen) {
+      setError("讨论时间尚未开放。");
+      return;
+    }
+    const content = clampText(commentText, MAX_COMMENT_CHARS);
     if (!content) return;
 
     const { data: auth } = await supabase.auth.getUser();
@@ -275,6 +284,7 @@ export function ContestThoughtArena({
                         <textarea
                           value={commentText}
                           onChange={(event) => setCommentText(event.target.value)}
+                          maxLength={MAX_COMMENT_CHARS}
                           rows={3}
                           placeholder="补充一个观察、指出一个漏洞，或接着推一步。"
                           className="w-full resize-y border border-white/10 bg-black/20 px-3 py-2 text-xs leading-5 text-white outline-none focus:border-cyan-400/50"
