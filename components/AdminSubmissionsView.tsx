@@ -60,6 +60,7 @@ type Submission = {
   contest_problem_key?: string | null;
   contest_solution_type?: ContestSolutionType | null;
   is_post_contest?: boolean | null;
+  attachment_urls?: string[] | null;
 };
 
 type ReviewForm = {
@@ -388,13 +389,15 @@ export function AdminSubmissionsView() {
     setForm(formFromSubmission(updated));
     setSubmissions((current) => current.map((item) => item.id === updated.id ? updated : item));
 
-    if (nextStatus === 'approved') {
+    if (nextStatus === 'approved' && !updated.contest_slug) {
       const publishResult = await publishSubmission(selectedSubmission.id);
       if (!publishResult.success) {
         setMessage('审核结论已保存，但发布到题库时出错：' + (publishResult.error ?? '未知错误'));
       } else {
         setMessage('审核通过，已发布到题库。');
       }
+    } else if (nextStatus === 'approved' && updated.contest_slug) {
+      setMessage('比赛投稿已通过，已进入比赛思路专区；暂不自动发布为正式题解。');
     } else {
       setMessage(nextStatus ? '审核结论和评语已保存。' : '修改已保存。');
     }
@@ -538,7 +541,7 @@ export function AdminSubmissionsView() {
                   </p>
                 </div>
                 <div className="flex shrink-0 gap-2">
-                  {sub.status === 'approved' && (
+                  {sub.status === 'approved' && !sub.contest_slug && (
                     <button
                       type="button"
                       onClick={() => publishExisting(sub.id)}
@@ -646,7 +649,21 @@ export function AdminSubmissionsView() {
                         <TextArea label="迁移价值" value={form.transferValue} onChange={(value) => updateField('transferValue', value)} rows={5} />
                       </section>
 
-                      <TextArea label="完整过程" value={form.process} onChange={(value) => updateField('process', value)} rows={12} />
+                        <TextArea label="完整过程" value={form.process} onChange={(value) => updateField('process', value)} rows={12} />
+
+                      {selectedSubmission.attachment_urls && selectedSubmission.attachment_urls.length > 0 && (
+                        <section className="rounded border border-white/10 bg-black/20 p-4">
+                          <h3 className="text-sm font-bold text-white">投稿图片</h3>
+                          <div className="mt-3 grid gap-3 md:grid-cols-2">
+                            {selectedSubmission.attachment_urls.map((url) => (
+                              <a key={url} href={url} target="_blank" rel="noreferrer" className="block overflow-hidden rounded border border-white/10 bg-zinc-950">
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img src={url} alt="投稿图片" className="max-h-80 w-full object-contain" />
+                              </a>
+                            ))}
+                          </div>
+                        </section>
+                      )}
 
                       <section className="grid gap-4 md:grid-cols-3">
                         <TextArea label="适用场景" value={form.suitableFor} onChange={(value) => updateField('suitableFor', value)} rows={5} />

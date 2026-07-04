@@ -2,11 +2,11 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { AlertCircle, CheckCircle2, FilePlus2, Lightbulb, LogIn, Send } from 'lucide-react';
+import { AlertCircle, CheckCircle2, FileImage, FilePlus2, Lightbulb, LogIn, Send, X } from 'lucide-react';
 import type { User } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase-client';
-import { contestSolutionTypeMeta, contestSolutionTypeOptions } from '@/lib/contest-meta';
-import type { Contest, ContestProblem, ContestSolutionType } from '@/lib/types';
+import { contestSolutionTypeMeta } from '@/lib/contest-meta';
+import { getEffectiveProblemStatus, type Contest, type ContestProblem, type ContestSolutionType } from '@/lib/types';
 
 type ProblemOption = {
   id: string;
@@ -45,14 +45,9 @@ const initialSolutionForm = {
   verification: '',
 };
 
-function mapContestTypeToKind(type: ContestSolutionType): SolutionKind {
-  if (type === 'standard') return 'standard';
-  if (type === 'teaching' || type === 'wrong_analysis' || type === 'supplement') return 'teaching';
-  if (type === 'geometry' || type === 'algebra' || type === 'construction') return 'robust';
-  return 'insight';
-}
+const maxImageCount = 4;
 
-function getContestSubmissionState(contest?: Contest, now = Date.now()) {
+function getContestSubmissionState(contest?: Contest, contestProblem?: ContestProblem, now = Date.now()) {
   if (!contest) {
     return {
       canSubmit: true,
@@ -93,6 +88,27 @@ function getContestSubmissionState(contest?: Contest, now = Date.now()) {
   }
 
   if (contest.status === 'active') {
+    if (!contestProblem) {
+      return {
+        canSubmit: false,
+        isPostContest: false,
+        label: '请选择赛题',
+        description: '比赛投稿需要绑定到当天开放的赛题。',
+      };
+    }
+
+    const effectiveStatus = getEffectiveProblemStatus(contestProblem, new Date(now));
+    if (effectiveStatus !== 'open') {
+      return {
+        canSubmit: false,
+        isPostContest: false,
+        label: effectiveStatus === 'locked' ? '赛题未解锁' : '赛题已关闭',
+        description: effectiveStatus === 'locked'
+          ? '这道赛题还没有开放提交。'
+          : '这道赛题的正式提交窗口已经结束，等待讨论阶段或赛后补充。',
+      };
+    }
+
     return {
       canSubmit: true,
       isPostContest: false,
@@ -148,8 +164,26 @@ ${form.note || '（无）'}
 function buildSolutionMarkdown(
   form: typeof initialSolutionForm,
   problem?: ProblemOption,
-  contestContext?: { contest: Contest; contestProblem?: ContestProblem }
+  contestContext?: { contest: Contest; contestProblem?: ContestProblem },
+  imageUrls: string[] = [],
 ) {
+  if (contestContext) {
+    return `# 比赛思路投稿：${form.title}
+
+## 对应题目
+${problem ? `${problem.source} · ${problem.title}` : form.problemId}
+
+## 参赛信息
+${contestContext.contest.title}${contestContext.contestProblem ? ` · Day ${contestContext.contestProblem.dayIndex} ${contestContext.contestProblem.title}` : ''}
+
+## 我的思路
+${form.approach}
+
+${imageUrls.length ? `## 图片
+${imageUrls.map((url) => `- ${url}`).join('\n')}
+` : ''}`;
+  }
+
   return `# 解法投稿：${form.title}
 
 ## 对应题目
@@ -157,13 +191,6 @@ ${problem ? `${problem.source} · ${problem.title}` : form.problemId}
 
 ## 类型
 ${KINDS.find((kind) => kind.value === form.kind)?.label ?? form.kind}
-
-${contestContext ? `## 参赛信息
-${contestContext.contest.title}${contestContext.contestProblem ? ` · Day ${contestContext.contestProblem.dayIndex} ${contestContext.contestProblem.title}` : ''}
-
-## 参赛解法类型
-${contestSolutionTypeMeta[form.contestSolutionType].label}
-` : ''}
 
 ## 思路来源
 ${form.approach}
@@ -179,6 +206,10 @@ ${form.insight || '（未填写）'}
 
 ## 可验证位置
 ${form.verification || '（未填写）'}
+
+${imageUrls.length ? `## 图片
+${imageUrls.map((url) => `- ${url}`).join('\n')}
+` : ''}
 `;
 }
 
@@ -218,6 +249,7 @@ export function SubmitForm({
     ...initialSolutionForm,
     problemId: initialSelectedProblemId,
   });
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
   const supabase = createClient();
 
   const selectedProblem = useMemo(
@@ -234,7 +266,7 @@ export function SubmitForm({
         contestProblem: selectedContestProblem,
       }
     : undefined;
-  const contestSubmissionState = getContestSubmissionState(activeContestContext?.contest, now);
+  const contestSubmissionState = getContestSubmissionState(activeContestContext?.contest, activeContestContext?.contestProblem, now);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -256,7 +288,36 @@ export function SubmitForm({
     }
   }, [availableProblems, solutionForm.problemId]);
 
-  async function submitProblem() {
+  function updateImageFiles(files: FileList | null) {
+    if (!files) return;
+    const next = [...imageFiles, ...Array.from(files)]
+      .filter((file) => file.type.startsWith('image/'))
+      .slice(0, maxImageCount);
+    setImageFiles(next);
+    setError('');
+  }
+
+  async function uploadImages() {
+    if (!imageFiles.length || !user) return [];
+
+    const urls: string[] = [];
+    for (const file of imageFiles) {
+      const ext = file.name.split('.').pop()?.toLowerCase() || 'png';
+      const path = `${user.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+      const { error: uploadError } = await supabase.storage
+        .from('submission-images')
+        .upload(path, file, { cacheControl: '3600', upsert: false });
+
+      if (uploadError) throw new Error(uploadError.message || '图片上传失败');
+
+      const { data } = supabase.storage.from('submission-images').getPublicUrl(path);
+      if (data.publicUrl) urls.push(data.publicUrl);
+    }
+
+    return urls;
+  }
+
+  async function submitProblem(imageUrls: string[]) {
     const markdown = buildProblemMarkdown(problemForm);
     return supabase.from('submissions').insert({
       submission_type: 'problem',
@@ -267,27 +328,29 @@ export function SubmitForm({
       title: problemForm.title,
       content: {
         markdown,
+        imageUrls,
         source: problemForm.source,
         statement: problemForm.statement,
         answer: problemForm.answer,
         tags: toLines(problemForm.tags),
         note: problemForm.note,
       },
+      attachment_urls: imageUrls,
       status: 'pending',
     });
   }
 
-  async function submitSolution() {
+  async function submitSolution(imageUrls: string[]) {
     if (activeContestContext && !contestSubmissionState.canSubmit) {
       return { error: { message: contestSubmissionState.description } };
     }
 
     const normalizedTitle = solutionForm.title.trim()
       || (activeContestContext?.contestProblem
-        ? `${contestSolutionTypeMeta[solutionForm.contestSolutionType].label}：${activeContestContext.contestProblem.title}`
+        ? `思路投稿：${activeContestContext.contestProblem.title}`
         : `${contestSolutionTypeMeta[solutionForm.contestSolutionType].label}投稿`);
     const normalizedForm = { ...solutionForm, title: normalizedTitle };
-    const markdown = buildSolutionMarkdown(normalizedForm, selectedProblem, activeContestContext);
+    const markdown = buildSolutionMarkdown(normalizedForm, selectedProblem, activeContestContext, imageUrls);
     const isPostContest = activeContestContext ? contestSubmissionState.isPostContest : false;
     return supabase.from('submissions').insert({
       submission_type: 'solution',
@@ -296,15 +359,21 @@ export function SubmitForm({
       user_id: user?.id,
       kind: normalizedForm.kind,
       title: normalizedTitle,
+      contest_id: activeContestContext?.contest.id,
+      contest_problem_id: activeContestContext?.contestProblem?.id,
       contest_slug: activeContestContext?.contest.slug,
       contest_problem_key: activeContestContext?.contestProblem?.id,
       contest_solution_type: activeContestContext ? solutionForm.contestSolutionType : null,
       is_post_contest: isPostContest,
+      attachment_urls: imageUrls,
       content: {
         markdown,
+        thought: activeContestContext ? normalizedForm.approach : undefined,
+        imageUrls,
         contest: activeContestContext
           ? {
               slug: activeContestContext.contest.slug,
+              contestId: activeContestContext.contest.id,
               title: activeContestContext.contest.title,
               contestProblemId: activeContestContext.contestProblem?.id,
               contestProblemTitle: activeContestContext.contestProblem?.title,
@@ -333,7 +402,16 @@ export function SubmitForm({
     setSubmitting(true);
     setError('');
 
-    const { error: submitError } = mode === 'problem' ? await submitProblem() : await submitSolution();
+    let imageUrls: string[] = [];
+    try {
+      imageUrls = await uploadImages();
+    } catch (uploadError) {
+      setSubmitting(false);
+      setError(uploadError instanceof Error ? uploadError.message : '图片上传失败，请稍后再试。');
+      return;
+    }
+
+    const { error: submitError } = mode === 'problem' ? await submitProblem(imageUrls) : await submitSolution(imageUrls);
 
     setSubmitting(false);
     if (submitError) {
@@ -350,6 +428,7 @@ export function SubmitForm({
         problemId: initialSelectedProblemId,
       });
     }
+    setImageFiles([]);
   }
 
   if (loading) {
@@ -498,37 +577,32 @@ export function SubmitForm({
             )}
           </label>
 
-          <div className="grid gap-4 xl:grid-cols-2">
-            <TextField
-              required={!isContestMode}
-              label={isContestMode ? "标题（可选）" : "解法标题"}
-              value={solutionForm.title}
-              onChange={(title) => setSolutionForm({ ...solutionForm, title })}
-              placeholder={isContestMode ? "不填也可以，系统会按类型生成标题" : "例如：差函数导数法"}
-            />
-            {contestContext ? (
-              <label className="grid gap-2 text-sm">
-                <span className="font-bold text-white">参赛解法类型</span>
-                <select
-                  value={solutionForm.contestSolutionType}
-                  onChange={(event) => {
-                    const contestSolutionType = event.target.value as ContestSolutionType;
-                    setSolutionForm({
-                      ...solutionForm,
-                      contestSolutionType,
-                      kind: mapContestTypeToKind(contestSolutionType),
-                    });
-                  }}
-                  className="h-11 rounded border border-white/10 bg-zinc-900 px-3 text-sm text-white outline-none focus:border-cyan-400/50"
-                >
-                  {contestSolutionTypeOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            ) : (
+          {isContestMode ? (
+            <>
+              <TextArea
+                required
+                label="你的思路"
+                value={solutionForm.approach}
+                onChange={(approach) => setSolutionForm({ ...solutionForm, approach })}
+                rows={9}
+                placeholder="可以很粗糙：一个入口、一个观察、一个卡点、一张草稿图，或者你希望别人接着讨论的地方。"
+              />
+              <ImageUploadField
+                files={imageFiles}
+                onAdd={updateImageFiles}
+                onRemove={(index) => setImageFiles((current) => current.filter((_, i) => i !== index))}
+              />
+            </>
+          ) : (
+            <>
+            <div className="grid gap-4 xl:grid-cols-2">
+              <TextField
+                required
+                label="解法标题"
+                value={solutionForm.title}
+                onChange={(title) => setSolutionForm({ ...solutionForm, title })}
+                placeholder="例如：差函数导数法"
+              />
               <label className="grid gap-2 text-sm">
                 <span className="font-bold text-white">解法类型</span>
                 <select
@@ -539,35 +613,41 @@ export function SubmitForm({
                   {KINDS.map((kind) => <option key={kind.value} value={kind.value}>{kind.label}</option>)}
                 </select>
               </label>
-            )}
-          </div>
-          <TextArea
-            required
-            label={isContestMode ? "你的思路 / 感觉" : "思路来源"}
-            value={solutionForm.approach}
-            onChange={(approach) => setSolutionForm({ ...solutionForm, approach })}
-            rows={isContestMode ? 6 : 4}
-            placeholder={isContestMode ? "可以很粗糙：我觉得这里像对称、像换元、像某个边界条件在起作用..." : "为什么会想到这条路线？"}
-          />
-          <TextArea
-            label={isContestMode ? "关键观察（可选）" : "关键转化"}
-            value={solutionForm.keyTransform}
-            onChange={(keyTransform) => setSolutionForm({ ...solutionForm, keyTransform })}
-            rows={3}
-            placeholder={isContestMode ? "一句话写出最想让别人看到的点" : "真正改变问题形态的一步"}
-          />
-          <TextArea
-            required={!isContestMode}
-            label={isContestMode ? "推理草稿（可选）" : "完整步骤"}
-            value={solutionForm.steps}
-            onChange={(steps) => setSolutionForm({ ...solutionForm, steps })}
-            rows={isContestMode ? 5 : 8}
-            placeholder={isContestMode ? "还没想完整也没关系，可以先写片段、试算或卡住的位置。" : "写出能独立复算的推理链"}
-          />
-          <div className="grid gap-4 xl:grid-cols-2">
-            <TextArea label={isContestMode ? "想让别人接着看的地方（可选）" : "最值得学的地方"} value={solutionForm.insight} onChange={(insight) => setSolutionForm({ ...solutionForm, insight })} rows={4} />
-            <TextArea label={isContestMode ? "你不确定的地方（可选）" : "可验证位置"} value={solutionForm.verification} onChange={(verification) => setSolutionForm({ ...solutionForm, verification })} rows={4} />
-          </div>
+            </div>
+            <TextArea
+              required
+              label="思路来源"
+              value={solutionForm.approach}
+              onChange={(approach) => setSolutionForm({ ...solutionForm, approach })}
+              rows={4}
+              placeholder="为什么会想到这条路线？"
+            />
+            <TextArea
+              label="关键转化"
+              value={solutionForm.keyTransform}
+              onChange={(keyTransform) => setSolutionForm({ ...solutionForm, keyTransform })}
+              rows={3}
+              placeholder="真正改变问题形态的一步"
+            />
+            <TextArea
+              required
+              label="完整步骤"
+              value={solutionForm.steps}
+              onChange={(steps) => setSolutionForm({ ...solutionForm, steps })}
+              rows={8}
+              placeholder="写出能独立复算的推理链"
+            />
+            <div className="grid gap-4 xl:grid-cols-2">
+              <TextArea label="最值得学的地方" value={solutionForm.insight} onChange={(insight) => setSolutionForm({ ...solutionForm, insight })} rows={4} />
+              <TextArea label="可验证位置" value={solutionForm.verification} onChange={(verification) => setSolutionForm({ ...solutionForm, verification })} rows={4} />
+            </div>
+            <ImageUploadField
+              files={imageFiles}
+              onAdd={updateImageFiles}
+              onRemove={(index) => setImageFiles((current) => current.filter((_, i) => i !== index))}
+            />
+            </>
+          )}
         </div>
       ) : (
         <div className="space-y-5">
@@ -581,6 +661,11 @@ export function SubmitForm({
             <TextArea label="标签" value={problemForm.tags} onChange={(tags) => setProblemForm({ ...problemForm, tags })} rows={4} placeholder="导数、圆锥曲线、数列" />
           </div>
           <TextArea label="补充说明" value={problemForm.note} onChange={(note) => setProblemForm({ ...problemForm, note })} rows={3} placeholder="来源链接、图片说明、你希望补充的审核信息" />
+          <ImageUploadField
+            files={imageFiles}
+            onAdd={updateImageFiles}
+            onRemove={(index) => setImageFiles((current) => current.filter((_, i) => i !== index))}
+          />
         </div>
       )}
 
@@ -641,6 +726,60 @@ function TextField({
         className="h-11 rounded border border-white/10 bg-white/5 px-4 text-sm text-white outline-none transition placeholder:text-zinc-600 focus:border-cyan-400/50"
       />
     </label>
+  );
+}
+
+function ImageUploadField({
+  files,
+  onAdd,
+  onRemove,
+}: {
+  files: File[];
+  onAdd: (files: FileList | null) => void;
+  onRemove: (index: number) => void;
+}) {
+  return (
+    <div className="rounded border border-white/10 bg-white/[0.03] p-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-start gap-3">
+          <FileImage className="mt-0.5 size-4 shrink-0 text-cyan-300" />
+          <div>
+            <p className="text-sm font-bold text-white">图片</p>
+            <p className="mt-1 text-xs leading-5 text-zinc-600">最多 {maxImageCount} 张，适合草稿、截图或题目图片。</p>
+          </div>
+        </div>
+        <label className="inline-flex h-9 cursor-pointer items-center justify-center border border-cyan-400/30 px-3 text-xs font-bold text-cyan-300 transition hover:bg-cyan-400/10">
+          选择图片
+          <input
+            type="file"
+            accept="image/*"
+            multiple
+            onChange={(event) => {
+              onAdd(event.target.files);
+              event.currentTarget.value = '';
+            }}
+            className="sr-only"
+          />
+        </label>
+      </div>
+      {files.length > 0 && (
+        <div className="mt-4 grid gap-2 sm:grid-cols-2">
+          {files.map((file, index) => (
+            <div key={`${file.name}-${index}`} className="flex items-center justify-between gap-3 border border-white/10 bg-black/20 px-3 py-2">
+              <span className="min-w-0 truncate text-xs text-zinc-400">{file.name}</span>
+              <button
+                type="button"
+                onClick={() => onRemove(index)}
+                className="inline-flex size-7 shrink-0 items-center justify-center text-zinc-500 transition hover:text-white"
+                aria-label="移除图片"
+              >
+                <X className="size-3.5" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 

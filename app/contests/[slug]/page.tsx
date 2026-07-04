@@ -18,7 +18,8 @@ import {
   Trophy,
 } from "lucide-react";
 import { contestStatusMeta, contestSolutionTypeMeta } from "@/lib/contest-meta";
-import { getContest, getContestLeaderboard, getContestSubmissionStats, getContestUserRankings } from "@/lib/contests";
+import { ContestThoughtArena } from "@/components/ContestThoughtArena";
+import { getContest, getContestLeaderboard, getContestSubmissionStats, getContestThoughts, getContestUserRankings } from "@/lib/contests";
 import { getProblems, getSolutionAverage } from "@/lib/db";
 import { difficultyBadgeClass } from "@/lib/problem-presentation";
 import { getEffectiveProblemStatus } from "@/lib/types";
@@ -62,11 +63,12 @@ export default async function ContestDetailPage({ params }: PageProps) {
   const contest = await getContest(slug);
   if (!contest) notFound();
 
-  const [problems, leaderboard, contestStats, userRankings] = await Promise.all([
+  const [problems, leaderboard, contestStats, userRankings, contestThoughts] = await Promise.all([
     getProblems(),
     getContestLeaderboard(slug),
     getContestSubmissionStats(slug),
     getContestUserRankings(slug, contest.awards),
+    getContestThoughts(slug),
   ]);
   const problemMap = new Map(problems.map((problem) => [problem.id, problem]));
   const linkedContestProblems = contest.problems.map((contestProblem) => ({
@@ -95,6 +97,7 @@ export default async function ContestDetailPage({ params }: PageProps) {
   const todayProblem = linkedWithStatus.find(({ effectiveStatus }) => effectiveStatus === "open")?.contestProblem;
   const hideLeaderboard = contest.status === "active";
   const useDbLeaderboard = leaderboard.solutions.length > 0;
+  const problemTitles = Object.fromEntries(problems.map((problem) => [problem.id, problem.title]));
 
   return (
     <main className="grid-surface min-h-screen">
@@ -297,6 +300,12 @@ export default async function ContestDetailPage({ params }: PageProps) {
               })}
             </div>
           </section>
+
+          <ContestThoughtArena
+            contest={contest}
+            thoughts={contestThoughts}
+            problemTitles={problemTitles}
+          />
 
           <section id="leaderboard" className="scroll-mt-24 border border-white/10 bg-zinc-950 p-5 md:p-6">
             <div className="flex items-center justify-between gap-3">

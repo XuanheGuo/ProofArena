@@ -27,10 +27,13 @@ type Submission = {
   status: SubmissionStatus;
   user_id: string;
   moderator_notes?: string | null;
+  contest_id?: string | null;
+  contest_problem_id?: string | null;
   contest_slug?: string | null;
   contest_problem_key?: string | null;
   contest_solution_type?: string | null;
   is_post_contest?: boolean | null;
+  attachment_urls?: string[] | null;
 };
 
 function splitProcessSteps(value: string): string[] {
@@ -193,6 +196,8 @@ async function publishSolution(submission: Submission): Promise<{
       problem_id: submission.problem_id,
       author_id: submission.user_id,
       source_submission_id: submission.id,
+      contest_id: submission.contest_id ?? null,
+      contest_problem_id: submission.contest_problem_id ?? null,
       contest_slug: submission.contest_slug ?? null,
       contest_problem_key: submission.contest_problem_key ?? null,
       contest_solution_type: submission.contest_solution_type ?? null,

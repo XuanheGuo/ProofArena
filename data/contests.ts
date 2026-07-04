@@ -18,6 +18,8 @@ export const contests: Contest[] = [
     description: "7 天 / 6 道题 / 一题多解 / 多维评分 / 赛后优秀解法合集",
     startAt: iso(0),
     endAt: iso(7),
+    discussionStartAt: iso(6),
+    discussionEndAt: iso(10),
     status: "draft",
     rules: [
       "每道题开放提交多个解法，可以是标准解、巧解、教学解、错解分析，也可以补充他人的思路或提出题目变式。",

@@ -12,6 +12,8 @@ type ContestRow = {
   status: Contest["status"];
   start_at: string;
   end_at: string;
+  discussion_start_at: string | null;
+  discussion_end_at: string | null;
   contest_problems?: ContestProblemRow[];
   awards?: AwardRow[];
 };
@@ -53,6 +55,8 @@ function toContest(row: ContestRow): Contest {
     rules: row.rules ?? [],
     startAt: row.start_at,
     endAt: row.end_at,
+    discussionStartAt: row.discussion_start_at,
+    discussionEndAt: row.discussion_end_at,
     status: row.status,
     problems: (row.contest_problems ?? [])
       .map((problem): ContestProblem => ({
@@ -198,6 +202,147 @@ export async function getContestSubmissionStats(contestSlug: string) {
     submissionCount: data.length,
     participantCount: participants.size,
   };
+}
+
+export type ContestThoughtRatingSummary = {
+  clarity: number;
+  insight: number;
+  potential: number;
+  count: number;
+  total: number;
+};
+
+export type ContestThoughtComment = {
+  id: string;
+  userId: string;
+  author: string;
+  content: string;
+  createdAt: string;
+};
+
+export type ContestThoughtEntry = {
+  id: string;
+  problemId: string | null;
+  contestProblemKey: string | null;
+  title: string;
+  author: string;
+  userId: string | null;
+  contentText: string;
+  imageUrls: string[];
+  isPostContest: boolean;
+  createdAt: string;
+  rating: ContestThoughtRatingSummary | null;
+  comments: ContestThoughtComment[];
+};
+
+type ContestThoughtRow = {
+  id: string;
+  problem_id: string | null;
+  contest_problem_key: string | null;
+  title: string;
+  user_id: string | null;
+  content: {
+    thought?: string;
+    approach?: string;
+    markdown?: string;
+    imageUrls?: string[];
+    images?: string[];
+  } | null;
+  attachment_urls?: string[] | null;
+  is_post_contest: boolean | null;
+  created_at: string;
+  user_profiles?: { display_name: string | null; username: string | null } | Array<{ display_name: string | null; username: string | null }> | null;
+};
+
+function firstProfile(
+  profile: ContestThoughtRow["user_profiles"] | { display_name?: string | null; username?: string | null } | Array<{ display_name?: string | null; username?: string | null }> | null | undefined,
+) {
+  return Array.isArray(profile) ? profile[0] : profile;
+}
+
+export async function getContestThoughts(contestSlug: string): Promise<ContestThoughtEntry[]> {
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) return [];
+
+  const supabase = await createClient();
+  const { data: submissions, error } = await supabase
+    .from("submissions")
+    .select("id, problem_id, contest_problem_key, title, user_id, content, attachment_urls, is_post_contest, created_at, user_profiles(display_name, username)")
+    .eq("contest_slug", contestSlug)
+    .eq("submission_type", "solution")
+    .eq("status", "approved")
+    .order("created_at", { ascending: true });
+
+  if (error || !submissions || submissions.length === 0) return [];
+
+  const ids = submissions.map((item) => item.id as string);
+
+  const [{ data: ratings }, { data: comments }] = await Promise.all([
+    supabase
+      .from("contest_submission_ratings")
+      .select("submission_id, clarity, insight, potential")
+      .in("submission_id", ids),
+    supabase
+      .from("comments")
+      .select("id, target_id, user_id, content, created_at, user_profiles(display_name, username)")
+      .eq("target_type", "submission")
+      .in("target_id", ids)
+      .order("created_at", { ascending: true }),
+  ]);
+
+  const ratingMap = new Map<string, Array<{ clarity: number; insight: number; potential: number }>>();
+  for (const rating of ratings ?? []) {
+    const id = rating.submission_id as string;
+    if (!ratingMap.has(id)) ratingMap.set(id, []);
+    ratingMap.get(id)!.push({
+      clarity: Number(rating.clarity),
+      insight: Number(rating.insight),
+      potential: Number(rating.potential),
+    });
+  }
+
+  const commentMap = new Map<string, ContestThoughtComment[]>();
+  for (const comment of comments ?? []) {
+    const targetId = comment.target_id as string;
+    const profile = firstProfile(comment.user_profiles as { display_name?: string | null; username?: string | null } | Array<{ display_name?: string | null; username?: string | null }> | null);
+    if (!commentMap.has(targetId)) commentMap.set(targetId, []);
+    commentMap.get(targetId)!.push({
+      id: comment.id as string,
+      userId: comment.user_id as string,
+      author: profile?.display_name || profile?.username || "匿名用户",
+      content: comment.content as string,
+      createdAt: comment.created_at as string,
+    });
+  }
+
+  return (submissions as unknown as ContestThoughtRow[]).map((submission) => {
+    const profile = firstProfile(submission.user_profiles);
+    const imageUrls = submission.attachment_urls ?? submission.content?.imageUrls ?? submission.content?.images ?? [];
+    const submissionRatings = ratingMap.get(submission.id) ?? [];
+    const rating = submissionRatings.length
+      ? {
+          clarity: submissionRatings.reduce((sum, item) => sum + item.clarity, 0) / submissionRatings.length,
+          insight: submissionRatings.reduce((sum, item) => sum + item.insight, 0) / submissionRatings.length,
+          potential: submissionRatings.reduce((sum, item) => sum + item.potential, 0) / submissionRatings.length,
+          count: submissionRatings.length,
+          total: submissionRatings.reduce((sum, item) => sum + item.clarity + item.insight + item.potential, 0) / submissionRatings.length,
+        }
+      : null;
+
+    return {
+      id: submission.id,
+      problemId: submission.problem_id,
+      contestProblemKey: submission.contest_problem_key,
+      title: submission.title,
+      author: profile?.display_name || profile?.username || "匿名用户",
+      userId: submission.user_id,
+      contentText: submission.content?.thought || submission.content?.approach || submission.content?.markdown || "",
+      imageUrls,
+      isPostContest: Boolean(submission.is_post_contest),
+      createdAt: submission.created_at,
+      rating,
+      comments: commentMap.get(submission.id) ?? [],
+    };
+  });
 }
 
 export type ContestUserRankEntry = {

@@ -223,6 +223,8 @@ export interface Contest {
   rules: string[];
   startAt: string;
   endAt: string;
+  discussionStartAt?: string | null;
+  discussionEndAt?: string | null;
   status: ContestStatus;
   problems: ContestProblem[];
   awards: ContestAward[];

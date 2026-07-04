@@ -52,7 +52,10 @@ export default async function ProblemDetailPage({
     .slice(0, 4)
     .map(({ item }) => item);
   const contestSlug = typeof query.contest === "string" ? query.contest : undefined;
-  const contestContext = contestSlug ? await getContestForProblem(problem.id, contestSlug) : null;
+  const rawContestContext = await getContestForProblem(problem.id, contestSlug);
+  const contestContext = rawContestContext && (contestSlug || rawContestContext.contest.status !== "draft")
+    ? rawContestContext
+    : null;
 
   return (
     <ProblemDetailExperience

@@ -24,6 +24,8 @@ type DbContest = {
   status: ContestStatus;
   start_at: string;
   end_at: string;
+  discussion_start_at: string | null;
+  discussion_end_at: string | null;
   contest_problems?: DbContestProblem[];
   awards?: DbAward[];
 };
@@ -64,6 +66,8 @@ const emptyContest = {
   status: "draft" as ContestStatus,
   startAt: "",
   endAt: "",
+  discussionStartAt: "",
+  discussionEndAt: "",
 };
 
 const emptyProblem = {
@@ -135,6 +139,8 @@ export function AdminContestsView({ problems }: { problems: ProblemOption[] }) {
       status: selectedContest.status,
       startAt: toInputDate(selectedContest.start_at),
       endAt: toInputDate(selectedContest.end_at),
+      discussionStartAt: toInputDate(selectedContest.discussion_start_at ?? ""),
+      discussionEndAt: toInputDate(selectedContest.discussion_end_at ?? ""),
     });
   }, [selectedContest]);
 
@@ -179,6 +185,8 @@ export function AdminContestsView({ problems }: { problems: ProblemOption[] }) {
       status: seed.status,
       start_at: seed.startAt,
       end_at: seed.endAt,
+      discussion_start_at: seed.discussionStartAt ?? null,
+      discussion_end_at: seed.discussionEndAt ?? null,
     };
 
     const result = existing?.id
@@ -230,6 +238,8 @@ export function AdminContestsView({ problems }: { problems: ProblemOption[] }) {
       status: contestForm.status,
       start_at: fromInputDate(contestForm.startAt),
       end_at: fromInputDate(contestForm.endAt),
+      discussion_start_at: contestForm.discussionStartAt ? fromInputDate(contestForm.discussionStartAt) : null,
+      discussion_end_at: contestForm.discussionEndAt ? fromInputDate(contestForm.discussionEndAt) : null,
     };
 
     const result = selectedContest
@@ -477,6 +487,8 @@ export function AdminContestsView({ problems }: { problems: ProblemOption[] }) {
             <TextField label="简介" value={contestForm.description} onChange={(description) => setContestForm({ ...contestForm, description })} />
             <TextField label="开始时间" type="datetime-local" value={contestForm.startAt} onChange={(startAt) => setContestForm({ ...contestForm, startAt })} />
             <TextField label="结束时间" type="datetime-local" value={contestForm.endAt} onChange={(endAt) => setContestForm({ ...contestForm, endAt })} />
+            <TextField label="讨论开始时间" type="datetime-local" value={contestForm.discussionStartAt} onChange={(discussionStartAt) => setContestForm({ ...contestForm, discussionStartAt })} />
+            <TextField label="讨论结束时间" type="datetime-local" value={contestForm.discussionEndAt} onChange={(discussionEndAt) => setContestForm({ ...contestForm, discussionEndAt })} />
             <div className="md:col-span-2">
               <TextArea label="一句话定位" value={contestForm.tagline} onChange={(tagline) => setContestForm({ ...contestForm, tagline })} rows={3} />
             </div>
