@@ -172,40 +172,42 @@ export default async function ContestDetailPage({ params }: PageProps) {
       <div className="mx-auto grid max-w-7xl gap-6 px-4 py-8 md:px-6 md:py-10 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <div className="space-y-6">
           <section className="border border-white/10 bg-zinc-950 p-5 md:p-6">
-            <div className="flex items-center gap-2 text-sm font-bold text-white">
-              <ListChecks className="size-4 text-cyan-300" />
+            <div className="mb-4 flex items-center gap-2 text-sm font-bold text-white">
+              <ListChecks className="size-4 text-cyan-400" />
               比赛规则
             </div>
-            <div className="mt-4 space-y-3 text-sm leading-7 text-zinc-400">
-              {contest.rules.map((rule) => (
-                <p key={rule}>{rule}</p>
+            <ol className="space-y-3">
+              {contest.rules.map((rule, i) => (
+                <li key={rule} className="grid grid-cols-[1.5rem_minmax(0,1fr)] gap-2 text-sm leading-7 text-zinc-400">
+                  <span className="mt-0.5 font-mono text-[11px] font-bold text-zinc-600">{String(i + 1).padStart(2, "0")}</span>
+                  <span>{rule}</span>
+                </li>
               ))}
-            </div>
+            </ol>
           </section>
 
-          <section className="grid gap-3 md:grid-cols-3">
+          <section className="grid gap-2 md:grid-cols-3">
             {[
-              ["参赛内容", "标准解、巧解、教学解、错解分析、题目变式都可以。比赛投稿允许不完整，先保留有价值的思路火花。"],
-              ["互评维度", "正确性、清晰度、优雅度、启发性、考试可用性五个维度分别评分，总分 25 分。"],
-              ["赛后沉淀", "管理员标记获奖解法后，按题目整理成优秀解法合集，再回流到题目详情页。"],
-            ].map(([title, description]) => (
-              <article key={title} className="border border-white/10 bg-zinc-950 p-5">
-                <Sparkles className="size-4 text-cyan-300" />
-                <h2 className="mt-4 font-bold text-white">{title}</h2>
-                <p className="mt-2 text-sm leading-6 text-zinc-500">{description}</p>
+              { label: "参赛内容", text: "标准解、巧解、教学解、错解分析、变式都可以。不要求完整，有价值的思路火花优先。" },
+              { label: "互评维度", text: "正确性、清晰度、优雅度、启发性、考试可用性，总分 25 分。" },
+              { label: "赛后沉淀", text: "获奖解法按题目整理成合集，回流到题目详情页，长期保留。" },
+            ].map(({ label, text }) => (
+              <article key={label} className="border border-white/10 bg-zinc-950 p-4">
+                <p className="text-[11px] font-bold uppercase tracking-wide text-cyan-400">{label}</p>
+                <p className="mt-2 text-sm leading-6 text-zinc-400">{text}</p>
               </article>
             ))}
           </section>
 
-          <section className="border border-white/10 bg-zinc-950 p-5 md:p-6">
-            <div className="flex items-center gap-2 text-sm font-bold text-white">
-              <Shield className="size-4 text-amber-300" />
-              进行中保护
-            </div>
-            <p className="mt-3 text-sm leading-7 text-zinc-400">
-              比赛进行中，从比赛入口进入的题目页会隐藏已有题解和解法树，避免参赛者被既有路线潜意识引导。评审或结束后再恢复对照阅读。
-            </p>
-          </section>
+          {contest.status === "active" && (
+            <section className="flex items-start gap-3 border border-amber-500/25 bg-amber-500/[0.07] px-4 py-3">
+              <Shield className="mt-0.5 size-4 shrink-0 text-amber-400" />
+              <p className="text-sm leading-6 text-zinc-300">
+                <strong className="text-amber-300">进行中保护：</strong>
+                从比赛入口进入题目页时，已有题解和解法树暂时隐藏，评审或结束后恢复。
+              </p>
+            </section>
+          )}
 
           <section className="space-y-3">
             <div className="flex items-end justify-between gap-4">
