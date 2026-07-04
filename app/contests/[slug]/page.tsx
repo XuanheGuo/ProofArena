@@ -49,9 +49,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 function getProblemStatusLabel(effectiveStatus: string, contest: { status: string }) {
   if (effectiveStatus === "locked") return null;
-  if (effectiveStatus === "closed" || contest.status === "finished") return { label: "已结束", className: "border-zinc-600 text-zinc-500" };
-  if (effectiveStatus === "reviewing" || contest.status === "judging") return { label: "互评中", className: "border-cyan-400/30 text-cyan-300" };
-  if (effectiveStatus === "open" && contest.status === "active") return { label: "提交中", className: "border-emerald-400/30 text-emerald-300" };
+  if (effectiveStatus === "closed" || contest.status === "finished") return { label: "已结束", className: "border-zinc-500/50 bg-zinc-800 text-zinc-300" };
+  if (effectiveStatus === "reviewing" || contest.status === "judging") return { label: "互评中", className: "border-amber-500/50 bg-amber-500/15 text-amber-300" };
+  if (effectiveStatus === "open" && contest.status === "active") return { label: "提交中", className: "border-emerald-500/50 bg-emerald-500/15 text-emerald-300" };
   return null;
 }
 
@@ -141,24 +141,24 @@ export default async function ContestDetailPage({ params }: PageProps) {
                 </a>
               </div>
             </div>
-            <div className="grid grid-cols-3 border border-white/10 bg-black/20 text-center">
-              <div className="border-r border-white/10 p-4">
+            <div className="grid grid-cols-3 divide-x divide-white/10 border border-white/10 bg-black/30">
+              <div className="p-4 text-center">
                 <strong className="font-display block text-2xl text-cyan-300">{contest.problems.length}</strong>
-                <span className="text-[11px] text-zinc-600">赛题</span>
+                <span className="mt-1 block text-[11px] text-zinc-500">赛题</span>
               </div>
-              <div className="border-r border-white/10 p-4">
+              <div className="p-4 text-center">
                 <strong className="font-display block text-2xl text-emerald-300">
                   {contestStats.participantCount > 0 ? contestStats.participantCount : (solutionCount > 0 ? solutionCount : "—")}
                 </strong>
-                <span className="text-[11px] text-zinc-600">
+                <span className="mt-1 block text-[11px] text-zinc-500">
                   {contestStats.participantCount > 0 ? "参与者" : "现有解法"}
                 </span>
               </div>
-              <div className="p-4">
+              <div className="p-4 text-center">
                 <strong className="font-display block text-2xl text-amber-300">
                   {contestStats.submissionCount > 0 ? contestStats.submissionCount : contest.awards.length}
                 </strong>
-                <span className="text-[11px] text-zinc-600">
+                <span className="mt-1 block text-[11px] text-zinc-500">
                   {contestStats.submissionCount > 0 ? "参赛投稿" : "奖项"}
                 </span>
               </div>
@@ -216,59 +216,61 @@ export default async function ContestDetailPage({ params }: PageProps) {
               {linkedWithStatus.map(({ contestProblem, problem, effectiveStatus }) => {
                 const isLocked = effectiveStatus === "locked";
                 return (
-                  <article key={contestProblem.id} className={`border bg-zinc-950 p-4 transition ${isLocked ? "border-white/5 opacity-60" : "border-white/10 hover:border-cyan-400/30"}`}>
-                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                      <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-2 text-xs">
-                          <span className="bg-cyan-400 px-2 py-1 font-bold text-zinc-950">Day {contestProblem.dayIndex}</span>
-                          <span className="border border-white/10 px-2 py-1 text-zinc-500">{contestProblem.title}</span>
-                          {problem && !isLocked && <span className={`border px-2 py-1 ${difficultyBadgeClass[problem.difficulty]}`}>{problem.difficulty}</span>}
+                  <article key={contestProblem.id} className={`border bg-zinc-950 transition ${isLocked ? "border-white/[0.06] opacity-50" : "border-white/10 hover:border-white/20"}`}>
+                    <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-1.5 text-xs">
+                          <span className="bg-cyan-400 px-2 py-0.5 font-bold text-zinc-950">Day {contestProblem.dayIndex}</span>
+                          <span className="border border-white/15 px-2 py-0.5 text-zinc-400">{contestProblem.title}</span>
+                          {problem && !isLocked && <span className={`border px-2 py-0.5 ${difficultyBadgeClass[problem.difficulty]}`}>{problem.difficulty}</span>}
                           {(() => {
                             const statusLabel = getProblemStatusLabel(effectiveStatus, contest);
                             return statusLabel ? (
-                              <span className={`border px-2 py-1 font-bold ${statusLabel.className}`}>{statusLabel.label}</span>
+                              <span className={`border px-2 py-0.5 font-bold ${statusLabel.className}`}>{statusLabel.label}</span>
                             ) : null;
                           })()}
                           {isLocked && (
-                            <span className="inline-flex items-center gap-1 border border-white/10 px-2 py-1 text-zinc-600">
+                            <span className="inline-flex items-center gap-1 border border-white/10 px-2 py-0.5 text-zinc-500">
                               <Lock className="size-3" />
                               未解锁
                             </span>
                           )}
                         </div>
-                        <h3 className="mt-3 font-bold text-white">{isLocked ? contestProblem.theme : (problem?.title ?? "题目待关联")}</h3>
-                        <p className="mt-2 text-sm leading-6 text-zinc-500">{contestProblem.theme}</p>
+                        <h3 className="mt-3 font-bold text-white">
+                          {isLocked ? contestProblem.theme : (problem?.title ?? "题目待关联")}
+                        </h3>
+                        <p className="mt-1.5 text-sm leading-6 text-zinc-500">{contestProblem.theme}</p>
                       </div>
                       {!isLocked && (
-                        <div className="grid shrink-0 grid-cols-2 gap-px border border-white/10 bg-white/10 text-center sm:w-44">
-                          <div className="bg-zinc-950 p-3">
-                            <strong className="block text-lg text-white">{problem?.solutions.length ?? 0}</strong>
-                            <span className="text-[10px] text-zinc-600">解法</span>
+                        <div className="flex shrink-0 divide-x divide-white/10 border border-white/10 text-center sm:w-40">
+                          <div className="flex-1 px-3 py-2.5">
+                            <strong className="block text-base font-bold text-white">{problem?.solutions.length ?? 0}</strong>
+                            <span className="text-[10px] text-zinc-500">解法</span>
                           </div>
-                          <div className="bg-zinc-950 p-3">
-                            <strong className="block text-lg text-amber-300">
+                          <div className="flex-1 px-3 py-2.5">
+                            <strong className="block text-base font-bold text-amber-300">
                               {contest.awards.filter((a) => a.problemId === contestProblem.problemId).length}
                             </strong>
-                            <span className="text-[10px] text-zinc-600">获奖</span>
+                            <span className="text-[10px] text-zinc-500">获奖</span>
                           </div>
                         </div>
                       )}
                     </div>
-                    <div className="mt-4 flex flex-col gap-2 border-t border-white/10 pt-4 text-xs text-zinc-500 sm:flex-row sm:items-center sm:justify-between">
-                      <span className="inline-flex items-center gap-2">
-                        <CalendarDays className="size-3.5" />
-                        {formatDateTime(contestProblem.openAt)} - {formatDateTime(contestProblem.closeAt)}
+                    <div className="flex flex-col gap-2 border-t border-white/[0.07] px-4 pb-4 pt-3 sm:flex-row sm:items-center sm:justify-between">
+                      <span className="inline-flex items-center gap-1.5 text-xs text-zinc-500">
+                        <CalendarDays className="size-3.5 shrink-0" />
+                        {formatDateTime(contestProblem.openAt)} — {formatDateTime(contestProblem.closeAt)}
                       </span>
                       {isLocked ? (
-                        <span className="inline-flex items-center gap-1.5 text-zinc-600">
+                        <span className="inline-flex items-center gap-1.5 text-xs text-zinc-500">
                           <Lock className="size-3.5" />
-                          {contestProblem.unlockMode === "auto_time" ? `将于 ${formatDateTime(contestProblem.openAt)} 自动解锁` : "等待管理员解锁"}
+                          {contestProblem.unlockMode === "auto_time" ? `${formatDateTime(contestProblem.openAt)} 自动解锁` : "等待管理员解锁"}
                         </span>
                       ) : problem ? (
                         <div className="flex flex-wrap items-center gap-2">
                           <Link
                             href={`/problems/${problem.id}?contest=${contest.slug}`}
-                            className="inline-flex h-9 items-center justify-center gap-2 border border-cyan-400/30 px-3 text-xs font-bold text-cyan-300 transition hover:bg-cyan-400/10"
+                            className="inline-flex h-8 items-center gap-1.5 border border-white/15 px-3 text-xs font-bold text-zinc-200 transition hover:border-cyan-400/40 hover:text-cyan-300"
                           >
                             进入题目
                             <ArrowUpRight className="size-3.5" />
@@ -276,7 +278,7 @@ export default async function ContestDetailPage({ params }: PageProps) {
                           {(contest.status === "active" || contest.status === "judging") && (
                             <Link
                               href={`/submit?contest=${contest.slug}&problem=${problem.id}`}
-                              className="inline-flex h-9 items-center justify-center gap-2 border border-amber-400/25 bg-amber-400/[0.06] px-3 text-xs font-bold text-amber-200 transition hover:bg-amber-400/10"
+                              className="inline-flex h-8 items-center gap-1.5 border border-amber-400/40 bg-amber-400/10 px-3 text-xs font-bold text-amber-300 transition hover:bg-amber-400/15"
                             >
                               提交解法
                             </Link>
@@ -308,15 +310,15 @@ export default async function ContestDetailPage({ params }: PageProps) {
               </p>
             )}
             {hideLeaderboard ? (
-              <div className="mt-5 border border-amber-400/25 bg-amber-400/[0.06] p-8 text-center">
-                <Trophy className="mx-auto size-6 text-amber-300" />
+              <div className="mt-5 border border-amber-500/25 bg-amber-500/[0.08] p-8 text-center">
+                <Trophy className="mx-auto size-6 text-amber-400" />
                 <p className="mt-3 text-sm font-bold text-white">比赛进行中，榜单暂不展示</p>
                 <p className="mx-auto mt-2 max-w-md text-xs leading-5 text-zinc-500">
                   等进入评审阶段后再公开候选榜，避免参赛时被已有高分路线带偏。
                 </p>
               </div>
             ) : useDbLeaderboard ? (
-              <div className="mt-5 divide-y divide-white/10 border border-white/10">
+              <div className="mt-4 divide-y divide-white/[0.07] border border-white/10">
                 {leaderboard.solutions.slice(0, 10).map((entry, index) => {
                   const problem = entry.problemId ? problemMap.get(entry.problemId) : undefined;
                   const contestProblem = contest.problems.find(
@@ -328,30 +330,29 @@ export default async function ContestDetailPage({ params }: PageProps) {
                   return (
                     <div
                       key={entry.solutionId}
-                      className="grid gap-3 bg-black/15 p-4 sm:grid-cols-[3rem_minmax(0,1fr)_7rem]"
+                      className="grid items-center gap-3 px-4 py-3 transition hover:bg-white/[0.02] sm:grid-cols-[2.5rem_minmax(0,1fr)_6rem]"
                     >
-                      <span className="font-mono text-sm text-cyan-300">#{index + 1}</span>
+                      <span className={`font-mono text-sm font-bold ${index === 0 ? "text-amber-300" : index === 1 ? "text-zinc-300" : index === 2 ? "text-amber-700" : "text-zinc-600"}`}>
+                        {index + 1}
+                      </span>
                       <span className="min-w-0">
-                        <span className="flex flex-wrap items-center gap-2">
+                        <span className="flex flex-wrap items-center gap-1.5">
                           <span className="font-bold text-white">{entry.title}</span>
                           {typeLabel && (
-                            <span className="border border-cyan-400/20 px-1.5 py-0.5 text-[10px] text-cyan-300">{typeLabel}</span>
+                            <span className="border border-cyan-400/30 bg-cyan-400/[0.07] px-1.5 py-0.5 text-[10px] font-bold text-cyan-300">{typeLabel}</span>
                           )}
                           {entry.isPostContest && (
-                            <span className="border border-zinc-700 px-1.5 py-0.5 text-[10px] text-zinc-500">赛后</span>
+                            <span className="border border-zinc-600 px-1.5 py-0.5 text-[10px] text-zinc-400">赛后</span>
                           )}
                         </span>
-                        <span className="mt-1 block text-xs text-zinc-500">
+                        <span className="mt-0.5 block text-xs text-zinc-500">
                           {contestProblem && `Day ${contestProblem.dayIndex} · `}{problem?.title ?? "—"} · {entry.author}
-                          {entry.ratingCount > 0 && ` · ${entry.ratingCount} 人评分`}
+                          {entry.ratingCount > 0 && <span className="text-zinc-600"> · {entry.ratingCount} 人</span>}
                         </span>
                       </span>
                       <span className="text-right">
                         {entry.ratingCount > 0 ? (
-                          <>
-                            <span className="font-display text-xl text-amber-300">{entry.avgTotal.toFixed(1)}</span>
-                            <span className="ml-1 text-xs text-zinc-600">/ 25</span>
-                          </>
+                          <span className="font-mono text-lg font-bold text-amber-300">{entry.avgTotal.toFixed(1)}</span>
                         ) : (
                           <span className="text-xs text-zinc-600">待评分</span>
                         )}
@@ -393,30 +394,22 @@ export default async function ContestDetailPage({ params }: PageProps) {
                 <Crown className="size-4 text-amber-300" />
                 用户总榜
               </div>
-              <p className="mt-2 text-sm leading-6 text-zinc-500">
-                以最高分解法为基准 + 奖项加分。
-              </p>
-              <div className="mt-4 divide-y divide-white/10 border border-white/10">
+              <p className="mt-1 text-xs text-zinc-500">最高分解法 + 奖项加分</p>
+              <div className="mt-4 divide-y divide-white/[0.07] border border-white/10">
                 {userRankings.slice(0, 10).map((entry, index) => (
-                  <div key={entry.userId} className="grid items-center gap-3 p-3 sm:grid-cols-[2.5rem_minmax(0,1fr)_6rem]">
-                    <span className={`font-mono text-sm ${index === 0 ? "text-amber-300" : index === 1 ? "text-zinc-300" : index === 2 ? "text-amber-700" : "text-zinc-600"}`}>
-                      #{index + 1}
+                  <div key={entry.userId} className="grid items-center gap-3 px-3 py-2.5 sm:grid-cols-[2rem_minmax(0,1fr)_5rem]">
+                    <span className={`font-mono text-sm font-bold ${index === 0 ? "text-amber-300" : index === 1 ? "text-zinc-300" : index === 2 ? "text-amber-700/80" : "text-zinc-600"}`}>
+                      {index + 1}
                     </span>
                     <span className="min-w-0">
-                      <span className="block font-bold text-white">{entry.author}</span>
-                      <span className="mt-0.5 block text-xs text-zinc-600">
+                      <span className="block text-sm font-bold text-white">{entry.author}</span>
+                      <span className="mt-0.5 block text-xs text-zinc-500">
                         {entry.solutionCount} 个解法
-                        {entry.ratedSolutionCount > 0 && ` · ${entry.ratedSolutionCount} 个已评分`}
-                        {entry.awardPoints > 0 && ` · +${entry.awardPoints}奖项分`}
+                        {entry.awardPoints > 0 && <span className="text-amber-400/70"> · +{entry.awardPoints}分</span>}
                       </span>
                     </span>
-                    <span className="text-right">
-                      <span className="font-display text-lg text-amber-300">
-                        {entry.grandTotal.toFixed(1)}
-                      </span>
-                      {entry.awardPoints > 0 && (
-                        <span className="ml-1 text-xs text-zinc-600">分</span>
-                      )}
+                    <span className="text-right font-mono text-base font-bold text-amber-300">
+                      {entry.grandTotal.toFixed(1)}
                     </span>
                   </div>
                 ))}

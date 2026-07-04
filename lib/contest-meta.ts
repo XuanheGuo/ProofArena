@@ -3,19 +3,19 @@ import type { ContestAwardType, ContestSolutionType, ContestStatus } from "@/lib
 export const contestStatusMeta: Record<ContestStatus, { label: string; className: string }> = {
   draft: {
     label: "未开始",
-    className: "border-zinc-500/30 bg-zinc-500/10 text-zinc-300",
+    className: "border-zinc-500/50 bg-zinc-800 text-zinc-300",
   },
   active: {
     label: "进行中",
-    className: "border-emerald-400/30 bg-emerald-400/10 text-emerald-200",
+    className: "border-emerald-500/50 bg-emerald-500/15 text-emerald-300",
   },
   judging: {
     label: "评审中",
-    className: "border-amber-400/30 bg-amber-400/10 text-amber-200",
+    className: "border-amber-500/50 bg-amber-500/15 text-amber-300",
   },
   finished: {
     label: "已结束",
-    className: "border-cyan-400/30 bg-cyan-400/10 text-cyan-200",
+    className: "border-sky-500/40 bg-sky-500/10 text-sky-300",
   },
 };
 

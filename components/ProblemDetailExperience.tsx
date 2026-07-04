@@ -52,41 +52,49 @@ function scoreTone(index: number) {
 function SolutionCompareCard({ solution, rank }: { solution: Solution; rank: number }) {
   const [expanded, setExpanded] = useState(false);
   const meta = getSolutionKindMeta(solution.kind);
+  const contestType = solution.contestSolutionType ? contestSolutionTypeMeta[solution.contestSolutionType] : null;
 
   return (
-    <article id={solution.id} className="scroll-mt-32 border border-white/10 bg-zinc-950">
-      <div className="grid gap-px bg-white/10 lg:grid-cols-[minmax(0,1fr)_18rem]">
-        <div className="bg-zinc-950 p-5 md:p-6">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="font-mono text-xs text-zinc-600">{String(rank).padStart(2, "0")}</span>
-            <span className={`border px-2.5 py-1 text-xs font-bold ${meta.className}`}>{meta.label}</span>
-            {solution.contestSolutionType && contestSolutionTypeMeta[solution.contestSolutionType] && (
-              <span className="border border-amber-400/25 bg-amber-400/[0.06] px-2.5 py-1 text-xs font-bold text-amber-200">
-                {contestSolutionTypeMeta[solution.contestSolutionType].label}
+    <article id={solution.id} className="scroll-mt-32 border border-white/10 bg-zinc-950 transition-colors hover:border-white/20">
+      <div className="grid lg:grid-cols-[minmax(0,1fr)_17rem]">
+        <div className="border-b border-white/10 p-5 lg:border-b-0 lg:border-r md:p-6">
+          {/* badges row */}
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="font-mono text-[11px] text-zinc-600">{String(rank).padStart(2, "0")}</span>
+            <span className={`border px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide ${meta.className}`}>
+              {meta.label}
+            </span>
+            {contestType && (
+              <span className="border border-amber-400/40 bg-amber-400/10 px-2 py-0.5 text-[11px] font-bold text-amber-300">
+                {contestType.shortLabel}
               </span>
             )}
             {solution.isPostContest && (
-              <span className="border border-zinc-700 px-2 py-1 text-xs text-zinc-500">赛后</span>
+              <span className="border border-zinc-600 px-2 py-0.5 text-[11px] text-zinc-400">赛后</span>
             )}
-            <span className="text-xs text-zinc-600">{meta.description}</span>
-            {solution.tags.map((tag) => (
-              <span key={tag} className="border border-white/10 px-2 py-1 text-xs text-zinc-500">
-                {tag}
-              </span>
-            ))}
           </div>
-          <h3 className="mt-4 text-lg font-bold leading-7 text-white sm:text-xl">{solution.title}</h3>
-          <p className="mt-3 text-sm leading-7 text-zinc-300">
+          <h3 className="mt-3 text-lg font-bold leading-snug text-white sm:text-xl">{solution.title}</h3>
+          <p className="mt-2 text-sm leading-7 text-zinc-300">
             <MathBlock>{solution.inspiration}</MathBlock>
           </p>
+          {/* tags — muted, smaller */}
+          {solution.tags.length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {solution.tags.map((tag) => (
+                <span key={tag} className="bg-white/[0.04] px-2 py-0.5 text-[11px] text-zinc-500">
+                  {tag}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
-        <div className="flex flex-col justify-between bg-zinc-950 p-5">
+        <div className="flex flex-col justify-between p-5">
           <div>
-            <div className="flex items-center gap-2 text-xs font-bold text-cyan-300">
-              <Lightbulb className="size-4" />
+            <div className="mb-2 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-cyan-400">
+              <Lightbulb className="size-3.5" />
               核心转化
             </div>
-            <p className="mt-3 line-clamp-4 text-sm leading-7 text-zinc-400">
+            <p className="line-clamp-5 text-sm leading-7 text-zinc-400">
               <MathBlock>{solution.keyTransform}</MathBlock>
             </p>
           </div>
@@ -94,10 +102,14 @@ function SolutionCompareCard({ solution, rank }: { solution: Solution; rank: num
             type="button"
             onClick={() => setExpanded((value) => !value)}
             aria-expanded={expanded}
-            className="mt-5 inline-flex min-h-10 items-center justify-center gap-2 border border-cyan-400/35 bg-cyan-400/5 px-4 py-2 text-sm font-bold text-cyan-200 transition hover:bg-cyan-400/10"
+            className={`mt-5 inline-flex h-9 items-center justify-center gap-2 border text-sm font-bold transition ${
+              expanded
+                ? "border-white/20 bg-white/[0.04] text-zinc-300 hover:bg-white/[0.07]"
+                : "border-cyan-400/40 bg-cyan-400/[0.06] text-cyan-300 hover:bg-cyan-400/10"
+            }`}
           >
-            {expanded ? "收起解析" : "展开查看"}
-            <ChevronDown className={`size-4 transition ${expanded ? "rotate-180" : ""}`} />
+            {expanded ? "收起" : "展开解析"}
+            <ChevronDown className={`size-4 transition-transform duration-200 ${expanded ? "rotate-180" : ""}`} />
           </button>
         </div>
       </div>
