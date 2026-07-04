@@ -71,6 +71,7 @@ export function normalizeBlockMath(content: string) {
 
 export function normalizeLatexShorthand(value: string) {
   return value
+    .replace(/\\\\([a-zA-Z])/g, "\\$1")
     .replace(/≤/g, "\\le ")
     .replace(/≥/g, "\\ge ")
     .replace(/≠/g, "\\ne ")
