@@ -90,6 +90,18 @@ type ReviewForm = {
   scores: SolutionScores;
   scoringReason: string;
   moderatorNotes: string;
+  // proof graph draft — one observation, one transformation, one boundary
+  graphObservationSignal: string;
+  graphObservationWhy: string;
+  graphTransformFrom: string;
+  graphTransformTo: string;
+  graphTransformJustification: string;
+  graphTransformComplexityReduction: string;
+  graphBoundaryName: string;
+  graphBoundaryWhyTempting: string;
+  graphBoundaryWhyNotPriority: string;
+  graphBoundaryWhereItBreaks: string;
+  graphBoundaryWhenItWorks: string;
 };
 
 const scoreLabels: Array<[keyof SolutionScores, string, string]> = [
@@ -258,6 +270,20 @@ function formFromSubmission(submission: Submission): ReviewForm {
     scores,
     scoringReason: String(solution.scoringReason ?? ''),
     moderatorNotes: submission.moderator_notes ?? '',
+    // graph draft — read from top-level content.json.solution keys written by submitter and reviewer.
+    // These are the stable keys (observationSignal, transformationFrom, etc.) stored on the solution object,
+    // not nested under a proofGraphDraft sub-key. Fallback to top-level content fields for older submissions.
+    graphObservationSignal: String(solution.observationSignal ?? submission.content.approach ?? ''),
+    graphObservationWhy: String(solution.observationWhy ?? ''),
+    graphTransformFrom: String(solution.transformationFrom ?? submission.content.keyTransform ?? ''),
+    graphTransformTo: String(solution.transformationTo ?? ''),
+    graphTransformJustification: String(solution.transformationJustification ?? ''),
+    graphTransformComplexityReduction: String(solution.transformationComplexityReduction ?? ''),
+    graphBoundaryName: String(solution.methodBoundaryName ?? ''),
+    graphBoundaryWhyTempting: String(solution.methodBoundaryWhyTempting ?? ''),
+    graphBoundaryWhyNotPriority: String(solution.methodBoundaryWhyNotPriority ?? ''),
+    graphBoundaryWhereItBreaks: String(solution.methodBoundaryWhereItBreaks ?? ''),
+    graphBoundaryWhenItWorks: String(solution.methodBoundaryWhenItWorks ?? ''),
   };
 }
 
@@ -290,6 +316,23 @@ function contentFromForm(submission: Submission, form: ReviewForm): SubmissionCo
       : null,
     scores: form.scores,
     scoringReason: form.scoringReason,
+    // graph draft fields — stable keys for ProofGraphV1
+    observationSignal: form.graphObservationSignal || undefined,
+    observationWhy: form.graphObservationWhy || undefined,
+    transformationFrom: form.graphTransformFrom || undefined,
+    transformationTo: form.graphTransformTo || undefined,
+    transformationJustification: form.graphTransformJustification || undefined,
+    transformationComplexityReduction: form.graphTransformComplexityReduction || undefined,
+    methodBoundaryName: form.graphBoundaryName || undefined,
+    methodBoundaryWhyTempting: form.graphBoundaryWhyTempting || undefined,
+    methodBoundaryWhyNotPriority: form.graphBoundaryWhyNotPriority || undefined,
+    methodBoundaryWhereItBreaks: form.graphBoundaryWhereItBreaks || undefined,
+    methodBoundaryWhenItWorks: form.graphBoundaryWhenItWorks || undefined,
+    // verificationSteps: structured copy for future ProofGraphV1 use.
+    // solution.verification (written below via contentFromForm → content.verification) is
+    // the authoritative field rendered publicly; this key is for graph assembly only.
+    verificationSteps: form.verifiableSteps ? splitList(form.verifiableSteps) : undefined,
+    // moderator_notes is NOT stored here — it stays in submission.moderator_notes only.
   };
 
   return {
@@ -741,6 +784,8 @@ export function AdminSubmissionsView() {
                       <TextArea label="可验证步骤" value={form.verifiableSteps} onChange={(value) => updateField('verifiableSteps', value)} rows={4} />
                       <CASVerifier steps={splitList(form.verifiableSteps)} />
 
+                      <GraphDraftSection form={form} updateField={updateField} />
+
                       <section className="space-y-4 rounded border border-white/10 bg-black/20 p-4">
                         <div className="flex items-center gap-2">
                           <SlidersHorizontal className="size-4 text-cyan-300" />
@@ -857,6 +902,77 @@ export function AdminSubmissionsView() {
 
 function scoreTone(index: number) {
   return index === 1 ? 'red' : index === 2 ? 'amber' : 'cyan';
+}
+
+function GraphDraftSection({
+  form,
+  updateField,
+}: {
+  form: ReviewForm;
+  updateField: <K extends keyof ReviewForm>(key: K, value: ReviewForm[K]) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const hasContent =
+    form.graphObservationSignal ||
+    form.graphObservationWhy ||
+    form.graphTransformFrom ||
+    form.graphTransformTo ||
+    form.graphBoundaryName;
+
+  return (
+    <section className={`rounded border ${hasContent ? 'border-violet-400/25 bg-violet-400/[0.04]' : 'border-white/10 bg-black/20'}`}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
+      >
+        <div className="flex items-center gap-2">
+          <h3 className="text-sm font-bold text-white">推理图谱草稿</h3>
+          {hasContent && <span className="rounded border border-violet-400/30 px-2 py-0.5 text-[10px] text-violet-300">已填写</span>}
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-zinc-600">观察 / 转化 / 方法边界</span>
+          <ChevronDown className={`size-4 text-zinc-500 transition-transform ${open ? 'rotate-180' : ''}`} />
+        </div>
+      </button>
+
+      {open && (
+        <div className="space-y-5 border-t border-white/10 p-4">
+          {/* Observation */}
+          <div className="space-y-3">
+            <h4 className="text-xs font-bold uppercase tracking-wide text-cyan-400/70">观察入口</h4>
+            <div className="grid gap-3 md:grid-cols-2">
+              <TextArea label="信号（看到了什么条件）" value={form.graphObservationSignal} onChange={(v) => updateField('graphObservationSignal', v)} rows={3} />
+              <TextArea label="为什么重要（这个条件触发了什么）" value={form.graphObservationWhy} onChange={(v) => updateField('graphObservationWhy', v)} rows={3} />
+            </div>
+          </div>
+
+          {/* Transformation */}
+          <div className="space-y-3 border-t border-white/10 pt-4">
+            <h4 className="text-xs font-bold uppercase tracking-wide text-emerald-400/70">关键转化</h4>
+            <div className="grid gap-3 md:grid-cols-2">
+              <TextArea label="从" value={form.graphTransformFrom} onChange={(v) => updateField('graphTransformFrom', v)} rows={3} />
+              <TextArea label="到" value={form.graphTransformTo} onChange={(v) => updateField('graphTransformTo', v)} rows={3} />
+              <TextArea label="合法性说明" value={form.graphTransformJustification} onChange={(v) => updateField('graphTransformJustification', v)} rows={3} />
+              <TextArea label="降低了什么复杂度" value={form.graphTransformComplexityReduction} onChange={(v) => updateField('graphTransformComplexityReduction', v)} rows={3} />
+            </div>
+          </div>
+
+          {/* Method Boundary */}
+          <div className="space-y-3 border-t border-white/10 pt-4">
+            <h4 className="text-xs font-bold uppercase tracking-wide text-amber-400/70">方法边界（看起来能用但不优先）</h4>
+            <TextField label="方法名称" value={form.graphBoundaryName} onChange={(v) => updateField('graphBoundaryName', v)} />
+            <div className="grid gap-3 md:grid-cols-2">
+              <TextArea label="为什么看起来诱人" value={form.graphBoundaryWhyTempting} onChange={(v) => updateField('graphBoundaryWhyTempting', v)} rows={3} />
+              <TextArea label="为什么不优先" value={form.graphBoundaryWhyNotPriority} onChange={(v) => updateField('graphBoundaryWhyNotPriority', v)} rows={3} />
+              <TextArea label="在哪里卡住" value={form.graphBoundaryWhereItBreaks} onChange={(v) => updateField('graphBoundaryWhereItBreaks', v)} rows={3} />
+              <TextArea label="什么时候变成好方法" value={form.graphBoundaryWhenItWorks} onChange={(v) => updateField('graphBoundaryWhenItWorks', v)} rows={3} />
+            </div>
+          </div>
+        </div>
+      )}
+    </section>
+  );
 }
 
 function ReviewCardPreview({ submission, form }: { submission: Submission; form: ReviewForm }) {

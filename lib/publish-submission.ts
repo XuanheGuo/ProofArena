@@ -176,6 +176,10 @@ async function publishProblem(submission: Submission): Promise<{
       answer_pdf: problemData.answerPdf as string | undefined,
       learning_guide: problemData.learningGuide || null,
       solution_tree: problemData.solutionTree || null,
+      // proof_graph: official per-problem ProofGraphV1 if included in the submission.
+      // No automatic inference from Markdown or solution drafts — must be explicitly
+      // provided in submission.content.json.problem.proofGraph.
+      proof_graph: problemData.proofGraph || null,
       knowledge_ids: Array.isArray(problemData.knowledgeIds) ? problemData.knowledgeIds : [],
       insight_ids: Array.isArray(problemData.insightIds) ? problemData.insightIds : [],
       auto_matches: problemData.autoMatches || null,
@@ -263,7 +267,35 @@ async function publishSolution(submission: Submission): Promise<{
       badge: (solutionData.badge as string) || '',
       origin: (solutionData.origin as string) || '',
       key_transform: (solutionData.keyTransform as string) || '',
-      thinking_cues: solutionData.thinkingCues || { observations: [], keySignals: [], reasoning: '', suggestedMethods: [] },
+      thinking_cues: {
+        ...(typeof solutionData.thinkingCues === 'object' && solutionData.thinkingCues !== null
+          ? (solutionData.thinkingCues as Record<string, unknown>)
+          : { observations: [], keySignals: [], reasoning: '', suggestedMethods: [] }),
+        // proofGraphDraft: approved public graph content reviewed and confirmed by moderator.
+        // Stored under thinking_cues until Cycle 5 adds a dedicated column.
+        // This is published data — same approval gate as all other solution fields.
+        // Challenge fields (claim/advantages/risk) live in dedicated columns; not duplicated here.
+        // verificationSteps here is a structured copy; solution.verification is authoritative for display.
+        ...(solutionData.observationSignal || solutionData.transformationFrom ||
+            solutionData.methodBoundaryName || solutionData.verificationSteps
+          ? {
+              proofGraphDraft: {
+                observationSignal: solutionData.observationSignal ?? null,
+                observationWhy: solutionData.observationWhy ?? null,
+                transformationFrom: solutionData.transformationFrom ?? null,
+                transformationTo: solutionData.transformationTo ?? null,
+                transformationJustification: solutionData.transformationJustification ?? null,
+                transformationComplexityReduction: solutionData.transformationComplexityReduction ?? null,
+                methodBoundaryName: solutionData.methodBoundaryName ?? null,
+                methodBoundaryWhyTempting: solutionData.methodBoundaryWhyTempting ?? null,
+                methodBoundaryWhyNotPriority: solutionData.methodBoundaryWhyNotPriority ?? null,
+                methodBoundaryWhereItBreaks: solutionData.methodBoundaryWhereItBreaks ?? null,
+                methodBoundaryWhenItWorks: solutionData.methodBoundaryWhenItWorks ?? null,
+                verificationSteps: solutionData.verificationSteps ?? null,
+              },
+            }
+          : {}),
+      },
       inspiration: (solutionData.inspiration as string) || '',
       transfer_value: (solutionData.transferValue as string) || '',
       suitable_for: Array.isArray(solutionData.suitableFor) ? solutionData.suitableFor : [],

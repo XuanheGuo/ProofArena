@@ -75,6 +75,10 @@ function toProblem(row: Record<string, unknown>): Problem {
     answerPdf: row.answer_pdf as string | undefined,
     learningGuide: row.learning_guide as Problem['learningGuide'],
     solutionTree: row.solution_tree as Problem['solutionTree'],
+    // proof_graph: official per-problem ProofGraphV1, editorially approved.
+    // Distinct from solution.thinking_cues.proofGraphDraft (solution-level draft).
+    // Null on older rows — ProblemDetailExperience tolerates undefined gracefully.
+    proofGraph: (row.proof_graph ?? undefined) as Problem['proofGraph'],
     solutions,
     knowledgeIds: (row.knowledge_ids as string[]) ?? [],
     insightIds: (row.insight_ids as string[]) ?? [],
