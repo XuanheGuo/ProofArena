@@ -104,6 +104,12 @@ export function SolutionRatingPanel({
   }, [supabase]);
 
   useEffect(() => {
+    if (!initialAverage) {
+      void loadAverage();
+    }
+  }, [solutionId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
     if (!user) return;
     supabase
       .from("solution_ratings")
