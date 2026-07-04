@@ -32,7 +32,7 @@ ProofArena 的核心资产不是题目数量，而是可学习、可比较、可
 | `title` | 能概括数学任务的编辑标题 |
 | `statement` | 按自然段拆分的题干 |
 | `answer` | 简明最终结论 |
-| `heat` | Demo 展示热度，不代表官方难度 |
+| `heat` | 站内展示热度，不代表官方难度 |
 | `sourcePdf` | 原题来源文件路径 |
 | `sourcePage` | PDF 页码，从 1 开始 |
 | `answerPdf` | 可选答案文件 |

@@ -20,8 +20,10 @@ npm run dev
 
 ```bash
 npm run lint
-npm run build
+npm run build:webpack
 ```
+
+`npm run lint` 当前执行 TypeScript 类型检查。`npm run build:webpack` 用于在本地沙箱里避开 Turbopack 端口绑定问题；普通环境也可以运行 `npm run build`。
 
 ## 分支与提交
 
@@ -47,9 +49,10 @@ Document the solution scoring rubric
 1. 从 `app/` 确认页面入口。
 2. 从 `components/` 找到负责展示或交互的组件。
 3. 如需改变数据契约，先更新 `lib/types.ts`。
-4. 保持静态导出能力，不引入后端依赖。
-5. 同时检查深色、浅色和移动端。
-6. 运行类型检查与生产构建。
+4. 如需改变持久化数据，补充 `supabase/migrations/` 并检查 RLS。
+5. 保持静态 fallback：没有 Supabase 时核心浏览页仍应可用。
+6. 同时检查深色、浅色和移动端。
+7. 运行类型检查与生产构建。
 
 PR 描述请写明：
 
@@ -57,7 +60,7 @@ PR 描述请写明：
 - 为什么需要修改
 - 用户可见行为
 - 如何验证
-- 是否影响静态导出、数据格式或协议边界
+- 是否影响 Supabase schema、RLS、静态 fallback、数据格式或协议边界
 
 ## 数学内容贡献流程
 
@@ -88,7 +91,7 @@ PR 描述请写明：
 - 浅色和深色主题均有足够对比度
 - 按钮与链接有明确可访问名称
 - LaTeX 长公式可滚动或合理换行
-- 页面仍可静态生成
+- 无 Supabase 环境变量时，核心浏览页仍有合理 fallback
 - 不把主要体验藏在仅桌面可见的入口中
 
 ## 内容审核检查清单
