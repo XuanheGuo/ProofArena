@@ -155,6 +155,8 @@ export interface Solution extends PedagogicalAnnotations {
   author: string;
   authorRole: string;
   authorId?: string | null;
+  contestSolutionType?: ContestSolutionType | null;
+  isPostContest?: boolean;
   tags: string[];
   badge: string;
   origin: string;

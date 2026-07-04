@@ -156,7 +156,7 @@ export async function getContestStats(contestIds: string[]): Promise<ContestStat
   const { data } = await supabase
     .from("submissions")
     .select("contest_slug, user_id")
-    .in("contest_slug", contestIds.map(() => "").filter(Boolean));
+    .in("contest_slug", contestIds);
 
   if (!data) return contestIds.map((id) => ({ contestId: id, submissionCount: 0, participantCount: 0 }));
 

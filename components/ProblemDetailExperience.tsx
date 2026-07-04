@@ -25,6 +25,7 @@ import { SolutionRatingPanel } from "@/components/SolutionRatingPanel";
 import { graphSpecRegistry } from "@/data/graph-specs";
 import { difficultyBadgeClass } from "@/lib/problem-presentation";
 import { getSolutionKindMeta } from "@/lib/solution-kinds";
+import { contestSolutionTypeMeta } from "@/lib/contest-meta";
 
 type DetailTab = "problem" | "solutions" | "knowledge" | "related" | "graph";
 
@@ -59,6 +60,14 @@ function SolutionCompareCard({ solution, rank }: { solution: Solution; rank: num
           <div className="flex flex-wrap items-center gap-2">
             <span className="font-mono text-xs text-zinc-600">{String(rank).padStart(2, "0")}</span>
             <span className={`border px-2.5 py-1 text-xs font-bold ${meta.className}`}>{meta.label}</span>
+            {solution.contestSolutionType && contestSolutionTypeMeta[solution.contestSolutionType] && (
+              <span className="border border-amber-400/25 bg-amber-400/[0.06] px-2.5 py-1 text-xs font-bold text-amber-200">
+                {contestSolutionTypeMeta[solution.contestSolutionType].label}
+              </span>
+            )}
+            {solution.isPostContest && (
+              <span className="border border-zinc-700 px-2 py-1 text-xs text-zinc-500">赛后</span>
+            )}
             <span className="text-xs text-zinc-600">{meta.description}</span>
             {solution.tags.map((tag) => (
               <span key={tag} className="border border-white/10 px-2 py-1 text-xs text-zinc-500">
