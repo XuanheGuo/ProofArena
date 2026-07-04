@@ -115,29 +115,31 @@ export default async function ContestDetailPage({ params }: PageProps) {
               <h1 className="mt-5 text-3xl font-black leading-tight text-white sm:text-4xl md:text-5xl">{contest.title}</h1>
               <p className="mt-4 max-w-3xl text-base leading-8 text-zinc-300">{contest.tagline}</p>
               <p className="mt-2 text-sm leading-7 text-zinc-500">{contest.description}</p>
-              <div className="mt-6 flex flex-col gap-2 sm:flex-row">
+              <div className="mt-6 flex flex-wrap gap-2">
                 {todayProblem?.problemId && (
                   <Link
                     href={`/problems/${todayProblem.problemId}?contest=${contest.slug}`}
-                    className="inline-flex h-11 items-center justify-center gap-2 bg-cyan-400 px-5 text-sm font-bold text-zinc-950 transition hover:bg-cyan-300"
+                    className="inline-flex h-10 items-center gap-2 bg-cyan-400 px-5 text-sm font-bold text-zinc-950 transition hover:bg-cyan-300"
                   >
                     <Flame className="size-4" />
-                    查看今日题目
+                    今日题目
                   </Link>
                 )}
-                <Link
-                  href={`/submit?contest=${contest.slug}`}
-                  className="inline-flex h-11 items-center justify-center gap-2 border border-cyan-400/35 bg-cyan-400/5 px-5 text-sm font-bold text-cyan-200 transition hover:bg-cyan-400/10"
-                >
-                  <Plus className="size-4" />
-                  提交参赛解法
-                </Link>
+                {(contest.status === "active" || contest.status === "judging") && (
+                  <Link
+                    href={`/submit?contest=${contest.slug}`}
+                    className="inline-flex h-10 items-center gap-2 border border-cyan-400/40 bg-cyan-400/[0.08] px-5 text-sm font-bold text-cyan-300 transition hover:bg-cyan-400/15"
+                  >
+                    <Plus className="size-4" />
+                    提交解法
+                  </Link>
+                )}
                 <a
                   href="#leaderboard"
-                  className="inline-flex h-11 items-center justify-center gap-2 border border-white/10 bg-black/20 px-5 text-sm font-bold text-zinc-200 transition hover:border-cyan-400/35 hover:text-cyan-200"
+                  className="inline-flex h-10 items-center gap-2 border border-white/15 px-5 text-sm font-bold text-zinc-300 transition hover:border-white/25 hover:text-white"
                 >
                   <Trophy className="size-4" />
-                  查看候选榜
+                  榜单
                 </a>
               </div>
             </div>
