@@ -272,21 +272,23 @@ export function ProblemDetailExperience({
                     {contestContext.contestProblem.theme}。当前题目会按比赛解法类型提交，赛后优秀解法将回流到题目页。
                   </p>
                 </div>
-                <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
+                  <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
                   <Link
                     href={`/contests/${contestContext.contest.slug}`}
                     className="inline-flex h-9 items-center justify-center gap-2 border border-amber-400/25 px-3 text-xs font-bold text-amber-200 transition hover:bg-amber-400/10"
                   >
                     返回比赛主页
                   </Link>
-                  <Link
-                    href={submitHref}
-                    className="inline-flex h-9 items-center justify-center gap-2 bg-amber-300 px-3 text-xs font-bold text-zinc-950 transition hover:bg-amber-200"
-                  >
-                    <Send className="size-3.5" />
-                    提交参赛解法
-                  </Link>
-                </div>
+                  {(contestContext.contest.status === "active" || contestContext.contest.status === "judging") && (
+                    <Link
+                      href={submitHref}
+                      className="inline-flex h-9 items-center justify-center gap-2 bg-amber-300 px-3 text-xs font-bold text-zinc-950 transition hover:bg-amber-200"
+                    >
+                      <Send className="size-3.5" />
+                      {contestContext.contest.status === "judging" ? "赛后补充" : "提交参赛解法"}
+                    </Link>
+                  )}
+                  </div>
               </div>
             </div>
           )}
