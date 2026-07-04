@@ -21,6 +21,7 @@ import { VerificationPanel } from "@/components/VerificationPanel";
 import { FunctionGraphPanel } from "@/components/FunctionGraphPanel";
 import { SolutionTreePanel } from "@/components/SolutionTreePanel";
 import { MathVisualization, mathVizProblemIds } from "@/components/MathVisualization";
+import { SolutionRatingPanel } from "@/components/SolutionRatingPanel";
 import { graphSpecRegistry } from "@/data/graph-specs";
 import { difficultyBadgeClass } from "@/lib/problem-presentation";
 import { getSolutionKindMeta } from "@/lib/solution-kinds";
@@ -159,6 +160,9 @@ function SolutionCompareCard({ solution, rank }: { solution: Solution; rank: num
               </details>
               <VerificationPanel verification={solution.verification} />
             </aside>
+          </div>
+          <div className="mt-5 border-t border-white/10 pt-5">
+            <SolutionRatingPanel solutionId={solution.id} authorId={solution.authorId} />
           </div>
         </div>
       )}

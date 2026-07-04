@@ -17,8 +17,8 @@ import {
   Sparkles,
   Trophy,
 } from "lucide-react";
-import { contestStatusMeta } from "@/lib/contest-meta";
-import { getContest } from "@/lib/contests";
+import { contestStatusMeta, contestSolutionTypeMeta } from "@/lib/contest-meta";
+import { getContest, getContestLeaderboard } from "@/lib/contests";
 import { getProblems, getSolutionAverage } from "@/lib/db";
 import { difficultyBadgeClass } from "@/lib/problem-presentation";
 import { getEffectiveProblemStatus } from "@/lib/types";
@@ -54,7 +54,10 @@ export default async function ContestDetailPage({ params }: PageProps) {
   const contest = await getContest(slug);
   if (!contest) notFound();
 
-  const problems = await getProblems();
+  const [problems, leaderboard] = await Promise.all([
+    getProblems(),
+    getContestLeaderboard(slug),
+  ]);
   const problemMap = new Map(problems.map((problem) => [problem.id, problem]));
   const linkedContestProblems = contest.problems.map((contestProblem) => ({
     contestProblem,
@@ -81,6 +84,7 @@ export default async function ContestDetailPage({ params }: PageProps) {
   }));
   const todayProblem = linkedWithStatus.find(({ effectiveStatus }) => effectiveStatus === "open")?.contestProblem;
   const hideLeaderboard = contest.status === "active";
+  const useDbLeaderboard = leaderboard.solutions.length > 0;
 
   return (
     <main className="grid-surface min-h-screen">
@@ -253,13 +257,20 @@ export default async function ContestDetailPage({ params }: PageProps) {
           </section>
 
           <section id="leaderboard" className="scroll-mt-24 border border-white/10 bg-zinc-950 p-5 md:p-6">
-            <div className="flex items-center gap-2 text-sm font-bold text-white">
-              <Trophy className="size-4 text-amber-300" />
-              最佳解法候选榜
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2 text-sm font-bold text-white">
+                <Trophy className="size-4 text-amber-300" />
+                最佳解法榜
+              </div>
+              {useDbLeaderboard && (
+                <span className="text-xs text-zinc-500">基于社区五维评分 · {leaderboard.solutions.length} 个参赛解法</span>
+              )}
             </div>
-            <p className="mt-2 text-sm leading-6 text-zinc-500">
-              MVP 阶段先用现有专家评分作为候选榜。社区五维评分上线后，这里会切换为参赛评分榜。
-            </p>
+            {!useDbLeaderboard && (
+              <p className="mt-2 text-sm leading-6 text-zinc-500">
+                参赛解法评分后显示在此处。比赛进行中展示专家评分作为参考。
+              </p>
+            )}
             {hideLeaderboard ? (
               <div className="mt-5 border border-amber-400/25 bg-amber-400/[0.06] p-8 text-center">
                 <Trophy className="mx-auto size-6 text-amber-300" />
@@ -267,6 +278,51 @@ export default async function ContestDetailPage({ params }: PageProps) {
                 <p className="mx-auto mt-2 max-w-md text-xs leading-5 text-zinc-500">
                   等进入评审阶段后再公开候选榜，避免参赛时被已有高分路线带偏。
                 </p>
+              </div>
+            ) : useDbLeaderboard ? (
+              <div className="mt-5 divide-y divide-white/10 border border-white/10">
+                {leaderboard.solutions.slice(0, 10).map((entry, index) => {
+                  const problem = entry.problemId ? problemMap.get(entry.problemId) : undefined;
+                  const contestProblem = contest.problems.find(
+                    (cp) => cp.id === entry.contestProblemId || cp.problemId === entry.problemId
+                  );
+                  const typeLabel = entry.contestSolutionType
+                    ? (contestSolutionTypeMeta[entry.contestSolutionType as keyof typeof contestSolutionTypeMeta]?.shortLabel ?? entry.contestSolutionType)
+                    : null;
+                  return (
+                    <div
+                      key={entry.solutionId}
+                      className="grid gap-3 bg-black/15 p-4 sm:grid-cols-[3rem_minmax(0,1fr)_7rem]"
+                    >
+                      <span className="font-mono text-sm text-cyan-300">#{index + 1}</span>
+                      <span className="min-w-0">
+                        <span className="flex flex-wrap items-center gap-2">
+                          <span className="font-bold text-white">{entry.title}</span>
+                          {typeLabel && (
+                            <span className="border border-cyan-400/20 px-1.5 py-0.5 text-[10px] text-cyan-300">{typeLabel}</span>
+                          )}
+                          {entry.isPostContest && (
+                            <span className="border border-zinc-700 px-1.5 py-0.5 text-[10px] text-zinc-500">赛后</span>
+                          )}
+                        </span>
+                        <span className="mt-1 block text-xs text-zinc-500">
+                          {contestProblem && `Day ${contestProblem.dayIndex} · `}{problem?.title ?? "—"} · {entry.author}
+                          {entry.ratingCount > 0 && ` · ${entry.ratingCount} 人评分`}
+                        </span>
+                      </span>
+                      <span className="text-right">
+                        {entry.ratingCount > 0 ? (
+                          <>
+                            <span className="font-display text-xl text-amber-300">{entry.avgTotal.toFixed(1)}</span>
+                            <span className="ml-1 text-xs text-zinc-600">/ 25</span>
+                          </>
+                        ) : (
+                          <span className="text-xs text-zinc-600">待评分</span>
+                        )}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
             ) : bestSolutions.length ? (
               <div className="mt-5 divide-y divide-white/10 border border-white/10">

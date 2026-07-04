@@ -154,6 +154,7 @@ export interface Solution extends PedagogicalAnnotations {
   title: string;
   author: string;
   authorRole: string;
+  authorId?: string | null;
   tags: string[];
   badge: string;
   origin: string;
