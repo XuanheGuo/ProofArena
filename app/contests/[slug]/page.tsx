@@ -379,15 +379,46 @@ export default async function ContestDetailPage({ params }: PageProps) {
             </div>
             {contest.awards.length ? (
               <div className="mt-4 space-y-3">
-                {contest.awards.map((award) => (
-                  <div key={award.id} className="border border-amber-400/25 bg-amber-400/[0.04] p-3">
-                    <p className="text-sm font-bold text-amber-200">{award.title}</p>
-                    <p className="mt-1 text-xs leading-5 text-zinc-500">{award.reason}</p>
-                  </div>
-                ))}
+                {contest.awards.map((award) => {
+                  const awardProblem = award.problemId ? problemMap.get(award.problemId) : undefined;
+                  const awardContestProblem = award.problemId
+                    ? contest.problems.find((cp) => cp.problemId === award.problemId)
+                    : undefined;
+                  return (
+                    <div key={award.id} className="border border-amber-400/25 bg-amber-400/[0.04] p-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="text-sm font-bold text-amber-200">{award.title}</p>
+                        {award.points > 0 && (
+                          <span className="shrink-0 font-mono text-xs text-amber-300">+{award.points}分</span>
+                        )}
+                      </div>
+                      {awardContestProblem && (
+                        <p className="mt-1 text-xs text-zinc-600">
+                          Day {awardContestProblem.dayIndex} · {awardProblem?.title ?? awardContestProblem.title}
+                        </p>
+                      )}
+                      {award.reason && (
+                        <p className="mt-2 text-xs leading-5 text-zinc-500">{award.reason}</p>
+                      )}
+                      {award.solutionId && awardProblem && (
+                        <Link
+                          href={`/problems/${award.problemId}?contest=${contest.slug}#${award.solutionId}`}
+                          className="mt-2 inline-flex items-center gap-1 text-xs text-cyan-300 hover:underline"
+                        >
+                          查看解法
+                          <ArrowUpRight className="size-3" />
+                        </Link>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             ) : (
-              <p className="mt-3 text-sm leading-6 text-zinc-500">评审结束后，管理员标记的优秀解法会集中展示在这里。</p>
+              <p className="mt-3 text-sm leading-6 text-zinc-500">
+                {contest.status === "finished" || contest.status === "judging"
+                  ? "管理员正在整理获奖解法，请稍候。"
+                  : "评审结束后，管理员标记的优秀解法会集中展示在这里。"}
+              </p>
             )}
           </section>
 
@@ -396,9 +427,43 @@ export default async function ContestDetailPage({ params }: PageProps) {
               <ClipboardList className="size-4 text-cyan-300" />
               赛后合集
             </div>
-            <p className="mt-3 text-sm leading-6 text-zinc-500">
-              第一版只展示人工标记的 award，不自动生成总结，避免把未校订内容沉淀成正式资产。
-            </p>
+            {contest.status === "finished" && contest.awards.length > 0 ? (
+              <div className="mt-4 space-y-3">
+                {contest.problems.map((contestProblem) => {
+                  const problemAwards = contest.awards.filter((a) => a.problemId === contestProblem.problemId);
+                  if (problemAwards.length === 0) return null;
+                  const problem = contestProblem.problemId ? problemMap.get(contestProblem.problemId) : undefined;
+                  return (
+                    <div key={contestProblem.id}>
+                      <p className="text-xs font-bold text-zinc-400">Day {contestProblem.dayIndex} · {contestProblem.title}</p>
+                      <div className="mt-2 space-y-1">
+                        {problemAwards.map((award) => (
+                          <div key={award.id} className="flex items-center gap-2 text-xs">
+                            <span className="text-amber-300">★</span>
+                            {award.solutionId && problem ? (
+                              <Link
+                                href={`/problems/${problem.id}?contest=${contest.slug}#${award.solutionId}`}
+                                className="text-zinc-300 hover:text-white hover:underline"
+                              >
+                                {award.title}
+                              </Link>
+                            ) : (
+                              <span className="text-zinc-400">{award.title}</span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="mt-3 text-sm leading-6 text-zinc-500">
+                {contest.status === "finished"
+                  ? "暂无赛后合集，等待管理员整理。"
+                  : "比赛结束后，优秀解法会按题目整理成合集，回流到这里。"}
+              </p>
+            )}
           </section>
         </aside>
       </div>
