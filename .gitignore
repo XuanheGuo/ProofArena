@@ -11,6 +11,10 @@
 *.tsbuildinfo
 .DS_Store
 .playwright-mcp/
+.venv/
+__pycache__/
+*.py[cod]
+supabase/.temp/
 
 # environment files
 .env*

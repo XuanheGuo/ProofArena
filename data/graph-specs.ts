@@ -237,7 +237,151 @@ function drawEllipseFocalChord(
   void a2; void b2;
 }
 
+// ── thu-2023-02: 含参对数方程的最坏参数 ───────────────────────────────────────
+function drawLogParameterTrap(
+  board: JXG.Board,
+  sliders: Map<string, JXG.Slider>,
+  c: Colors,
+) {
+  const kSlider = sliders.get("k")!;
+  const tSlider = sliders.get("t")!;
+
+  const getK = () => Math.min(kSlider.Value(), -0.05);
+  const getT = () => Math.max(tSlider.Value(), 0.05);
+  const phi = (y: number) => Math.log(y) - getT() * y + (getT() * getT()) / getK();
+  const yStar = () => 1 / getT();
+  const maxValue = () => -Math.log(getT()) - 1 + (getT() * getT()) / getK();
+
+  board.create("functiongraph", [phi, 0.05, 6], {
+    strokeColor: c.cyan,
+    strokeWidth: 3,
+    highlight: false,
+    name: "phi(y)",
+  });
+  board.create("line", [[0, 0], [1, 0]], {
+    strokeColor: c.zinc,
+    strokeWidth: 1.5,
+    dash: 2,
+    highlight: false,
+  });
+  board.create("point", [yStar, maxValue], ptStyle("max", c.red));
+  board.create(
+    "text",
+    [
+      0.35,
+      2.6,
+      () => `k=${getK().toFixed(2)},  t=ka=${getT().toFixed(2)},  a=${(getT() / getK()).toFixed(2)}`,
+    ],
+    { color: c.amber, fontSize: 13, fixed: true, highlight: false },
+  );
+  board.create(
+    "text",
+    [
+      0.35,
+      2.15,
+      () => `最大值 = ${maxValue().toFixed(3)}${maxValue() < 0 ? "，整条曲线低于 0，无解" : "，仍可能有零点"}`,
+    ],
+    { color: c.red, fontSize: 12, fixed: true, highlight: false },
+  );
+}
+
+// ── thu-2023-05: 椭圆焦半径条件与斜率范围 ─────────────────────────────────────
+function drawQiangjiEllipseFocalRadius(
+  board: JXG.Board,
+  sliders: Map<string, JXG.Slider>,
+  c: Colors,
+) {
+  const sSlider = sliders.get("s")!;
+  const getS = () => sSlider.Value();
+  const ellipseX = (t: number) => 2 * getS() * Math.cos(t);
+  const ellipseY = (t: number) => Math.sqrt(3) * getS() * Math.sin(t);
+  const xA = () => 10 - 4 * getS();
+  const xB = () => 16 - 4 * getS();
+  const yOnEllipse = (x: number) => {
+    const s = getS();
+    return Math.sqrt(Math.max(0, 3 * s * s * (1 - (x * x) / (4 * s * s))));
+  };
+  const yA = () => yOnEllipse(xA());
+  const yB = () => -yOnEllipse(xB());
+  const slope = () => (yB() - yA()) / (xB() - xA());
+
+  board.create("curve", [ellipseX, ellipseY, 0, 2 * Math.PI], {
+    strokeColor: c.cyan,
+    strokeWidth: 2.5,
+    highlight: false,
+  });
+  const F = board.create("point", [() => -getS(), 0], ptStyle("F", c.amber));
+  const A = board.create("point", [xA, yA], ptStyle("A", c.green));
+  const B = board.create("point", [xB, yB], ptStyle("B", c.red));
+  board.create("line", [A, B], {
+    strokeColor: c.violet,
+    strokeWidth: 2,
+    straightFirst: false,
+    straightLast: false,
+    highlight: false,
+  });
+  board.create("line", [F, A], {
+    strokeColor: c.green,
+    strokeWidth: 1.5,
+    dash: 2,
+    straightFirst: false,
+    straightLast: false,
+    highlight: false,
+  });
+  board.create("line", [F, B], {
+    strokeColor: c.red,
+    strokeWidth: 1.5,
+    dash: 2,
+    straightFirst: false,
+    straightLast: false,
+    highlight: false,
+  });
+  board.create(
+    "text",
+    [
+      -10.5,
+      7.5,
+      () => `√λ=${getS().toFixed(3)}，x_A=${xA().toFixed(2)}，x_B=${xB().toFixed(2)}`,
+    ],
+    { color: c.amber, fontSize: 13, fixed: true, highlight: false },
+  );
+  board.create(
+    "text",
+    [
+      -10.5,
+      6.55,
+      () => `当前取上下对称构型时 k≈${slope().toFixed(3)}，端点绝对值 √7/2≈${(Math.sqrt(7) / 2).toFixed(3)}`,
+    ],
+    { color: c.violet, fontSize: 12, fixed: true, highlight: false },
+  );
+}
+
 export const graphSpecRegistry: Record<string, FunctionGraphSpec> = {
+  "thu-2023-02": {
+    title: "含参对数方程的最坏参数实验台",
+    description: "固定 $k<0$，用 $t=ka>0$ 表示最坏参数方向。拖动 $t$ 可看到辅助函数最大值如何从可能有零点变为整条曲线低于 $0$。",
+    insight: "反例不是让 $a\\to0^-$，而是让 $t=ka$ 足够大。此时最大值 $-\\ln t-1+t^2/k$ 因为 $k<0$ 会趋向 $-\\infty$。",
+    boundingBox: [0, 3.2, 6.2, -8],
+    keepAspectRatio: false,
+    sliders: [
+      { name: "k", label: "k（负值）", min: -4, max: -0.2, step: 0.05, initial: -1 },
+      { name: "t", label: "t=ka", min: 0.3, max: 8, step: 0.05, initial: 2.6 },
+    ],
+    draw: drawLogParameterTrap,
+  },
+
+  "thu-2023-05": {
+    title: "椭圆焦半径与弦斜率实验台",
+    description: "拖动 $\\sqrt\\lambda$，观察焦半径条件 $FA=5,FB=8$ 如何把 $A,B$ 的横坐标固定成 $x_A=10-4\\sqrt\\lambda$、$x_B=16-4\\sqrt\\lambda$。",
+    insight: "可行区间为 $8/3\\le\\sqrt\\lambda\\le5$。两端分别对应 $B$ 到右端点、$A$ 到左端点，给出同一个斜率端点 $\\sqrt7/2$。",
+    boundingBox: [-11, 8.5, 11, -8.5],
+    keepAspectRatio: true,
+    sliders: [
+      { name: "s", label: "√λ", min: 8 / 3, max: 5, step: 0.01, initial: 3.6 },
+    ],
+    draw: drawQiangjiEllipseFocalRadius,
+  },
+
   "tj-2026-09": {
     title: "双曲线焦点三角形实验台",
     description: "拖动 $e$ 滑块改变离心率，观察双曲线形态、渐近线斜率和焦点三角形 $FAP$ 的变化。本题答案是 $e=4/3$，此时 $P$ 恰好落在左支。",

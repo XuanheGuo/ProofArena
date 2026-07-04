@@ -20,6 +20,7 @@ import {
   X,
   XCircle,
 } from 'lucide-react';
+import { CASVerifier } from '@/components/CASVerifier';
 import { MathBlock } from '@/components/MathBlock';
 import { ScoreBar } from '@/components/ScoreBar';
 import { convertPlainMathTextToLatex } from '@/lib/math-normalizer';
@@ -541,7 +542,7 @@ export function AdminSubmissionsView() {
                   </p>
                 </div>
                 <div className="flex shrink-0 gap-2">
-                  {sub.status === 'approved' && !sub.contest_slug && (
+                  {sub.status === 'approved' && (!sub.contest_slug || sub.submission_type === 'solution') && (
                     <button
                       type="button"
                       onClick={() => publishExisting(sub.id)}
@@ -549,7 +550,7 @@ export function AdminSubmissionsView() {
                       className="inline-flex h-9 items-center gap-2 rounded border border-emerald-400/30 px-4 text-sm text-emerald-300 transition hover:bg-emerald-400/10 disabled:opacity-50"
                     >
                       <CheckCircle2 className="size-4" />
-                      {publishing === sub.id ? '发布中...' : '发布到题库'}
+                      {publishing === sub.id ? '发布中...' : sub.contest_slug ? '发布为正式题解' : '发布到题库'}
                     </button>
                   )}
                   <button
@@ -672,6 +673,7 @@ export function AdminSubmissionsView() {
                       </section>
 
                       <TextArea label="可验证步骤" value={form.verifiableSteps} onChange={(value) => updateField('verifiableSteps', value)} rows={4} />
+                      <CASVerifier steps={splitList(form.verifiableSteps)} />
 
                       <section className="space-y-4 rounded border border-white/10 bg-black/20 p-4">
                         <div className="flex items-center gap-2">

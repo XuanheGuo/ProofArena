@@ -8,6 +8,7 @@ import { createClient } from '@/lib/supabase-client';
 import { contestSolutionTypeMeta } from '@/lib/contest-meta';
 import { ALLOWED_IMAGE_TYPES, MAX_CONTEST_THOUGHT_CHARS, MAX_GENERAL_TEXT_CHARS, MAX_IMAGE_BYTES, MAX_IMAGE_COUNT, MAX_TITLE_CHARS, clampText, extensionForImageType, isAllowedImage } from '@/lib/security';
 import { getEffectiveProblemStatus, type Contest, type ContestProblem, type ContestSolutionType } from '@/lib/types';
+import { CASVerifier } from '@/components/CASVerifier';
 
 type ProblemOption = {
   id: string;
@@ -371,10 +372,7 @@ export function SubmitForm({
       user_id: user?.id,
       kind: normalizedForm.kind,
       title: normalizedTitle,
-      contest_id: activeContestContext?.contest.id,
-      contest_problem_id: activeContestContext?.contestProblem?.id,
       contest_slug: activeContestContext?.contest.slug,
-      contest_problem_key: activeContestContext?.contestProblem?.id,
       contest_solution_type: activeContestContext ? solutionForm.contestSolutionType : null,
       is_post_contest: isPostContest,
       attachment_urls: imageUrls,
@@ -653,6 +651,7 @@ export function SubmitForm({
               <TextArea label="最值得学的地方" value={solutionForm.insight} onChange={(insight) => setSolutionForm({ ...solutionForm, insight })} rows={4} />
               <TextArea label="可验证位置" value={solutionForm.verification} onChange={(verification) => setSolutionForm({ ...solutionForm, verification })} rows={4} />
             </div>
+            <CASVerifier steps={solutionForm.steps.split('\n').filter(Boolean)} />
             <ImageUploadField
               files={imageFiles}
               onAdd={updateImageFiles}

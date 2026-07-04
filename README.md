@@ -117,6 +117,8 @@ flowchart LR
 - [架构说明](./docs/ARCHITECTURE.md)
 - [Supabase 设置](./docs/SUPABASE_SETUP.md)
 - [比赛模块](./docs/CONTESTS.md)
+- [第一场比赛启动方案](./docs/FIRST_CONTEST_PLAN.md)
+- [CAS 校验服务](./docs/CAS.md)
 - [内容与数据规范](./docs/CONTENT_GUIDE.md)
 - [五维评分规则](./docs/SCORING.md)
 - [路线图](./docs/ROADMAP.md)

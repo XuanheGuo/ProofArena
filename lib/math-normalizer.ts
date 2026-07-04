@@ -10,9 +10,10 @@ const latexCmdPattern = /\\[a-zA-Z]+(?:\{(?:[^{}]|\{[^{}]*\})*\}|\[[^\]]*\]|[_^]
  * This handles user-submitted content that uses \frac, \sqrt, etc. without delimiters.
  */
 export function wrapBareLatexCommands(text: string): string {
-  if (!/\\[a-zA-Z]/.test(text)) return text;
+  const normalizedText = normalizeSqrtArgument(normalizeEscapedLatexCommands(text));
+  if (!/\\[a-zA-Z]/.test(normalizedText)) return normalizedText;
   // Split on existing delimiters; only touch the plain-text segments (even indices)
-  const segments = text.split(mathTokenPattern);
+  const segments = normalizedText.split(mathTokenPattern);
   return segments
     .map((seg, i) => (i % 2 === 0 ? seg.replace(latexCmdPattern, (m) => `$${m}$`) : seg))
     .join("");
@@ -48,6 +49,18 @@ const greekSymbols: Record<string, string> = {
 
 const candidatePattern = /[A-Za-z0-9α-ωΑ-Ω√πΠ+\-*/=<>≤≥≠^_().]+(?:\s*[+\-*/=<>≤≥≠]\s*[A-Za-z0-9α-ωΑ-Ω√πΠ+\-*/=<>≤≥≠^_().]+)*/g;
 
+function normalizeEscapedLatexCommands(value: string) {
+  return value.replace(/\\\\([a-zA-Z])/g, "\\$1");
+}
+
+function normalizeSqrtArgument(value: string) {
+  return value
+    .replace(/\\sqrt\s*\\([a-zA-Z]+)/g, (_, command: string) => `\\sqrt{\\${command}}`)
+    .replace(/\bsqrt\s*\\([a-zA-Z]+)/gi, (_, command: string) => `\\sqrt{\\${command}}`)
+    .replace(/\\sqrt\s*([A-Za-z0-9πΠα-ωΑ-Ω]+(?:\^\d+)?)/g, (_, argument: string) => `\\sqrt{${argument}}`)
+    .replace(/\bsqrt\s*([A-Za-z0-9πΠα-ωΑ-Ω]+(?:\^\d+)?)/gi, (_, argument: string) => `\\sqrt{${argument}}`);
+}
+
 export function unwrapMath(token: string) {
   if (token.startsWith("\\[") && token.endsWith("\\]")) {
     return { math: token.slice(2, -2), display: true };
@@ -70,8 +83,7 @@ export function normalizeBlockMath(content: string) {
 }
 
 export function normalizeLatexShorthand(value: string) {
-  return value
-    .replace(/\\\\([a-zA-Z])/g, "\\$1")
+  return normalizeSqrtArgument(normalizeEscapedLatexCommands(value))
     .replace(/≤/g, "\\le ")
     .replace(/≥/g, "\\ge ")
     .replace(/≠/g, "\\ne ")
@@ -84,7 +96,7 @@ export function normalizeLatexShorthand(value: string) {
     .replace(/sqrt\(([^()]+)\)/gi, "\\sqrt{$1}")
     .replace(/√([A-Za-z0-9πΠα-ωΑ-Ω]+(?:\^\d+)?)/g, "\\sqrt{$1}")
     .replace(/[α-ωπ]/g, (symbol) => greekSymbols[symbol] ?? symbol)
-    .replace(/\b(alpha|beta|gamma|delta|theta|lambda|mu|pi|sigma|phi|omega)\b/g, (word) => greekWords[word] ?? word);
+    .replace(/(^|[^\\])\b(alpha|beta|gamma|delta|theta|lambda|mu|pi|sigma|phi|omega)\b/g, (_, prefix: string, word: string) => `${prefix}${greekWords[word] ?? word}`);
 }
 
 export function isPlainMathCandidate(value: string) {
