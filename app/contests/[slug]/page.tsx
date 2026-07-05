@@ -155,11 +155,11 @@ export default async function ContestDetailPage({ params }: PageProps) {
             </div>
             <div className="grid grid-cols-3 divide-x divide-white/10 border border-white/10 bg-black/30">
               <div className="p-4 text-center">
-                <strong className="font-display block text-2xl text-cyan-300">{contest.problems.length}</strong>
+                <strong className="font-display block text-2xl tabular-nums text-cyan-300">{contest.problems.length}</strong>
                 <span className="mt-1 block text-[11px] text-zinc-500">赛题</span>
               </div>
               <div className="p-4 text-center">
-                <strong className="font-display block text-2xl text-emerald-300">
+                <strong className="font-display block text-2xl tabular-nums text-emerald-300">
                   {contestStats.participantCount > 0 ? contestStats.participantCount : (solutionCount > 0 ? solutionCount : "—")}
                 </strong>
                 <span className="mt-1 block text-[11px] text-zinc-500">
@@ -167,7 +167,7 @@ export default async function ContestDetailPage({ params }: PageProps) {
                 </span>
               </div>
               <div className="p-4 text-center">
-                <strong className="font-display block text-2xl text-amber-300">
+                <strong className="font-display block text-2xl tabular-nums text-amber-300">
                   {contestStats.submissionCount > 0 ? contestStats.submissionCount : contest.awards.length}
                 </strong>
                 <span className="mt-1 block text-[11px] text-zinc-500">
@@ -372,7 +372,7 @@ export default async function ContestDetailPage({ params }: PageProps) {
                       </span>
                       <span className="text-right">
                         {entry.ratingCount > 0 ? (
-                          <span className="font-mono text-lg font-bold text-amber-300">{entry.avgTotal.toFixed(1)}</span>
+                          <span className="font-mono text-lg font-bold tabular-nums text-amber-300">{entry.avgTotal.toFixed(1)}</span>
                         ) : (
                           <span className="text-xs text-zinc-600">待评分</span>
                         )}
@@ -396,7 +396,7 @@ export default async function ContestDetailPage({ params }: PageProps) {
                         Day {contestProblem.dayIndex} · {problem.title} · {solution.author}
                       </span>
                     </span>
-                    <span className="font-display text-xl text-amber-300">{average.toFixed(1)}</span>
+                    <span className="font-display text-xl tabular-nums text-amber-300">{average.toFixed(1)}</span>
                   </Link>
                 ))}
               </div>
@@ -428,7 +428,7 @@ export default async function ContestDetailPage({ params }: PageProps) {
                         {entry.awardPoints > 0 && <span className="text-amber-400/70"> · +{entry.awardPoints}分</span>}
                       </span>
                     </span>
-                    <span className="text-right font-mono text-base font-bold text-amber-300">
+                    <span className="text-right font-mono text-base font-bold tabular-nums text-amber-300">
                       {entry.grandTotal.toFixed(1)}
                     </span>
                   </div>

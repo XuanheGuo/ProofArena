@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import dynamic from "next/dynamic";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
   ArrowUpRight,
@@ -357,6 +357,8 @@ export function ProblemDetailExperience({
   });
   const [activeTab, setActiveTab] = useState<DetailTab>("solutions");
   const [showGuide, setShowGuide] = useState(false);
+  const tabScrollerRef = useRef<HTMLDivElement>(null);
+  const [showTabOverflowHint, setShowTabOverflowHint] = useState(false);
   const proofGraph = problem.proofGraph;
   const hasReplay = Boolean(
     proofGraph && (
@@ -385,6 +387,30 @@ export function ProblemDetailExperience({
       setShowGuide(true);
     }
   }, []);
+
+  useEffect(() => {
+    const currentScroller = tabScrollerRef.current;
+    if (!currentScroller) return;
+    const tabScroller: HTMLDivElement = currentScroller;
+
+    function updateOverflowHint() {
+      const hasOverflow = tabScroller.scrollWidth > tabScroller.clientWidth + 1;
+      const isAtEnd = tabScroller.scrollLeft + tabScroller.clientWidth >= tabScroller.scrollWidth - 2;
+      setShowTabOverflowHint(hasOverflow && !isAtEnd);
+    }
+
+    updateOverflowHint();
+    tabScroller.addEventListener("scroll", updateOverflowHint, { passive: true });
+    window.addEventListener("resize", updateOverflowHint);
+    const resizeObserver = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(updateOverflowHint);
+    resizeObserver?.observe(tabScroller);
+
+    return () => {
+      tabScroller.removeEventListener("scroll", updateOverflowHint);
+      window.removeEventListener("resize", updateOverflowHint);
+      resizeObserver?.disconnect();
+    };
+  }, [tabs.length]);
 
   function dismissGuide() {
     setShowGuide(false);
@@ -495,15 +521,15 @@ export function ProblemDetailExperience({
             </div>
             <div className="grid grid-cols-3 border border-white/10 bg-black/20 text-center sm:max-w-md lg:max-w-none">
               <div className="border-r border-white/10 p-3">
-                <strong className="font-display block text-2xl text-cyan-300">{problem.solutions.length}</strong>
+                <strong className="font-display block text-2xl tabular-nums text-cyan-300">{problem.solutions.length}</strong>
                 <span className="text-[11px] text-zinc-600">解法</span>
               </div>
               <div className="border-r border-white/10 p-3">
-                <strong className="font-display block text-2xl text-red-300">{problem.tags.length}</strong>
+                <strong className="font-display block text-2xl tabular-nums text-red-300">{problem.tags.length}</strong>
                 <span className="text-[11px] text-zinc-600">专题</span>
               </div>
               <div className="p-3">
-                <strong className="font-display block text-2xl text-amber-300">{knowledgeNodes.length}</strong>
+                <strong className="font-display block text-2xl tabular-nums text-amber-300">{knowledgeNodes.length}</strong>
                 <span className="text-[11px] text-zinc-600">知识点</span>
               </div>
             </div>
@@ -575,22 +601,31 @@ export function ProblemDetailExperience({
       </section>
 
       <nav id="solutions-panel" className="sticky top-16 z-40 border-b border-white/10 bg-zinc-950/95 backdrop-blur-xl scroll-mt-20" aria-label="题目详情 Tab">
-        <div className="mx-auto flex max-w-7xl gap-1 overflow-x-auto px-4 py-2 md:px-6">
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => setActiveTab(tab.id)}
-              aria-pressed={activeTab === tab.id}
-              className={`h-10 shrink-0 border px-4 text-sm font-bold transition ${
-                activeTab === tab.id
-                  ? "border-cyan-400 bg-cyan-400 text-zinc-950"
-                  : "border-transparent text-zinc-500 hover:border-white/10 hover:text-white"
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
+        <div className="relative mx-auto max-w-7xl">
+          <div ref={tabScrollerRef} className="flex gap-1 overflow-x-auto px-4 py-2 md:px-6">
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setActiveTab(tab.id)}
+                aria-pressed={activeTab === tab.id}
+                className={`h-10 shrink-0 border px-4 text-sm font-bold transition ${
+                  activeTab === tab.id
+                    ? "border-cyan-400 bg-cyan-400 text-zinc-950"
+                    : "border-transparent text-zinc-500 hover:border-white/10 hover:text-white"
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+          {showTabOverflowHint && (
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-y-0 right-0 w-10 md:hidden"
+              style={{ background: "linear-gradient(to left, var(--surface), transparent)" }}
+            />
+          )}
         </div>
       </nav>
 

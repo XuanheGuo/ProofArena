@@ -90,7 +90,7 @@ export function ProblemCard({ problem, rank }: { problem: ProblemSummary; rank?:
                 <BookOpenCheck className="size-3.5 text-cyan-300" />
                 学习指数
               </span>
-              <strong className="mt-1 block font-display text-xl text-cyan-300">{getLearningIndex(problem)}</strong>
+              <strong className="mt-1 block font-display text-xl tabular-nums text-cyan-300">{getLearningIndex(problem)}</strong>
             </div>
           </div>
         </div>

@@ -12,12 +12,14 @@
   --background: #f7f8fa;
   --foreground: #111827;
   --grid-line: rgba(17, 24, 39, 0.045);
+  --surface: #ffffff;
 }
 
 :root[data-theme="dark"] {
   --background: #111318;
   --foreground: #f3f4f6;
   --grid-line: rgba(255, 255, 255, 0.045);
+  --surface: #181b23;
 }
 
 * {
@@ -25,7 +27,11 @@
 }
 
 html {
-  overflow-x: hidden;
+  /* clip, not hidden: "overflow-x: hidden" on html/body establishes html as the
+     sticky positioning container for every sticky descendant (header, detail tabs),
+     making them scroll away instead of sticking. clip avoids that while still
+     preventing horizontal overflow. */
+  overflow-x: clip;
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -36,10 +42,10 @@ html {
 
 body {
   margin: 0;
-  overflow-x: hidden;
+  overflow-x: clip;
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, "PingFang SC", "Microsoft YaHei", sans-serif;
+  font-family: var(--font-sans), "PingFang SC", "MiSans", "HarmonyOS Sans SC", "Noto Sans SC", sans-serif;
   transition: background-color 160ms ease, color 160ms ease;
 }
 
@@ -99,7 +105,7 @@ select {
 }
 
 .font-display {
-  font-family: Arial Black, Arial, "PingFang SC", sans-serif;
+  font-family: var(--font-sans), "PingFang SC", "MiSans", "HarmonyOS Sans SC", "Noto Sans SC", sans-serif;
   letter-spacing: 0;
 }
 

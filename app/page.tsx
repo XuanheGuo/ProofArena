@@ -70,7 +70,7 @@ export default async function HomePage() {
         <div className="relative mx-4 -mt-16 grid max-w-7xl grid-cols-3 border border-white/10 bg-zinc-950/90 backdrop-blur md:mx-auto md:w-[calc(100%-3rem)]">
           {stats.map(([value, label]) => (
             <div key={label} className="border-r border-white/10 p-4 last:border-r-0 md:p-6">
-              <strong className="font-display block text-2xl font-black text-white md:text-3xl">{value}</strong>
+              <strong className="font-display block text-2xl font-black tabular-nums text-white md:text-3xl">{value}</strong>
               <span className="mt-1 block text-xs text-zinc-500">{label}</span>
             </div>
           ))}
@@ -126,11 +126,11 @@ export default async function HomePage() {
                   </p>
                   <div className="mt-5 grid grid-cols-2 gap-px bg-white/10 text-center">
                     <div className="bg-zinc-950 p-3">
-                      <strong className="font-display block text-xl text-cyan-300">{problem.solutions.length}</strong>
+                      <strong className="font-display block text-xl tabular-nums text-cyan-300">{problem.solutions.length}</strong>
                       <span className="text-[11px] text-zinc-600">解法路线</span>
                     </div>
                     <div className="bg-zinc-950 p-3">
-                      <strong className="font-display block text-xl text-amber-300">{getLearningIndex(problem)}</strong>
+                      <strong className="font-display block text-xl tabular-nums text-amber-300">{getLearningIndex(problem)}</strong>
                       <span className="text-[11px] text-zinc-600">学习指数</span>
                     </div>
                   </div>
