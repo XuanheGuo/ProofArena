@@ -1,6 +1,7 @@
 'use server';
 
 import { createClient, createServiceClient } from '@/lib/supabase-server';
+import { revalidateContestSlug, revalidatePublicProblemPaths } from '@/lib/revalidate-public';
 import { MAX_TITLE_CHARS, clampText } from '@/lib/security';
 import type { SolutionScores } from '@/lib/types';
 
@@ -198,6 +199,8 @@ async function publishProblem(submission: Submission): Promise<{
       return { success: false, error: `插入题目失败: ${insertError.message}` };
     }
 
+    revalidatePublicProblemPaths(problemId);
+
     return { success: true, problemId };
   } catch (error) {
     console.error('[publishProblem] Unhandled exception:', error);
@@ -343,6 +346,9 @@ async function publishSolution(submission: Submission): Promise<{
       console.error('[publishSolution] Insert error:', insertError);
       return { success: false, error: `插入解法失败: ${insertError.message}` };
     }
+
+    revalidatePublicProblemPaths(submission.problem_id);
+    revalidateContestSlug(submission.contest_slug, submission.problem_id);
 
     return { success: true, solutionId };
   } catch (error) {

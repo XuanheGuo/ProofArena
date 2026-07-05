@@ -297,6 +297,31 @@ export interface Problem extends PedagogicalAnnotations {
   solutions: Solution[];
 }
 
+// Lightweight DTOs for list/preview surfaces (problem list, home stats, related
+// problems) that don't need full solution text. Keep in sync with the fields
+// ProblemCard/ProblemExplorer/ProblemScrollbar actually read.
+export type SolutionSummary = Pick<Solution, "id" | "title" | "inspiration" | "scores">;
+
+export type ProblemSummary = Pick<
+  Problem,
+  | "id"
+  | "year"
+  | "region"
+  | "paper"
+  | "number"
+  | "difficulty"
+  | "questionType"
+  | "tags"
+  | "title"
+  | "heat"
+  | "dataSource"
+  | "dataNotice"
+> & {
+  excerpt: string;
+  hasProofGraph: boolean;
+  solutions: SolutionSummary[];
+};
+
 // ─── Proof Graph v1 ──────────────────────────────────────────────────────────
 
 export interface ProofObservation {

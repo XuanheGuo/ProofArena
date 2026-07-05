@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ArrowRight, CheckCircle2, Compass, Send, Swords, Trophy } from "lucide-react";
-import { getLearningIndex, getProblems } from "@/lib/db";
+import { getLearningIndex, getProblemSummaries, getProblemsByIds } from "@/lib/db";
 import { getFeaturedContest } from "@/lib/contests";
 import { difficultyBadgeClass } from "@/lib/problem-presentation";
 import { MathBlock } from "@/components/MathBlock";
@@ -8,14 +8,20 @@ import { ContestPromoCard } from "@/components/ContestPromoCard";
 
 export const revalidate = 3600;
 
+const FEATURED_PROBLEM_IDS = ["ng2-2026-18", "ng1-2026-18", "tj-2026-09"];
+
 export default async function HomePage() {
-  const [problems, currentContest] = await Promise.all([getProblems(), getFeaturedContest()]);
-  const solutionCount = problems.reduce((sum, problem) => sum + problem.solutions.length, 0);
-  const featuredProblems = ["ng2-2026-18", "ng1-2026-18", "tj-2026-09"]
-    .map((id) => problems.find((problem) => problem.id === id))
-    .filter((problem): problem is (typeof problems)[number] => Boolean(problem));
+  const [summaries, featuredCandidates, currentContest] = await Promise.all([
+    getProblemSummaries(),
+    getProblemsByIds(FEATURED_PROBLEM_IDS),
+    getFeaturedContest(),
+  ]);
+  const solutionCount = summaries.reduce((sum, problem) => sum + problem.solutions.length, 0);
+  const featuredProblems = FEATURED_PROBLEM_IDS
+    .map((id) => featuredCandidates.find((problem) => problem.id === id))
+    .filter((problem): problem is (typeof featuredCandidates)[number] => Boolean(problem));
   const stats = [
-    [String(problems.length).padStart(2, "0"), "精编真题"],
+    [String(summaries.length).padStart(2, "0"), "精编真题"],
     [String(solutionCount).padStart(2, "0"), "完整解法"],
     ["逐题", "人工校订"],
   ];

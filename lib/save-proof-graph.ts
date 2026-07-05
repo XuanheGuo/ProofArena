@@ -2,6 +2,7 @@
 
 import { createServiceClient } from '@/lib/supabase-server';
 import { requireProofGraphEditor } from '@/lib/proof-graph-admin-auth';
+import { revalidateContestProblemPaths, revalidatePublicProblemPaths } from '@/lib/revalidate-public';
 import type { ProofGraphV1 } from '@/lib/types';
 
 type SaveResult = { success: true } | { success: false; error: string };
@@ -64,6 +65,9 @@ export async function saveProofGraph(
   if (!data) {
     return { success: false, error: '保存失败：没有找到对应题目。' };
   }
+
+  revalidatePublicProblemPaths(problemId);
+  await revalidateContestProblemPaths(supabase, problemId);
 
   return { success: true };
 }

@@ -1,9 +1,9 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Search, SlidersHorizontal, X } from "lucide-react";
-import type { Difficulty, ExamRegion, Problem, QuestionType } from "@/lib/types";
+import type { Difficulty, ExamRegion, ProblemSummary, QuestionType } from "@/lib/types";
 import { ProblemCard } from "@/components/ProblemCard";
 import { ProblemScrollbar } from "@/components/ProblemScrollbar";
 
@@ -12,23 +12,20 @@ const types: Array<"全部题型" | QuestionType> = ["全部题型", "单选", "
 const difficulties: Array<"全部难度" | Difficulty> = ["全部难度", "基础", "中档", "压轴"];
 
 interface ProblemExplorerProps {
-  problems: Problem[];
-  initialQuery?: string;
-  initialRegion?: string;
-  initialType?: string;
-  initialDifficulty?: string;
-  initialTopic?: string;
+  problems: ProblemSummary[];
 }
 
-export function ProblemExplorer({
-  problems,
-  initialQuery = "",
-  initialRegion = "全部卷别",
-  initialType = "全部题型",
-  initialDifficulty = "全部难度",
-  initialTopic = "全部专题",
-}: ProblemExplorerProps) {
+export function ProblemExplorer({ problems }: ProblemExplorerProps) {
   const router = useRouter();
+  // Read initial filter state from the URL client-side so this page stays
+  // static/ISR — the server component no longer receives searchParams.
+  const searchParams = useSearchParams();
+  const initialQuery = searchParams.get("q") ?? "";
+  const initialRegion = searchParams.get("region") ?? "全部卷别";
+  const initialType = searchParams.get("type") ?? "全部题型";
+  const initialDifficulty = searchParams.get("difficulty") ?? "全部难度";
+  const initialTopic = searchParams.get("topic") ?? "全部专题";
+
   const [query, setQuery] = useState(initialQuery);
   const [region, setRegion] = useState<(typeof regions)[number]>(
     regions.includes(initialRegion as (typeof regions)[number]) ? (initialRegion as (typeof regions)[number]) : "全部卷别"

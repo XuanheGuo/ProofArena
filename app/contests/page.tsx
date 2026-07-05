@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowUpRight, CalendarDays, ClipboardList, Swords, Trophy, UsersRound } from "lucide-react";
-import { getProblems } from "@/lib/db";
+import { getProblemSummaries } from "@/lib/db";
 import { contestStatusMeta } from "@/lib/contest-meta";
 import { getContests, getContestSubmissionStats } from "@/lib/contests";
 
@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   description: "ProofArena 思路擂台：围绕同一道题比较不同解法的活动与比赛。",
 };
 
-export const dynamic = "force-dynamic";
+export const revalidate = 300;
 
 function formatDate(value: string) {
   return new Intl.DateTimeFormat("zh-CN", {
@@ -22,7 +22,7 @@ function formatDate(value: string) {
 }
 
 export default async function ContestsPage() {
-  const [problems, contests] = await Promise.all([getProblems(), getContests()]);
+  const [problems, contests] = await Promise.all([getProblemSummaries(), getContests()]);
   const problemMap = new Map(problems.map((problem) => [problem.id, problem]));
 
   const statsPerContest = await Promise.all(

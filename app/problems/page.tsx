@@ -1,15 +1,12 @@
+import { Suspense } from "react";
 import { AlertTriangle, Target } from "lucide-react";
 import { ProblemExplorer } from "@/components/ProblemExplorer";
-import { getProblems } from "@/lib/db";
+import { getProblemSummaries } from "@/lib/db";
 
 export const revalidate = 3600;
 
-export default async function ProblemsPage({
-  searchParams,
-}: {
-  searchParams: Promise<Record<string, string>>;
-}) {
-  const [params, problems] = await Promise.all([searchParams, getProblems()]);
+export default async function ProblemsPage() {
+  const problems = await getProblemSummaries();
   const solutionCount = problems.reduce((sum, problem) => sum + problem.solutions.length, 0);
   const regionCount = new Set(problems.map((problem) => problem.region)).size;
   const dataNotice = problems.find((problem) => problem.dataNotice)?.dataNotice;
@@ -60,14 +57,9 @@ export default async function ProblemsPage({
         </div>
       </section>
 
-      <ProblemExplorer
-        problems={problems}
-        initialQuery={params.q ?? ""}
-        initialRegion={params.region ?? "全部卷别"}
-        initialType={params.type ?? "全部题型"}
-        initialDifficulty={params.difficulty ?? "全部难度"}
-        initialTopic={params.topic ?? "全部专题"}
-      />
+      <Suspense fallback={null}>
+        <ProblemExplorer problems={problems} />
+      </Suspense>
     </main>
   );
 }

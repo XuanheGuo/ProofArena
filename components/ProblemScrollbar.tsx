@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { Problem } from "@/lib/types";
+import type { ProblemSummary } from "@/lib/types";
 
-export function ProblemScrollbar({ problems }: { problems: Problem[] }) {
+export function ProblemScrollbar({ problems }: { problems: ProblemSummary[] }) {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [hoverId, setHoverId] = useState<string | null>(null);
   const [mobileVisible, setMobileVisible] = useState(true);
