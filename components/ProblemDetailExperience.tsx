@@ -32,10 +32,11 @@ import { difficultyBadgeClass } from "@/lib/problem-presentation";
 import { getSolutionKindMeta } from "@/lib/solution-kinds";
 import { contestSolutionTypeMeta } from "@/lib/contest-meta";
 
-type DetailTab = "problem" | "solutions" | "knowledge" | "related" | "graph";
+type DetailTab = "problem" | "comparison" | "solutions" | "knowledge" | "related" | "graph";
 
-const allTabs: Array<{ id: DetailTab; label: string; requiresGraph?: boolean }> = [
+const allTabs: Array<{ id: DetailTab; label: string; requiresGraph?: boolean; requiresProofGraph?: boolean }> = [
   { id: "problem", label: "题目" },
+  { id: "comparison", label: "比较", requiresProofGraph: true },
   { id: "solutions", label: "解法" },
   { id: "knowledge", label: "知识点" },
   { id: "related", label: "相关题" },
@@ -204,27 +205,25 @@ function ProofGraphSummaryStrip({
   submitHref: string;
 }) {
   const pg = problem.proofGraph!;
-  const items = [
-    { count: pg.observations.length, label: "思路入口", color: "text-cyan-300" },
-    { count: pg.branches.length, label: "路线分支", color: "text-violet-300" },
-    { count: pg.transformations.length, label: "关键转化", color: "text-emerald-300" },
-    { count: pg.methodBoundaries.length, label: "方法边界", color: "text-amber-300" },
-    { count: pg.challengeEdges.length, label: "挑战关系", color: "text-red-300" },
-  ].filter((i) => i.count > 0);
+  const parts = [
+    { count: pg.observations.length, label: "入口" },
+    { count: pg.branches.length, label: "分支" },
+    { count: pg.transformations.length, label: "转化" },
+    { count: pg.methodBoundaries.length, label: "边界" },
+    { count: pg.challengeEdges.length, label: "挑战" },
+  ].filter((p) => p.count > 0);
+
+  const summary = parts.map((p) => `${p.count} ${p.label}`).join(" · ");
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 border border-white/10 bg-black/20 px-4 py-2.5">
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-        {items.map((item) => (
-          <span key={item.label} className="flex items-baseline gap-1 text-xs">
-            <strong className={`font-display text-base ${item.color}`}>{item.count}</strong>
-            <span className="text-zinc-600">{item.label}</span>
-          </span>
-        ))}
-      </div>
+    <div className="flex flex-wrap items-center justify-between gap-2 border border-white/10 bg-black/20 px-4 py-2">
+      <p className="text-xs text-zinc-500">
+        <span className="font-bold text-zinc-400">推理图谱</span>
+        {summary && <span className="ml-1.5 text-zinc-600">{summary}</span>}
+      </p>
       <a
         href={submitHref}
-        className="inline-flex h-8 items-center gap-1.5 border border-cyan-400/30 px-3 text-xs font-bold text-cyan-300 transition hover:bg-cyan-400/10"
+        className="inline-flex h-7 items-center gap-1.5 border border-cyan-400/30 px-3 text-xs font-bold text-cyan-300 transition hover:bg-cyan-400/10"
       >
         提交新解法
       </a>
@@ -259,7 +258,11 @@ export function ProblemDetailExperience({
 }) {
   const graphSpec = graphSpecRegistry[problem.id];
   const hasMathViz = mathVizProblemIds.has(problem.id);
-  const tabs = allTabs.filter((tab) => !tab.requiresGraph || Boolean(graphSpec) || hasMathViz);
+  const tabs = allTabs.filter((tab) => {
+    if (tab.requiresGraph && !Boolean(graphSpec) && !hasMathViz) return false;
+    if (tab.requiresProofGraph && !problem.proofGraph) return false;
+    return true;
+  });
   const [activeTab, setActiveTab] = useState<DetailTab>("solutions");
   const [showGuide, setShowGuide] = useState(false);
 
@@ -282,7 +285,7 @@ export function ProblemDetailExperience({
   function showSolutions() {
     setActiveTab("solutions");
     requestAnimationFrame(() => {
-      document.getElementById("solutions-panel")?.scrollIntoView({ block: "start" });
+      document.getElementById("solutions-content")?.scrollIntoView({ block: "start", behavior: "smooth" });
     });
   }
 
@@ -367,7 +370,7 @@ export function ProblemDetailExperience({
               </div>
               <h1 className="mt-4 text-2xl font-black leading-tight text-white sm:text-3xl md:text-5xl">{problem.title}</h1>
               <p className="mt-4 max-w-3xl text-sm leading-7 text-zinc-400">
-                先看题目本体，再在解法 Tab 中比较不同路线。知识点和相关题放在辅助区，避免干扰主线阅读。
+                先看题目本体；到「比较」看路线差异，到「解法」展开完整解析。知识点和相关题放在辅助区，避免干扰主线阅读。
               </p>
             </div>
             <div className="grid grid-cols-3 border border-white/10 bg-black/20 text-center sm:max-w-md lg:max-w-none">
@@ -505,6 +508,16 @@ export function ProblemDetailExperience({
           </section>
         )}
 
+        {activeTab === "comparison" && (
+          <section className="space-y-4">
+            <ProofGraphMatrix problem={problem} />
+            <MethodBoundaryHighlights problem={problem} />
+            <ReasoningReplayPanel problem={problem} />
+            <ProofChallengeEdges problem={problem} />
+            <SolutionTreePanel problem={problem} />
+          </section>
+        )}
+
         {activeTab === "solutions" && (
           <section className="grid gap-5 lg:grid-cols-[18rem_minmax(0,1fr)]">
             <aside className="hidden lg:block">
@@ -517,14 +530,14 @@ export function ProblemDetailExperience({
                 </div>
               </div>
             </aside>
-            <div>
+            <div id="solutions-content">
               <div className="mb-4 flex flex-col gap-2 border border-white/10 bg-zinc-950 p-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <h2 className="font-bold text-white">解法对比</h2>
+                  <h2 className="font-bold text-white">完整解法</h2>
                   <p className="mt-1 text-xs text-zinc-600">
                     {hideSolutionsForContest
                       ? "比赛进行中，题解暂时隐藏，避免提前形成路径暗示。"
-                      : "先比较核心思路和五维指标，再展开完整解析。"}
+                      : "展开任意解法查看完整推理步骤和验证细节。"}
                   </p>
                 </div>
                 <Link href={submitHref} className="inline-flex h-9 items-center justify-center gap-2 border border-cyan-400/30 px-3 text-xs font-bold text-cyan-300">
@@ -546,14 +559,6 @@ export function ProblemDetailExperience({
                 </div>
               ) : (
                 <>
-              {problem.proofGraph && (
-                <div className="space-y-4 mb-4">
-                  <ProofGraphMatrix problem={problem} />
-                  <MethodBoundaryHighlights problem={problem} />
-                  <ReasoningReplayPanel problem={problem} />
-                  <ProofChallengeEdges problem={problem} />
-                </div>
-              )}
               {problem.solutions.length ? (
                 <div className="space-y-4">
                   {problem.solutions.map((solution, index) => (
@@ -567,7 +572,6 @@ export function ProblemDetailExperience({
                   action={<Link href={submitHref} className="text-sm font-bold text-cyan-300">提交第一个解法</Link>}
                 />
               )}
-              <SolutionTreePanel problem={problem} />
                 </>
               )}
             </div>
