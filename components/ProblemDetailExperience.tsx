@@ -16,7 +16,7 @@ import {
   Target,
   Trophy,
 } from "lucide-react";
-import type { Contest, ContestProblem, KnowledgeNode, Problem, Solution } from "@/lib/types";
+import type { Contest, ContestProblem, KnowledgeNode, Problem, ProblemSummary, Solution } from "@/lib/types";
 import { MathBlock } from "@/components/MathBlock";
 import { ScoreBar } from "@/components/ScoreBar";
 import { VerificationPanel } from "@/components/VerificationPanel";
@@ -332,14 +332,20 @@ export function ProblemDetailExperience({
   knowledgeNodes,
   relatedProblems,
   contestContext,
+  contestLock,
 }: {
   problem: Problem;
   knowledgeNodes: KnowledgeNode[];
-  relatedProblems: Problem[];
+  relatedProblems: ProblemSummary[];
   contestContext?: {
     contest: Contest;
     contestProblem: ContestProblem;
   };
+  // Minimal signal for the canonical /problems/[id] route: this problem is
+  // locked by a contest that's live right now. Unlike contestContext (only
+  // populated on /contests/[slug]/problems/[id]), this carries no day/theme
+  // details — just enough to hide solutions and point at the contest.
+  contestLock?: { slug: string };
 }) {
   const graphSpec = graphSpecRegistry[problem.id];
   const hasMathViz = mathVizProblemIds.has(problem.id);
@@ -405,10 +411,12 @@ export function ProblemDetailExperience({
     () => [...problem.learningGuide.observation.slice(0, 2), ...problem.learningGuide.triggers.slice(0, 2)],
     [problem],
   );
-  const submitHref = contestContext
-    ? `/submit?contest=${contestContext.contest.slug}&problem=${problem.id}`
+  const activeContestSlug = contestContext?.contest.slug ?? contestLock?.slug;
+  const submitHref = activeContestSlug
+    ? `/submit?contest=${activeContestSlug}&problem=${problem.id}`
     : "/submit";
-  const hideSolutionsForContest = contestContext?.contest.status === "active";
+  const isContestSubmission = Boolean(contestContext || contestLock);
+  const hideSolutionsForContest = contestContext?.contest.status === "active" || Boolean(contestLock);
 
   return (
     <main className="grid-surface min-h-screen">
@@ -517,7 +525,7 @@ export function ProblemDetailExperience({
               className="inline-flex h-11 items-center justify-center gap-2 border border-white/10 bg-black/20 px-4 text-sm font-bold text-zinc-200 transition hover:border-cyan-400/40 hover:text-cyan-200"
             >
               <Send className="size-4" />
-              {contestContext ? "提交参赛解法" : "提交解法"}
+              {isContestSubmission ? "提交参赛解法" : "提交解法"}
             </Link>
           </div>
 
@@ -558,7 +566,7 @@ export function ProblemDetailExperience({
                   className="inline-flex h-11 items-center justify-center gap-2 border border-white/10 bg-black/20 px-4 text-sm font-bold text-zinc-200 transition hover:border-cyan-400/40 hover:text-cyan-200"
                 >
                   <Send className="size-4" />
-                  {contestContext ? "提交参赛解法" : "提交解法"}
+                  {isContestSubmission ? "提交参赛解法" : "提交解法"}
                 </Link>
               </div>
             </aside>
@@ -688,7 +696,7 @@ export function ProblemDetailExperience({
                 </div>
                 <Link href={submitHref} className="inline-flex h-9 items-center justify-center gap-2 border border-cyan-400/30 px-3 text-xs font-bold text-cyan-300">
                   <Plus className="size-3.5" />
-                  {contestContext ? "提交参赛解法" : "提交新解法"}
+                  {isContestSubmission ? "提交参赛解法" : "提交新解法"}
                 </Link>
               </div>
               {hideSolutionsForContest ? (
@@ -698,10 +706,20 @@ export function ProblemDetailExperience({
                   <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-zinc-500">
                     先把自己的观察写下来。哪怕只是一个入口、一种直觉、一个卡点，也比被已有题解牵着走更有价值。
                   </p>
-                  <Link href={submitHref} className="mt-5 inline-flex h-10 items-center justify-center gap-2 bg-amber-300 px-4 text-sm font-bold text-zinc-950">
-                    <Send className="size-4" />
-                    提交参赛思路
-                  </Link>
+                  <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
+                    <Link href={submitHref} className="inline-flex h-10 items-center justify-center gap-2 bg-amber-300 px-4 text-sm font-bold text-zinc-950">
+                      <Send className="size-4" />
+                      提交参赛思路
+                    </Link>
+                    {!contestContext && contestLock && (
+                      <Link
+                        href={`/contests/${contestLock.slug}`}
+                        className="inline-flex h-10 items-center justify-center gap-2 border border-amber-400/25 px-4 text-sm font-bold text-amber-200 transition hover:bg-amber-400/10"
+                      >
+                        查看比赛详情
+                      </Link>
+                    )}
+                  </div>
                 </div>
               ) : (
                 <>

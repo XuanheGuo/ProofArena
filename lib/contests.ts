@@ -1,6 +1,6 @@
 import { contests as staticContests, getContest as getStaticContest } from "@/data/contests";
 import { isPublicSubmissionImageUrl } from "@/lib/security";
-import { createClient } from "@/lib/supabase-server";
+import { createPublicClient } from "@/lib/supabase-public";
 import type { Contest, ContestAward, ContestProblem } from "@/lib/types";
 
 type ContestRow = {
@@ -94,7 +94,7 @@ export async function getContests(): Promise<Contest[]> {
     return staticContests;
   }
 
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   const { data, error } = await supabase
     .from("contests")
     .select("*, contest_problems(*), awards(*)")
@@ -114,7 +114,7 @@ export async function getContest(slug: string): Promise<Contest | undefined> {
     return getStaticContest(slug);
   }
 
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   const { data, error } = await supabase
     .from("contests")
     .select("*, contest_problems(*), awards(*)")
@@ -129,15 +129,47 @@ export async function getContest(slug: string): Promise<Contest | undefined> {
   return data ? toContest(data as ContestRow) : getStaticContest(slug);
 }
 
-export async function getContestForProblem(problemId: string, slug?: string) {
-  const allContests = slug ? [await getContest(slug)] : await getContests();
-  const validContests = allContests.filter((item): item is Contest => Boolean(item));
+// Always called with an explicit slug — used only by the dedicated
+// /contests/[slug]/problems/[id] route, which carries the full contest
+// context (banner, day/theme, submit CTA). The canonical /problems/[id]
+// route no longer auto-scans every contest; it uses the much cheaper
+// getActiveContestLockForProblem below for its "hide solutions" gate.
+export async function getContestForProblem(problemId: string, slug: string) {
+  const contest = await getContest(slug);
+  if (!contest) return null;
 
-  for (const contest of validContests) {
-    const contestProblem = contest.problems.find((problem) => problem.problemId === problemId);
-    if (contestProblem) return { contest, contestProblem };
+  const contestProblem = contest.problems.find((problem) => problem.problemId === problemId);
+  return contestProblem ? { contest, contestProblem } : null;
+}
+
+export type ActiveContestLock = { slug: string };
+
+// Cheap, targeted check for the canonical /problems/[id] page: is this
+// problem currently locked by a contest that's live right now? Deliberately
+// only checks `status = 'active'` (matches the existing "hide solutions"
+// rule) and selects nothing beyond the contest slug, instead of pulling
+// every contest + contest_problems + awards row like getContests() does.
+export async function getActiveContestLockForProblem(problemId: string): Promise<ActiveContestLock | null> {
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    return null;
   }
-  return null;
+
+  const supabase = createPublicClient();
+  const { data, error } = await supabase
+    .from("contest_problems")
+    .select("contests!inner(slug, status)")
+    .eq("problem_id", problemId)
+    .eq("contests.status", "active")
+    .limit(1)
+    .maybeSingle();
+
+  if (error || !data) return null;
+
+  const row = data as unknown as {
+    contests: { slug: string; status: string } | { slug: string; status: string }[] | null;
+  };
+  const contest = Array.isArray(row.contests) ? row.contests[0] : row.contests;
+  return contest ? { slug: contest.slug } : null;
 }
 
 export async function getFeaturedContest() {
@@ -156,7 +188,7 @@ export async function getContestStats(contestIds: string[]): Promise<ContestStat
     return contestIds.map((id) => ({ contestId: id, submissionCount: 0, participantCount: 0 }));
   }
 
-  const supabase = await createClient();
+  const supabase = createPublicClient();
 
   const { data } = await supabase
     .from("submissions")
@@ -190,7 +222,7 @@ export async function getContestSubmissionStats(contestSlug: string) {
     return { submissionCount: 0, participantCount: 0 };
   }
 
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   const { data } = await supabase
     .from("submissions")
     .select("user_id")
@@ -264,7 +296,7 @@ function firstProfile(
 export async function getContestThoughts(contestSlug: string): Promise<ContestThoughtEntry[]> {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) return [];
 
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   const { data: submissions, error } = await supabase
     .from("submissions")
     .select("id, problem_id, contest_problem_key, title, user_id, content, attachment_urls, is_post_contest, created_at, user_profiles(display_name, username)")
@@ -362,7 +394,7 @@ export type ContestUserRankEntry = {
 export async function getContestUserRankings(contestSlug: string, awards: import("@/lib/types").ContestAward[]): Promise<ContestUserRankEntry[]> {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) return [];
 
-  const supabase = await createClient();
+  const supabase = createPublicClient();
 
   const { data: solutions } = await supabase
     .from("solutions")
@@ -468,7 +500,7 @@ export async function getContestLeaderboard(contestSlug: string): Promise<Contes
     return empty;
   }
 
-  const supabase = await createClient();
+  const supabase = createPublicClient();
 
   const { data: solutions, error } = await supabase
     .from("solutions")

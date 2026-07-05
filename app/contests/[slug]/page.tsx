@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import { contestStatusMeta, contestSolutionTypeMeta } from "@/lib/contest-meta";
 import { ContestThoughtArena } from "@/components/ContestThoughtArena";
-import { getContest, getContestLeaderboard, getContestSubmissionStats, getContestThoughts, getContestUserRankings } from "@/lib/contests";
+import { getContest, getContestLeaderboard, getContestSubmissionStats, getContests, getContestThoughts, getContestUserRankings } from "@/lib/contests";
 import { getProblems, getSolutionAverage } from "@/lib/db";
 import { difficultyBadgeClass } from "@/lib/problem-presentation";
 import { getEffectiveProblemStatus } from "@/lib/types";
@@ -27,6 +27,13 @@ import { getEffectiveProblemStatus } from "@/lib/types";
 type PageProps = {
   params: Promise<{ slug: string }>;
 };
+
+export const revalidate = 300;
+
+export async function generateStaticParams() {
+  const contests = await getContests();
+  return contests.map((contest) => ({ slug: contest.slug }));
+}
 
 function formatDateTime(value: string) {
   return new Intl.DateTimeFormat("zh-CN", {
@@ -121,7 +128,7 @@ export default async function ContestDetailPage({ params }: PageProps) {
               <div className="mt-6 flex flex-wrap gap-2">
                 {todayProblem?.problemId && (
                   <Link
-                    href={`/problems/${todayProblem.problemId}?contest=${contest.slug}`}
+                    href={`/contests/${contest.slug}/problems/${todayProblem.problemId}`}
                     className="inline-flex h-10 items-center gap-2 bg-cyan-400 px-5 text-sm font-bold text-zinc-950 transition hover:bg-cyan-300"
                   >
                     <Flame className="size-4" />
@@ -276,7 +283,7 @@ export default async function ContestDetailPage({ params }: PageProps) {
                       ) : problem ? (
                         <div className="flex flex-wrap items-center gap-2">
                           <Link
-                            href={`/problems/${problem.id}?contest=${contest.slug}`}
+                            href={`/contests/${contest.slug}/problems/${problem.id}`}
                             className="inline-flex h-8 items-center gap-1.5 border border-white/15 px-3 text-xs font-bold text-zinc-200 transition hover:border-cyan-400/40 hover:text-cyan-300"
                           >
                             进入题目
@@ -379,7 +386,7 @@ export default async function ContestDetailPage({ params }: PageProps) {
                 {bestSolutions.map(({ contestProblem, problem, solution, average }, index) => (
                   <Link
                     key={`${contestProblem.id}-${solution.id}`}
-                    href={`/problems/${problem.id}?contest=${contest.slug}#${solution.id}`}
+                    href={`/contests/${contest.slug}/problems/${problem.id}#${solution.id}`}
                     className="grid gap-3 bg-black/15 p-4 transition hover:bg-cyan-400/[0.04] sm:grid-cols-[3rem_minmax(0,1fr)_5rem]"
                   >
                     <span className="font-mono text-sm text-cyan-300">#{index + 1}</span>
@@ -472,7 +479,7 @@ export default async function ContestDetailPage({ params }: PageProps) {
                       )}
                       {award.solutionId && awardProblem && (
                         <Link
-                          href={`/problems/${award.problemId}?contest=${contest.slug}#${award.solutionId}`}
+                          href={`/contests/${contest.slug}/problems/${award.problemId}#${award.solutionId}`}
                           className="mt-2 inline-flex items-center gap-1 text-xs text-cyan-300 hover:underline"
                         >
                           查看解法
@@ -512,7 +519,7 @@ export default async function ContestDetailPage({ params }: PageProps) {
                             <span className="text-amber-300">★</span>
                             {award.solutionId && problem ? (
                               <Link
-                                href={`/problems/${problem.id}?contest=${contest.slug}#${award.solutionId}`}
+                                href={`/contests/${contest.slug}/problems/${problem.id}#${award.solutionId}`}
                                 className="text-zinc-300 hover:text-white hover:underline"
                               >
                                 {award.title}

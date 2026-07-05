@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ArrowUpRight, BookOpenCheck, Compass, Flame, Layers3, NetworkIcon, Sparkles, TimerReset } from "lucide-react";
-import type { Problem } from "@/lib/types";
-import { getBestSolution, getLearningIndex } from "@/data/problems";
+import type { ProblemSummary } from "@/lib/types";
+import { getBestSolution, getLearningIndex } from "@/lib/db";
 import { MathBlock } from "@/components/MathBlock";
 import { difficultyBadgeClass } from "@/lib/problem-presentation";
 
@@ -12,7 +12,7 @@ const typeStyles = {
   解答: "border-emerald-400/30 text-emerald-300",
 };
 
-export function ProblemCard({ problem, rank }: { problem: Problem; rank?: number }) {
+export function ProblemCard({ problem, rank }: { problem: ProblemSummary; rank?: number }) {
   const examSolution = getBestSolution(problem, "examReady");
   const eleganceRanking = [...problem.solutions].sort((a, b) => b.scores.elegance - a.scores.elegance);
   const elegantSolution = eleganceRanking.find((solution) => solution.id !== examSolution.id) ?? eleganceRanking[0];
@@ -39,7 +39,7 @@ export function ProblemCard({ problem, rank }: { problem: Problem; rank?: number
           <span className={`border px-2 py-1 ${difficultyBadgeClass[problem.difficulty]}`}>
             {problem.difficulty}
           </span>
-          {problem.proofGraph && (
+          {problem.hasProofGraph && (
             <span className="inline-flex items-center gap-1 border border-violet-400/30 bg-violet-400/[0.06] px-2 py-1 text-[10px] font-bold text-violet-300">
               <NetworkIcon className="size-3" />
               推理图谱
@@ -50,7 +50,7 @@ export function ProblemCard({ problem, rank }: { problem: Problem; rank?: number
           {problem.title}
         </h2>
         <p className="mt-3 line-clamp-2 text-sm leading-7 text-zinc-400">
-          <MathBlock>{problem.statement[0]}</MathBlock>
+          <MathBlock>{problem.excerpt}</MathBlock>
         </p>
         <div className="mt-6 hidden border border-white/10 bg-zinc-950/90 md:block">
           <div className="flex items-center justify-between border-b border-white/10 px-3 py-2.5">
