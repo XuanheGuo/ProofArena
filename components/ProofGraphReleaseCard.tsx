@@ -62,32 +62,31 @@ ${origin}/problems/${problem.id}`;
   }
 
   return (
-    <section className="border border-white/10">
-      <div className="border-b border-white/10 bg-black/20 px-4 py-3">
-        <h3 className="text-sm font-bold text-white">当前版本</h3>
-        <p className="mt-0.5 text-xs text-zinc-500">
-          这是本题推理图谱的当前发布快照，可引用于笔记、分享或课堂材料。
-        </p>
-      </div>
-      <div className="space-y-3 p-4">
-        <p className="flex items-center gap-1.5 text-xs text-zinc-500">
-          <Tag className="size-3.5 text-zinc-600" />
-          {problem.region} · {problem.year} · {problem.number}
-        </p>
-        <div className="flex flex-wrap gap-1.5">
-          {counts.map((c) => (
-            <span
-              key={c.label}
-              className="border border-white/10 bg-white/[0.02] px-2 py-1 text-xs text-zinc-400"
-            >
-              <span className="font-bold text-zinc-200">{c.count}</span> {c.label}
+    <section className="border border-white/10 bg-black/20 px-4 py-3">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="min-w-0 space-y-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="text-sm font-bold text-white">当前版本</h3>
+            <span className="inline-flex items-center gap-1 text-xs text-zinc-500">
+              <Tag className="size-3.5 text-zinc-600" />
+              {problem.region} · {problem.year} · {problem.number}
             </span>
-          ))}
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {counts.map((c) => (
+              <span
+                key={c.label}
+                className="border border-white/10 bg-white/[0.02] px-2 py-1 text-[11px] text-zinc-400"
+              >
+                <span className="font-bold text-zinc-200">{c.count}</span> {c.label}
+              </span>
+            ))}
+          </div>
         </div>
         <button
           type="button"
           onClick={copyCitation}
-          className="inline-flex h-9 items-center gap-1.5 border border-cyan-400/30 px-3 text-xs font-bold text-cyan-300 transition hover:bg-cyan-400/10"
+          className="inline-flex h-9 w-fit items-center gap-1.5 border border-cyan-400/30 px-3 text-xs font-bold text-cyan-300 transition hover:bg-cyan-400/10"
         >
           {copied ? <Check className="size-3.5 text-emerald-300" /> : <ClipboardCopy className="size-3.5" />}
           {copied ? "已复制" : "复制引用"}

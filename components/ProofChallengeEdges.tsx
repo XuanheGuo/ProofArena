@@ -1,6 +1,7 @@
 "use client";
 
-import { Swords } from "lucide-react";
+import { useState } from "react";
+import { ChevronDown, Swords } from "lucide-react";
 import { MathBlock } from "@/components/MathBlock";
 import type { Problem, ProofChallengeEdge, Solution } from "@/lib/types";
 
@@ -70,25 +71,39 @@ function ChallengeCard({
 }
 
 export function ProofChallengeEdges({ problem }: { problem: Problem }) {
+  const [open, setOpen] = useState(false);
   const edges = problem.proofGraph?.challengeEdges ?? [];
   if (!edges.length) return null;
 
   return (
     <section className="border border-white/10">
-      <div className="border-b border-white/10 bg-black/20 px-4 py-3">
-        <h3 className="flex items-center gap-2 text-sm font-bold text-white">
-          <Swords className="size-4 text-amber-300" />
-          解法挑战
-        </h3>
-        <p className="mt-0.5 text-xs text-zinc-600">
-          哪条路线在特定维度上优于另一条，以及它的代价是什么。
-        </p>
-      </div>
-      <div className="space-y-px p-4">
-        {edges.map((edge) => (
-          <ChallengeCard key={edge.id} edge={edge} solutions={problem.solutions} />
-        ))}
-      </div>
+      <button
+        type="button"
+        onClick={() => setOpen((value) => !value)}
+        aria-expanded={open}
+        className="flex w-full items-center justify-between gap-3 bg-black/20 px-4 py-3 text-left transition hover:bg-white/[0.03]"
+      >
+        <div className="min-w-0">
+          <h3 className="flex items-center gap-2 text-sm font-bold text-white">
+            <Swords className="size-4 text-amber-300" />
+            解法挑战
+            <span className="border border-amber-400/25 px-1.5 py-0.5 text-[10px] text-amber-200">
+              {edges.length} 条
+            </span>
+          </h3>
+          <p className="mt-0.5 text-xs text-zinc-600">
+            哪条路线在特定维度上优于另一条，以及它的代价是什么。
+          </p>
+        </div>
+        <ChevronDown className={`size-4 shrink-0 text-zinc-500 transition ${open ? "rotate-180" : ""}`} />
+      </button>
+      {open && (
+        <div className="space-y-px border-t border-white/10 p-4">
+          {edges.map((edge) => (
+            <ChallengeCard key={edge.id} edge={edge} solutions={problem.solutions} />
+          ))}
+        </div>
+      )}
     </section>
   );
 }

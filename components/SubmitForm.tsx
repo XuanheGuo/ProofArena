@@ -713,13 +713,13 @@ export function SubmitForm({
               </div>
             );
           })()}
-          <label className="grid gap-2 text-sm">
+          <label className="grid min-w-0 gap-2 text-sm">
             <span className="font-bold text-white">选择对应题目</span>
             <select
               required
               value={solutionForm.problemId}
               onChange={(event) => setSolutionForm({ ...solutionForm, problemId: event.target.value })}
-              className="h-11 rounded border border-white/10 bg-zinc-900 px-3 text-sm text-white outline-none focus:border-cyan-400/50"
+              className="h-11 w-full min-w-0 rounded border border-white/10 bg-zinc-900 px-3 text-sm text-white outline-none focus:border-cyan-400/50"
             >
               {availableProblems.map((problem) => (
                 <option key={problem.id} value={problem.id}>{problem.source} · {problem.title}</option>
@@ -764,7 +764,7 @@ export function SubmitForm({
                   )}
                 </div>
                 <div className="mt-4 grid gap-4 xl:grid-cols-2">
-                  <label className="grid gap-2 text-sm">
+                  <label className="grid min-w-0 gap-2 text-sm">
                     <span className="font-bold text-white">挑战对象</span>
                     <select
                       value={solutionForm.challengeTargetSolutionId}
@@ -775,7 +775,7 @@ export function SubmitForm({
                         challengeAdvantages: event.target.value ? solutionForm.challengeAdvantages : '',
                         challengeRisk: event.target.value ? solutionForm.challengeRisk : '',
                       })}
-                      className="h-11 rounded border border-white/10 bg-zinc-900 px-3 text-sm text-white outline-none focus:border-amber-400/50"
+                      className="h-11 w-full min-w-0 rounded border border-white/10 bg-zinc-900 px-3 text-sm text-white outline-none focus:border-amber-400/50"
                     >
                       <option value="">不挑战，作为独立补充解法</option>
                       {selectedProblem.solutions.map((solution) => (
@@ -820,12 +820,12 @@ export function SubmitForm({
                 onChange={(title) => setSolutionForm({ ...solutionForm, title })}
                 placeholder="例如：差函数导数法"
               />
-              <label className="grid gap-2 text-sm">
+              <label className="grid min-w-0 gap-2 text-sm">
                 <span className="font-bold text-white">解法类型</span>
                 <select
                   value={solutionForm.kind}
                   onChange={(event) => setSolutionForm({ ...solutionForm, kind: event.target.value as SolutionKind })}
-                  className="h-11 rounded border border-white/10 bg-zinc-900 px-3 text-sm text-white outline-none focus:border-cyan-400/50"
+                  className="h-11 w-full min-w-0 rounded border border-white/10 bg-zinc-900 px-3 text-sm text-white outline-none focus:border-cyan-400/50"
                 >
                   {KINDS.map((kind) => <option key={kind.value} value={kind.value}>{kind.label}</option>)}
                 </select>
@@ -956,14 +956,14 @@ function TextField({
   required?: boolean;
 }) {
   return (
-    <label className="grid gap-2 text-sm">
+    <label className="grid min-w-0 gap-2 text-sm">
       <span className="font-bold text-white">{label} {required && <span className="text-red-400">*</span>}</span>
       <input
         required={required}
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
-        className="h-11 rounded border border-white/10 bg-white/5 px-4 text-sm text-white outline-none transition placeholder:text-zinc-600 focus:border-cyan-400/50"
+        className="h-11 w-full min-w-0 rounded border border-white/10 bg-white/5 px-4 text-sm text-white outline-none transition placeholder:text-zinc-600 focus:border-cyan-400/50"
       />
     </label>
   );
@@ -1041,7 +1041,7 @@ function TextArea({
   required?: boolean;
 }) {
   return (
-    <label className="grid gap-2 text-sm">
+    <label className="grid min-w-0 gap-2 text-sm">
       <span className="font-bold text-white">{label} {required && <span className="text-red-400">*</span>}</span>
       <textarea
         required={required}
@@ -1049,7 +1049,7 @@ function TextArea({
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
-        className="resize-y rounded border border-white/10 bg-white/5 px-4 py-3 text-sm leading-6 text-white outline-none transition placeholder:text-zinc-600 focus:border-cyan-400/50"
+        className="w-full min-w-0 resize-y rounded border border-white/10 bg-white/5 px-4 py-3 text-sm leading-6 text-white outline-none transition placeholder:text-zinc-600 focus:border-cyan-400/50"
       />
     </label>
   );

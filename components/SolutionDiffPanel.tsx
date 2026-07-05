@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { GitBranch, GitCompare } from "lucide-react";
+import type { ReactNode } from "react";
+import { ChevronDown, GitBranch, GitCompare } from "lucide-react";
 import { MathBlock } from "@/components/MathBlock";
-import { ScoreBar } from "@/components/ScoreBar";
 import type { Problem, ProofChallengeEdge, ProofObservation, ProofStrategyBranch, ProofTransformation, Solution } from "@/lib/types";
 
 // ── score config ──────────────────────────────────────────────────────────────
@@ -143,18 +143,40 @@ function ScoresSection({ solA, solB }: { solA: Solution; solB: Solution }) {
   return (
     <div className="space-y-2">
       <SectionHeader title="五维评分对比" source="field" />
-      <div className="grid gap-1 sm:grid-cols-2">
-        <div className="space-y-1.5 rounded border border-white/5 bg-black/20 p-3">
-          <p className="mb-2 text-[10px] font-bold text-zinc-500">{solA.title}</p>
-          {SCORE_ROWS.map((row) => (
-            <ScoreBar key={row.key} label={row.label} value={solA.scores[row.key]} tone="cyan" />
-          ))}
+      <div className="rounded border border-white/5 bg-black/20 p-3">
+        <div className="mb-2 grid grid-cols-[4rem_minmax(0,1fr)_minmax(0,1fr)] gap-2 text-[10px] font-bold text-zinc-600">
+          <span>维度</span>
+          <span className="truncate text-cyan-300">{solA.title}</span>
+          <span className="truncate text-amber-300">{solB.title}</span>
         </div>
-        <div className="space-y-1.5 rounded border border-white/5 bg-black/20 p-3">
-          <p className="mb-2 text-[10px] font-bold text-zinc-500">{solB.title}</p>
-          {SCORE_ROWS.map((row) => (
-            <ScoreBar key={row.key} label={row.label} value={solB.scores[row.key]} tone="amber" />
-          ))}
+        <div className="space-y-1.5">
+          {SCORE_ROWS.map((row) => {
+            const a = solA.scores[row.key] ?? 0;
+            const b = solB.scores[row.key] ?? 0;
+            return (
+              <div key={row.key} className="grid grid-cols-[4rem_minmax(0,1fr)_minmax(0,1fr)] items-center gap-2 text-[11px]">
+                <span className="text-zinc-500">{row.label}</span>
+                <div className="min-w-0">
+                  <div className="mb-0.5 flex items-center justify-between gap-1">
+                    <span className="truncate text-zinc-500">A</span>
+                    <span className="font-bold text-cyan-300">{a.toFixed(1)}</span>
+                  </div>
+                  <div className="h-1.5 overflow-hidden rounded-full bg-white/10">
+                    <div className="h-full rounded-full bg-cyan-300" style={{ width: `${Math.max(0, Math.min(100, a * 10))}%` }} />
+                  </div>
+                </div>
+                <div className="min-w-0">
+                  <div className="mb-0.5 flex items-center justify-between gap-1">
+                    <span className="truncate text-zinc-500">B</span>
+                    <span className="font-bold text-amber-300">{b.toFixed(1)}</span>
+                  </div>
+                  <div className="h-1.5 overflow-hidden rounded-full bg-white/10">
+                    <div className="h-full rounded-full bg-amber-300" style={{ width: `${Math.max(0, Math.min(100, b * 10))}%` }} />
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>
@@ -199,6 +221,15 @@ function TradeoffsSection({ solA, solB }: { solA: Solution; solB: Solution }) {
   );
 }
 
+function DetailSummary({ children }: { children: ReactNode }) {
+  return (
+    <summary className="flex cursor-pointer list-none items-center justify-between gap-3 border-b border-white/10 bg-black/20 px-3 py-2 text-xs font-bold text-zinc-300 marker:hidden transition hover:text-white">
+      {children}
+      <ChevronDown className="size-3.5 shrink-0 text-zinc-500 transition group-open:rotate-180" />
+    </summary>
+  );
+}
+
 // ── Public component ──────────────────────────────────────────────────────────
 
 export function SolutionDiffPanel({ problem }: { problem: Problem }) {
@@ -236,12 +267,12 @@ export function SolutionDiffPanel({ problem }: { problem: Problem }) {
       <div className="p-4">
         {/* Solution selectors */}
         <div className="mb-4 grid gap-2 sm:grid-cols-2">
-          <div className="grid gap-1 text-xs">
+          <div className="grid min-w-0 gap-1 text-xs">
             <span className="font-bold text-cyan-300">路线 A</span>
             <select
               value={aId}
               onChange={(e) => setAId(e.target.value)}
-              className="h-9 rounded border border-white/10 bg-zinc-900 px-2 text-xs text-white outline-none focus:border-cyan-400/50"
+              className="h-9 w-full min-w-0 rounded border border-white/10 bg-zinc-900 px-2 text-xs text-white outline-none focus:border-cyan-400/50"
             >
               {solutions.filter((s) => s.id !== bId).map((s) => (
                 <option key={s.id} value={s.id}>
@@ -249,20 +280,13 @@ export function SolutionDiffPanel({ problem }: { problem: Problem }) {
                 </option>
               ))}
             </select>
-            <Link
-              href={`/submit?problem=${problem.id}&fork=${solA.id}`}
-              className="inline-flex h-7 items-center gap-1 border border-cyan-400/25 px-2.5 text-[10px] font-bold text-cyan-300 transition hover:bg-cyan-400/10"
-            >
-              <GitBranch className="size-3" />
-              Fork 这条解法
-            </Link>
           </div>
-          <div className="grid gap-1 text-xs">
+          <div className="grid min-w-0 gap-1 text-xs">
             <span className="font-bold text-amber-300">路线 B</span>
             <select
               value={bId}
               onChange={(e) => setBId(e.target.value)}
-              className="h-9 rounded border border-white/10 bg-zinc-900 px-2 text-xs text-white outline-none focus:border-amber-400/50"
+              className="h-9 w-full min-w-0 rounded border border-white/10 bg-zinc-900 px-2 text-xs text-white outline-none focus:border-amber-400/50"
             >
               {solutions.filter((s) => s.id !== aId).map((s) => (
                 <option key={s.id} value={s.id}>
@@ -270,17 +294,10 @@ export function SolutionDiffPanel({ problem }: { problem: Problem }) {
                 </option>
               ))}
             </select>
-            <Link
-              href={`/submit?problem=${problem.id}&fork=${solB.id}`}
-              className="inline-flex h-7 items-center gap-1 border border-amber-400/25 px-2.5 text-[10px] font-bold text-amber-300 transition hover:bg-amber-400/10"
-            >
-              <GitBranch className="size-3" />
-              Fork 这条解法
-            </Link>
           </div>
         </div>
 
-        <div className="space-y-5">
+        <div className="space-y-4">
           {/* Shared observations */}
           {shared.length > 0 && (
             <div className="space-y-2">
@@ -322,47 +339,70 @@ export function SolutionDiffPanel({ problem }: { problem: Problem }) {
             </div>
           )}
 
-          {/* Key transforms */}
-          <KeyTransformSection solA={solA} solB={solB} transforms={transforms} />
-
           {/* Scores */}
           <ScoresSection solA={solA} solB={solB} />
 
-          {/* Tradeoffs */}
-          <TradeoffsSection solA={solA} solB={solB} />
-
-          {/* Challenge edge */}
-          {edge && (
-            <div className="space-y-2">
-              <SectionHeader title="已记录的挑战关系" source="graph" />
-              <div className="rounded border border-amber-400/20 bg-amber-400/[0.04] p-3">
-                <div className="mb-2 flex flex-wrap items-center gap-1.5 text-xs">
-                  <span className="border border-cyan-400/30 px-1.5 py-0.5 font-bold text-cyan-200">
-                    {solutions.find((s) => s.id === edge.challengerSolutionId)?.title ?? edge.challengerSolutionId}
-                  </span>
-                  <span className="text-zinc-600">挑战</span>
-                  <span className="border border-white/10 px-1.5 py-0.5 text-zinc-400">
-                    {solutions.find((s) => s.id === edge.targetSolutionId)?.title ?? edge.targetSolutionId}
-                  </span>
-                </div>
-                <p className="text-xs leading-5 text-zinc-300"><MathBlock>{edge.claim}</MathBlock></p>
-                {edge.advantages.length > 0 && (
-                  <ul className="mt-2 space-y-0.5">
-                    {edge.advantages.map((adv) => (
-                      <li key={adv} className="border-l border-emerald-400/30 pl-2 text-[11px] leading-5 text-zinc-400">
-                        <MathBlock>{adv}</MathBlock>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-                {edge.risk && (
-                  <p className="mt-2 border-l border-red-400/30 pl-2 text-[11px] leading-5 text-zinc-500">
-                    <MathBlock>{edge.risk}</MathBlock>
-                  </p>
-                )}
-              </div>
+          <details className="group border border-white/10">
+            <DetailSummary>展开关键转化与代价</DetailSummary>
+            <div className="space-y-4 p-3">
+              <KeyTransformSection solA={solA} solB={solB} transforms={transforms} />
+              <TradeoffsSection solA={solA} solB={solB} />
             </div>
+          </details>
+
+          {edge && (
+            <details className="group border border-amber-400/20 bg-amber-400/[0.03]">
+              <DetailSummary>
+                <span>展开已记录的挑战关系</span>
+              </DetailSummary>
+              <div className="space-y-2 p-3">
+                <SectionHeader title="已记录的挑战关系" source="graph" />
+                <div className="rounded border border-amber-400/20 bg-amber-400/[0.04] p-3">
+                  <div className="mb-2 flex flex-wrap items-center gap-1.5 text-xs">
+                    <span className="border border-cyan-400/30 px-1.5 py-0.5 font-bold text-cyan-200">
+                      {solutions.find((s) => s.id === edge.challengerSolutionId)?.title ?? edge.challengerSolutionId}
+                    </span>
+                    <span className="text-zinc-600">挑战</span>
+                    <span className="border border-white/10 px-1.5 py-0.5 text-zinc-400">
+                      {solutions.find((s) => s.id === edge.targetSolutionId)?.title ?? edge.targetSolutionId}
+                    </span>
+                  </div>
+                  <p className="text-xs leading-5 text-zinc-300"><MathBlock>{edge.claim}</MathBlock></p>
+                  {edge.advantages.length > 0 && (
+                    <ul className="mt-2 space-y-0.5">
+                      {edge.advantages.map((adv) => (
+                        <li key={adv} className="border-l border-emerald-400/30 pl-2 text-[11px] leading-5 text-zinc-400">
+                          <MathBlock>{adv}</MathBlock>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  {edge.risk && (
+                    <p className="mt-2 border-l border-red-400/30 pl-2 text-[11px] leading-5 text-zinc-500">
+                      <MathBlock>{edge.risk}</MathBlock>
+                    </p>
+                  )}
+                </div>
+              </div>
+            </details>
           )}
+
+          <div className="grid gap-2 border-t border-white/10 pt-4 sm:grid-cols-2">
+            <Link
+              href={`/submit?problem=${problem.id}&fork=${solA.id}`}
+              className="inline-flex h-9 items-center justify-center gap-1.5 border border-cyan-400/25 px-3 text-xs font-bold text-cyan-300 transition hover:bg-cyan-400/10"
+            >
+              <GitBranch className="size-3.5" />
+              基于路线 A 改写
+            </Link>
+            <Link
+              href={`/submit?problem=${problem.id}&fork=${solB.id}`}
+              className="inline-flex h-9 items-center justify-center gap-1.5 border border-amber-400/25 px-3 text-xs font-bold text-amber-300 transition hover:bg-amber-400/10"
+            >
+              <GitBranch className="size-3.5" />
+              基于路线 B 改写
+            </Link>
+          </div>
         </div>
       </div>
     </section>

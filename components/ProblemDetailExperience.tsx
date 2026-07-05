@@ -342,6 +342,25 @@ export function ProblemDetailExperience({
   });
   const [activeTab, setActiveTab] = useState<DetailTab>("solutions");
   const [showGuide, setShowGuide] = useState(false);
+  const proofGraph = problem.proofGraph;
+  const hasReplay = Boolean(
+    proofGraph && (
+      proofGraph.observations.length > 0 ||
+      proofGraph.branches.length > 0 ||
+      proofGraph.transformations.length > 0 ||
+      proofGraph.verificationSteps.length > 0 ||
+      proofGraph.methodBoundaries.length > 0
+    ),
+  );
+  const hasProvenance = Boolean(
+    proofGraph && (
+      proofGraph.observations.length > 0 ||
+      proofGraph.transformations.length > 0 ||
+      proofGraph.challengeEdges.length > 0 ||
+      proofGraph.methodBoundaries.length > 0 ||
+      problem.solutions.some((solution) => solution.thinkingCues?.forkOf)
+    ),
+  );
 
   useEffect(() => {
     try {
@@ -595,7 +614,7 @@ export function ProblemDetailExperience({
         {activeTab === "comparison" && (
           <section id="proof-graph-comparison-content" className="space-y-4 scroll-mt-28">
             <ComparisonTabNav problem={problem} />
-            {problem.proofGraph && (
+            {proofGraph && (
               <div id="comparison-release" className="scroll-mt-28">
                 <ProofGraphReleaseCard problem={problem} />
               </div>
@@ -603,24 +622,36 @@ export function ProblemDetailExperience({
             <div id="comparison-matrix" className="scroll-mt-28">
               <ProofGraphMatrix problem={problem} />
             </div>
-            <div id="comparison-boundaries" className="scroll-mt-28">
-              <MethodBoundaryHighlights problem={problem} />
-            </div>
-            <div id="comparison-replay" className="scroll-mt-28">
-              <ReasoningReplayPanel problem={problem} />
-            </div>
-            <div id="comparison-challenges" className="scroll-mt-28">
-              <ProofChallengeEdges problem={problem} />
-            </div>
-            <div id="comparison-diff" className="scroll-mt-28">
-              <SolutionDiffPanel problem={problem} />
-            </div>
-            <div id="comparison-provenance" className="scroll-mt-28">
-              <ProofGraphProvenancePanel problem={problem} />
-            </div>
-            <div id="comparison-tree" className="scroll-mt-28">
-              <SolutionTreePanel problem={problem} />
-            </div>
+            {Boolean(proofGraph?.methodBoundaries.length) && (
+              <div id="comparison-boundaries" className="scroll-mt-28">
+                <MethodBoundaryHighlights problem={problem} />
+              </div>
+            )}
+            {hasReplay && (
+              <div id="comparison-replay" className="scroll-mt-28">
+                <ReasoningReplayPanel problem={problem} />
+              </div>
+            )}
+            {Boolean(proofGraph?.challengeEdges.length) && (
+              <div id="comparison-challenges" className="scroll-mt-28">
+                <ProofChallengeEdges problem={problem} />
+              </div>
+            )}
+            {problem.solutions.length >= 2 && (
+              <div id="comparison-diff" className="scroll-mt-28">
+                <SolutionDiffPanel problem={problem} />
+              </div>
+            )}
+            {hasProvenance && (
+              <div id="comparison-provenance" className="scroll-mt-28">
+                <ProofGraphProvenancePanel problem={problem} />
+              </div>
+            )}
+            {Boolean(problem.solutionTree?.roots.length) && (
+              <div id="comparison-tree" className="scroll-mt-28">
+                <SolutionTreePanel problem={problem} />
+              </div>
+            )}
           </section>
         )}
 
