@@ -24,10 +24,16 @@ export async function generateMetadata({
   const rawDescription = problem.statement[0]?.replace(/\$/g, "") ?? "";
   const description =
     rawDescription.length > 120 ? `${rawDescription.slice(0, 120)}…` : rawDescription;
+  const title = `${problem.title} · ${problem.year}${problem.region} | ProofArena`;
 
   return {
-    title: `${problem.title} · ${problem.year}${problem.region} | ProofArena`,
+    title,
     description: description || undefined,
+    openGraph: {
+      title: `${problem.title} | ProofArena`,
+      description: description || `${problem.year}${problem.region} · ${problem.solutions.length} 条解法对比`,
+      images: ["/opengraph-image"],
+    },
   };
 }
 

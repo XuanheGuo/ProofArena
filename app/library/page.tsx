@@ -28,7 +28,7 @@ export default function LibraryPage() {
           </div>
           <h1 className="mt-4 text-4xl font-black text-white md:text-6xl">知识点 / 思路库</h1>
           <p className="mt-5 max-w-3xl text-sm leading-7 text-zinc-400 md:text-base">
-            这里把题目标签、知识点和“看到什么就想到什么”的思路触发器连起来。当前是静态 demo，规则匹配来自 TypeScript 数据文件，不接数据库，也不做后端 AI。
+            这里把题目标签、知识点和“看到什么就想到什么”的思路触发器连起来，帮你从零散的做题经验，逐步整理成一套可复用的方法体系。
           </p>
         </div>
       </section>

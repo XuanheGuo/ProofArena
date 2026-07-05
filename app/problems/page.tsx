@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { AlertTriangle, Target } from "lucide-react";
 import { ProblemExplorer } from "@/components/ProblemExplorer";
+import { ProblemExplorerSkeleton } from "@/components/ProblemCardSkeleton";
 import { getProblemSummaries } from "@/lib/db";
 
 export const revalidate = 3600;
@@ -28,15 +29,15 @@ export default async function ProblemsPage() {
             </div>
             <div className="grid w-full grid-cols-3 border border-white/10 bg-zinc-950 sm:w-auto">
               <div className="border-r border-white/10 px-4 py-3 text-center">
-                <strong className="font-display block text-xl text-white">{String(problems.length).padStart(2, "0")}</strong>
+                <strong className="font-display block text-xl tabular-nums text-white">{String(problems.length).padStart(2, "0")}</strong>
                 <span className="text-[10px] text-zinc-600">真题</span>
               </div>
               <div className="border-r border-white/10 px-4 py-3 text-center">
-                <strong className="font-display block text-xl text-cyan-300">{String(regionCount).padStart(2, "0")}</strong>
+                <strong className="font-display block text-xl tabular-nums text-cyan-300">{String(regionCount).padStart(2, "0")}</strong>
                 <span className="text-[10px] text-zinc-600">卷别</span>
               </div>
               <div className="px-4 py-3 text-center">
-                <strong className="font-display block text-xl text-red-400">{String(solutionCount).padStart(2, "0")}</strong>
+                <strong className="font-display block text-xl tabular-nums text-red-400">{String(solutionCount).padStart(2, "0")}</strong>
                 <span className="text-[10px] text-zinc-600">解法</span>
               </div>
             </div>
@@ -57,7 +58,7 @@ export default async function ProblemsPage() {
         </div>
       </section>
 
-      <Suspense fallback={null}>
+      <Suspense fallback={<ProblemExplorerSkeleton />}>
         <ProblemExplorer problems={problems} />
       </Suspense>
     </main>

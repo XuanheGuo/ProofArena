@@ -47,17 +47,17 @@ export default async function ContestsPage() {
             </div>
             <div className="grid grid-cols-3 border border-white/10 bg-zinc-950 text-center">
               <div className="border-r border-white/10 p-3">
-                <strong className="font-display block text-2xl text-white">{contests.length}</strong>
+                <strong className="font-display block text-2xl tabular-nums text-white">{contests.length}</strong>
                 <span className="text-[11px] text-zinc-600">活动</span>
               </div>
               <div className="border-r border-white/10 p-3">
-                <strong className="font-display block text-2xl text-cyan-300">
+                <strong className="font-display block text-2xl tabular-nums text-cyan-300">
                   {contests.reduce((sum, contest) => sum + contest.problems.length, 0)}
                 </strong>
                 <span className="text-[11px] text-zinc-600">赛题</span>
               </div>
               <div className="p-3">
-                <strong className="font-display block text-2xl text-amber-300">
+                <strong className="font-display block text-2xl tabular-nums text-amber-300">
                   {contests.reduce(
                     (sum, contest) =>
                       sum +
@@ -109,12 +109,12 @@ export default async function ContestsPage() {
                 <div className="grid grid-cols-3 divide-x divide-white/[0.07] border-y border-white/[0.07]">
                   <div className="p-3 text-center">
                     <ClipboardList className="mx-auto size-4 text-cyan-400" />
-                    <strong className="mt-1.5 block text-lg font-bold text-white">{linkedProblems.length}</strong>
+                    <strong className="mt-1.5 block text-lg font-bold tabular-nums text-white">{linkedProblems.length}</strong>
                     <span className="text-[10px] text-zinc-500">题目</span>
                   </div>
                   <div className="p-3 text-center">
                     <UsersRound className="mx-auto size-4 text-emerald-400" />
-                    <strong className="mt-1.5 block text-lg font-bold text-white">
+                    <strong className="mt-1.5 block text-lg font-bold tabular-nums text-white">
                       {(statsMap.get(contest.slug)?.participantCount ?? 0) > 0
                         ? statsMap.get(contest.slug)!.participantCount
                         : "—"}
@@ -123,7 +123,7 @@ export default async function ContestsPage() {
                   </div>
                   <div className="p-3 text-center">
                     <Trophy className="mx-auto size-4 text-amber-400" />
-                    <strong className="mt-1.5 block text-lg font-bold text-white">
+                    <strong className="mt-1.5 block text-lg font-bold tabular-nums text-white">
                       {(statsMap.get(contest.slug)?.submissionCount ?? 0) > 0
                         ? statsMap.get(contest.slug)!.submissionCount
                         : (solutionCount > 0 ? solutionCount : "—")}
