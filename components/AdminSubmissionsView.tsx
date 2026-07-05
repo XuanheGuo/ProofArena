@@ -575,9 +575,14 @@ export function AdminSubmissionsView() {
           <div>
             <h1 className="text-2xl font-black text-white">投稿审核</h1>
             <p className="mt-2 text-sm text-zinc-500">先修改内容，再写审核评语，最后给出通过、退回或拒绝结论。</p>
-            <a href="/admin/contests" className="mt-3 inline-flex border border-white/10 px-3 py-1.5 text-xs font-bold text-zinc-300 transition hover:border-cyan-400/40 hover:text-cyan-200">
-              管理比赛
-            </a>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <a href="/admin/contests" className="inline-flex border border-white/10 px-3 py-1.5 text-xs font-bold text-zinc-300 transition hover:border-cyan-400/40 hover:text-cyan-200">
+                管理比赛
+              </a>
+              <a href="/admin/proof-graph" className="inline-flex border border-white/10 px-3 py-1.5 text-xs font-bold text-zinc-300 transition hover:border-violet-400/40 hover:text-violet-200">
+                编辑推理图谱
+              </a>
+            </div>
           </div>
           <div className="flex gap-2 text-xs">
             <span className="text-zinc-500">

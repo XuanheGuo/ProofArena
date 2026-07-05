@@ -200,9 +200,11 @@ function SolutionCompareCard({ solution, rank }: { solution: Solution; rank: num
 function ProofGraphSummaryStrip({
   problem,
   submitHref,
+  onOpenComparison,
 }: {
   problem: Problem;
   submitHref: string;
+  onOpenComparison: () => void;
 }) {
   const pg = problem.proofGraph!;
   const parts = [
@@ -221,12 +223,21 @@ function ProofGraphSummaryStrip({
         <span className="font-bold text-zinc-400">推理图谱</span>
         {summary && <span className="ml-1.5 text-zinc-600">{summary}</span>}
       </p>
-      <a
-        href={submitHref}
-        className="inline-flex h-7 items-center gap-1.5 border border-cyan-400/30 px-3 text-xs font-bold text-cyan-300 transition hover:bg-cyan-400/10"
-      >
-        提交新解法
-      </a>
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          onClick={onOpenComparison}
+          className="inline-flex h-7 items-center gap-1.5 border border-violet-400/30 px-3 text-xs font-bold text-violet-200 transition hover:bg-violet-400/10"
+        >
+          查看图谱
+        </button>
+        <a
+          href={submitHref}
+          className="inline-flex h-7 items-center gap-1.5 border border-cyan-400/30 px-3 text-xs font-bold text-cyan-300 transition hover:bg-cyan-400/10"
+        >
+          提交新解法
+        </a>
+      </div>
     </div>
   );
 }
@@ -286,6 +297,13 @@ export function ProblemDetailExperience({
     setActiveTab("solutions");
     requestAnimationFrame(() => {
       document.getElementById("solutions-content")?.scrollIntoView({ block: "start", behavior: "smooth" });
+    });
+  }
+
+  function showComparison() {
+    setActiveTab("comparison");
+    requestAnimationFrame(() => {
+      document.getElementById("proof-graph-comparison-content")?.scrollIntoView({ block: "start", behavior: "smooth" });
     });
   }
 
@@ -388,7 +406,7 @@ export function ProblemDetailExperience({
               </div>
             </div>
             {problem.proofGraph && (
-              <ProofGraphSummaryStrip problem={problem} submitHref={submitHref} />
+              <ProofGraphSummaryStrip problem={problem} submitHref={submitHref} onOpenComparison={showComparison} />
             )}
           </div>
           <div className="mt-4 grid gap-2 sm:hidden">
@@ -509,7 +527,7 @@ export function ProblemDetailExperience({
         )}
 
         {activeTab === "comparison" && (
-          <section className="space-y-4">
+          <section id="proof-graph-comparison-content" className="space-y-4 scroll-mt-28">
             <ProofGraphMatrix problem={problem} />
             <MethodBoundaryHighlights problem={problem} />
             <ReasoningReplayPanel problem={problem} />

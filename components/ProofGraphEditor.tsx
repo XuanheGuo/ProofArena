@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { ChevronDown, Save } from "lucide-react";
 import { saveProofGraph } from "@/lib/save-proof-graph";
 import { loadSolutionDrafts, type SolutionDraft } from "@/lib/load-solution-drafts";
@@ -258,7 +259,17 @@ export function ProofGraphEditor({ problems }: { problems: ProblemSummary[] }) {
       <div className="space-y-4">
         {/* Problem selector */}
         <label className="grid gap-2 text-sm">
-          <span className="font-bold text-white">选择题目</span>
+          <span className="flex flex-wrap items-center justify-between gap-2">
+            <span className="font-bold text-white">选择题目</span>
+            {selectedProblem && (
+              <Link
+                href={`/problems/${selectedProblem.id}`}
+                className="text-xs font-bold text-cyan-300 transition hover:text-cyan-200"
+              >
+                查看前台题页
+              </Link>
+            )}
+          </span>
           <select
             value={selectedId}
             onChange={(e) => selectProblem(e.target.value)}

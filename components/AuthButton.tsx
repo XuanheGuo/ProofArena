@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { User } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase-client';
 import Link from 'next/link';
-import { LogIn, User as UserIcon, LogOut, ShieldCheck } from 'lucide-react';
+import { LogIn, User as UserIcon, LogOut, NetworkIcon, ShieldCheck } from 'lucide-react';
 import { hasSupabasePublicEnv } from '@/lib/supabase-env';
 
 type UserRole = 'user' | 'contributor' | 'moderator' | 'admin';
@@ -77,13 +77,22 @@ export function AuthButton({ variant = 'icon' }: { variant?: 'icon' | 'menu' }) 
       return (
         <div className="grid gap-2">
           {canReview && (
-            <Link
-              href="/admin/submissions"
-              className="flex min-h-11 items-center gap-3 border border-white/10 bg-black/20 px-3 text-sm font-bold text-zinc-300 transition hover:border-cyan-400/35 hover:text-cyan-200"
-            >
-              <ShieldCheck className="size-4 shrink-0 text-cyan-300" />
-              <span>投稿审核</span>
-            </Link>
+            <>
+              <Link
+                href="/admin/submissions"
+                className="flex min-h-11 items-center gap-3 border border-white/10 bg-black/20 px-3 text-sm font-bold text-zinc-300 transition hover:border-cyan-400/35 hover:text-cyan-200"
+              >
+                <ShieldCheck className="size-4 shrink-0 text-cyan-300" />
+                <span>投稿审核</span>
+              </Link>
+              <Link
+                href="/admin/proof-graph"
+                className="flex min-h-11 items-center gap-3 border border-white/10 bg-black/20 px-3 text-sm font-bold text-zinc-300 transition hover:border-violet-400/35 hover:text-violet-200"
+              >
+                <NetworkIcon className="size-4 shrink-0 text-violet-300" />
+                <span>推理图谱</span>
+              </Link>
+            </>
           )}
           <Link
             href="/profile"
@@ -107,13 +116,22 @@ export function AuthButton({ variant = 'icon' }: { variant?: 'icon' | 'menu' }) 
     return (
       <div className="flex items-center gap-2">
         {canReview && (
-          <Link
-            href="/admin/submissions"
-            className="inline-flex size-9 items-center justify-center rounded text-zinc-400 transition hover:bg-white/[0.03] hover:text-cyan-300"
-            title="投稿审核"
-          >
-            <ShieldCheck className="size-4" />
-          </Link>
+          <>
+            <Link
+              href="/admin/submissions"
+              className="inline-flex size-9 items-center justify-center rounded text-zinc-400 transition hover:bg-white/[0.03] hover:text-cyan-300"
+              title="投稿审核"
+            >
+              <ShieldCheck className="size-4" />
+            </Link>
+            <Link
+              href="/admin/proof-graph"
+              className="inline-flex size-9 items-center justify-center rounded text-zinc-400 transition hover:bg-white/[0.03] hover:text-violet-300"
+              title="推理图谱"
+            >
+              <NetworkIcon className="size-4" />
+            </Link>
+          </>
         )}
         <Link
           href="/profile"
