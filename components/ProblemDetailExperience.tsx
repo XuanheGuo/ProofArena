@@ -27,6 +27,7 @@ import { ProofGraphMatrix } from "@/components/ProofGraphMatrix";
 import { MethodBoundaryHighlights } from "@/components/MethodBoundaryHighlights";
 import { ReasoningReplayPanel } from "@/components/ReasoningReplayPanel";
 import { ProofChallengeEdges } from "@/components/ProofChallengeEdges";
+import { SolutionDiffPanel } from "@/components/SolutionDiffPanel";
 import { graphSpecRegistry } from "@/data/graph-specs";
 import { difficultyBadgeClass } from "@/lib/problem-presentation";
 import { getSolutionKindMeta } from "@/lib/solution-kinds";
@@ -36,7 +37,7 @@ type DetailTab = "problem" | "comparison" | "solutions" | "knowledge" | "related
 
 const allTabs: Array<{ id: DetailTab; label: string; requiresGraph?: boolean; requiresProofGraph?: boolean }> = [
   { id: "problem", label: "题目" },
-  { id: "comparison", label: "比较", requiresProofGraph: true },
+  { id: "comparison", label: "比较" },
   { id: "solutions", label: "解法" },
   { id: "knowledge", label: "知识点" },
   { id: "related", label: "相关题" },
@@ -272,6 +273,7 @@ export function ProblemDetailExperience({
   const tabs = allTabs.filter((tab) => {
     if (tab.requiresGraph && !Boolean(graphSpec) && !hasMathViz) return false;
     if (tab.requiresProofGraph && !problem.proofGraph) return false;
+    if (tab.id === "comparison" && problem.solutions.length < 2) return false;
     return true;
   });
   const [activeTab, setActiveTab] = useState<DetailTab>("solutions");
@@ -532,6 +534,7 @@ export function ProblemDetailExperience({
             <MethodBoundaryHighlights problem={problem} />
             <ReasoningReplayPanel problem={problem} />
             <ProofChallengeEdges problem={problem} />
+            <SolutionDiffPanel problem={problem} />
             <SolutionTreePanel problem={problem} />
           </section>
         )}
