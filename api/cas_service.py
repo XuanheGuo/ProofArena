@@ -62,6 +62,7 @@ def _strip_math_delimiters(value: str) -> str:
 def _normalize_latex(value: str) -> str:
     text = _strip_math_delimiters(value)
     text = text.replace("\\\\", "\\")
+    text = text.replace("\\left|", "|").replace("\\right|", "|")
     text = re.sub(r"\\sqrt\s*\\([A-Za-z]+)", r"\\sqrt{\\\1}", text)
     text = re.sub(r"\\sqrt\s*([A-Za-z0-9]+)", r"\\sqrt{\1}", text)
     text = re.sub(r"\\dfrac", r"\\frac", text)
@@ -149,6 +150,25 @@ def _simple_assignment(eq: Equation) -> tuple[Any, Any] | None:
     return None
 
 
+def _condition_result(step: str, index: int, detail: str) -> dict[str, Any]:
+    return {
+        "step": step,
+        "index": index,
+        "valid": None,
+        "method": "condition",
+        "detail": detail,
+    }
+
+
+def _record_assignment(known: dict[Any, Any], assignment: tuple[Any, Any]) -> None:
+    symbol, value = assignment
+    known[symbol] = simplify(value.subs(known))
+
+
+def _shares_unknowns(a: Equation, b: Equation) -> bool:
+    return bool(a.residual.free_symbols & b.residual.free_symbols)
+
+
 def _check_equivalence(expr_a: str, expr_b: str) -> dict[str, Any]:
     try:
         a = _parse_expr(expr_a)
@@ -189,24 +209,32 @@ def _verify_step(step: str, index: int, previous: Equation | None, known: dict[A
 
     assignment = _simple_assignment(eq)
     if assignment is not None and previous is None:
-        symbol, value = assignment
-        known[symbol] = simplify(value.subs(known))
+        _record_assignment(known, assignment)
         return (
-            {
-                "step": step,
-                "index": index,
-                "valid": None,
-                "method": "condition",
-                "detail": "已记录为条件/设定；CAS 不把单独赋值视为已证明结论。",
-            },
+            _condition_result(step, index, "已记录为条件/设定；CAS 不把单独赋值视为已证明结论。"),
             eq,
         )
 
     if previous is not None:
         if assignment is not None:
+            if not _shares_unknowns(previous, eq):
+                _record_assignment(known, assignment)
+                return (
+                    _condition_result(step, index, "已记录为新的设定/阶段性结论；它与上一条等式不属于同一代数变形链。"),
+                    eq,
+                )
+
             symbol, value = assignment
             candidate_known = {**known, symbol: simplify(value.subs(known))}
-            prev_holds, method = _check_zero(previous.residual.subs(candidate_known))
+            candidate_residual = simplify(previous.residual.subs(candidate_known))
+            if candidate_residual.free_symbols:
+                known.update(candidate_known)
+                return (
+                    _condition_result(step, index, "已记录为阶段性结论；代回上一条后仍含未定量，CAS 不把它视为单步证明失败。"),
+                    eq,
+                )
+
+            prev_holds, method = _check_zero(candidate_residual)
             known.update(candidate_known)
             return (
                 {
@@ -216,6 +244,12 @@ def _verify_step(step: str, index: int, previous: Equation | None, known: dict[A
                     "method": "derived" if prev_holds else method,
                     "detail": "该赋值可代回上一条等式成立；若上一条有多根，CAS 只验证满足性，不证明唯一性。",
                 },
+                eq,
+            )
+
+        if not _shares_unknowns(previous, eq):
+            return (
+                _condition_result(step, index, "已记录为新的等式/条件；它与上一条等式没有共享未知量，CAS 不按连续变形判错。"),
                 eq,
             )
 
@@ -252,7 +286,7 @@ def _verify_steps(steps: list[str]) -> dict[str, Any]:
     elif passed:
         summary = f"{len(verifications)} 步中 {passed} 步通过，{undecided} 步作为条件或无法判定。"
     else:
-        summary = "没有可确认通过的等式；请使用 $...$ 标出含等号的数学步骤。"
+        summary = "没有发现未通过的代数等式；这些步骤多为设定、阶段性结论或无法判定，仍需人工审核。"
 
     return {"verifications": verifications, "summary": summary}
 
