@@ -79,6 +79,14 @@ function SolutionCompareCard({ solution, rank }: { solution: Solution; rank: num
             {solution.isPostContest && (
               <span className="border border-zinc-600 px-2 py-0.5 text-[11px] text-zinc-400">赛后</span>
             )}
+            {solution.thinkingCues?.forkOf && (
+              <a
+                href={`#${solution.thinkingCues.forkOf.solutionId}`}
+                className="border border-violet-400/40 bg-violet-400/10 px-2 py-0.5 text-[11px] font-bold text-violet-300 transition hover:bg-violet-400/20"
+              >
+                Fork 自：{solution.thinkingCues.forkOf.solutionTitle}
+              </a>
+            )}
           </div>
           <h3 className="mt-3 text-lg font-bold leading-snug text-white sm:text-xl">{solution.title}</h3>
           <p className="mt-2 text-sm leading-7 text-zinc-300">

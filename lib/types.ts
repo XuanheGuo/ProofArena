@@ -146,6 +146,11 @@ export interface ThinkingCues {
   reasoning: string;
   suggestedMethods: string[];
   confidence?: number;
+  forkOf?: {
+    solutionId: string;
+    solutionTitle: string;
+    solutionAuthor: string;
+  };
 }
 
 export interface SolutionChallenge {

@@ -68,6 +68,11 @@ type Submission = {
   challenge_risk?: string | null;
 };
 
+function isForkPR(submission: Submission): boolean {
+  const solution = submission.content.json?.solution;
+  return Boolean(solution && typeof solution === 'object' && 'forkOf' in solution && solution.forkOf);
+}
+
 type ReviewForm = {
   title: string;
   kind: SolutionKind;
@@ -491,7 +496,7 @@ export function AdminSubmissionsView() {
       if (!publishResult.success) {
         setMessage('审核结论已保存，但发布到题库时出错：' + (publishResult.error ?? '未知错误'));
       } else {
-        setMessage('审核通过，已发布到题库。');
+        setMessage(isForkPR(updated) ? 'Fork PR 已合并到题库。' : '审核通过，已发布到题库。');
       }
     } else if (nextStatus === 'approved' && updated.contest_slug) {
       setMessage('比赛投稿已通过，已进入比赛思路专区；暂不自动发布为正式题解。');
@@ -505,11 +510,12 @@ export function AdminSubmissionsView() {
   const publishExisting = async (submissionId: string) => {
     setPublishing(submissionId);
     try {
+      const target = submissions.find((s) => s.id === submissionId);
       const result = await publishSubmission(submissionId);
       if (!result.success) {
         alert('发布失败：' + (result.error ?? '未知错误'));
       } else {
-        alert('已成功发布到题库。');
+        alert(target && isForkPR(target) ? 'Fork PR 已合并到题库。' : '已成功发布到题库。');
       }
     } catch (error) {
       console.error('Publish error:', error);
@@ -633,6 +639,12 @@ export function AdminSubmissionsView() {
                     <span className={`rounded border px-2 py-1 text-xs font-bold ${sub.contest_slug ? 'border-amber-400/30 bg-amber-400/[0.06] text-amber-300' : 'border-white/10 text-zinc-500'}`}>
                       {getScopeLabel(sub)}
                     </span>
+                    {isForkPR(sub) && (
+                      <span className="inline-flex items-center gap-1 rounded border border-violet-400/30 bg-violet-400/[0.06] px-2 py-1 text-xs font-bold text-violet-300">
+                        <Route className="size-3" />
+                        Fork PR
+                      </span>
+                    )}
                     <span className="text-xs text-zinc-600">{new Date(sub.created_at).toLocaleDateString('zh-CN')}</span>
                     {sub.moderator_notes && <span className="rounded border border-white/10 px-2 py-1 text-xs text-zinc-500">已有评语</span>}
                   </div>
@@ -651,7 +663,11 @@ export function AdminSubmissionsView() {
                       className="inline-flex h-9 items-center gap-2 rounded border border-emerald-400/30 px-4 text-sm text-emerald-300 transition hover:bg-emerald-400/10 disabled:opacity-50"
                     >
                       <CheckCircle2 className="size-4" />
-                      {publishing === sub.id ? '发布中...' : sub.contest_slug ? '发布为正式题解' : '发布到题库'}
+                      {publishing === sub.id
+                        ? '发布中...'
+                        : sub.contest_slug
+                          ? '发布为正式题解'
+                          : isForkPR(sub) ? '合并到题库' : '发布到题库'}
                     </button>
                   )}
                   <button
@@ -895,7 +911,7 @@ export function AdminSubmissionsView() {
                         className="inline-flex h-11 w-full items-center justify-center gap-2 rounded bg-emerald-400 text-sm font-bold text-zinc-950 transition hover:bg-emerald-300 disabled:opacity-50"
                       >
                         <CheckCircle2 className="size-4" />
-                        保存并通过
+                        {selectedSubmission && isForkPR(selectedSubmission) ? '批准合并' : '保存并通过'}
                       </button>
                       <button
                         type="button"
