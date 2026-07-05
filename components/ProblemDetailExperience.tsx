@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import {
+  AlertTriangle,
   ArrowUpRight,
   BookOpen,
   ChevronDown,
@@ -22,15 +23,20 @@ import { FunctionGraphPanel } from "@/components/FunctionGraphPanel";
 import { SolutionTreePanel } from "@/components/SolutionTreePanel";
 import { MathVisualization, mathVizProblemIds } from "@/components/MathVisualization";
 import { SolutionRatingPanel } from "@/components/SolutionRatingPanel";
+import { ProofGraphMatrix } from "@/components/ProofGraphMatrix";
+import { MethodBoundaryHighlights } from "@/components/MethodBoundaryHighlights";
+import { ReasoningReplayPanel } from "@/components/ReasoningReplayPanel";
+import { ProofChallengeEdges } from "@/components/ProofChallengeEdges";
 import { graphSpecRegistry } from "@/data/graph-specs";
 import { difficultyBadgeClass } from "@/lib/problem-presentation";
 import { getSolutionKindMeta } from "@/lib/solution-kinds";
 import { contestSolutionTypeMeta } from "@/lib/contest-meta";
 
-type DetailTab = "problem" | "solutions" | "knowledge" | "related" | "graph";
+type DetailTab = "problem" | "comparison" | "solutions" | "knowledge" | "related" | "graph";
 
-const allTabs: Array<{ id: DetailTab; label: string; requiresGraph?: boolean }> = [
+const allTabs: Array<{ id: DetailTab; label: string; requiresGraph?: boolean; requiresProofGraph?: boolean }> = [
   { id: "problem", label: "题目" },
+  { id: "comparison", label: "比较", requiresProofGraph: true },
   { id: "solutions", label: "解法" },
   { id: "knowledge", label: "知识点" },
   { id: "related", label: "相关题" },
@@ -191,6 +197,40 @@ function SolutionCompareCard({ solution, rank }: { solution: Solution; rank: num
   );
 }
 
+function ProofGraphSummaryStrip({
+  problem,
+  submitHref,
+}: {
+  problem: Problem;
+  submitHref: string;
+}) {
+  const pg = problem.proofGraph!;
+  const parts = [
+    { count: pg.observations.length, label: "入口" },
+    { count: pg.branches.length, label: "分支" },
+    { count: pg.transformations.length, label: "转化" },
+    { count: pg.methodBoundaries.length, label: "边界" },
+    { count: pg.challengeEdges.length, label: "挑战" },
+  ].filter((p) => p.count > 0);
+
+  const summary = parts.map((p) => `${p.count} ${p.label}`).join(" · ");
+
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-2 border border-white/10 bg-black/20 px-4 py-2">
+      <p className="text-xs text-zinc-500">
+        <span className="font-bold text-zinc-400">推理图谱</span>
+        {summary && <span className="ml-1.5 text-zinc-600">{summary}</span>}
+      </p>
+      <a
+        href={submitHref}
+        className="inline-flex h-7 items-center gap-1.5 border border-cyan-400/30 px-3 text-xs font-bold text-cyan-300 transition hover:bg-cyan-400/10"
+      >
+        提交新解法
+      </a>
+    </div>
+  );
+}
+
 function EmptyState({ title, description, action }: { title: string; description: string; action?: React.ReactNode }) {
   return (
     <div className="border border-white/10 bg-zinc-950 px-6 py-12 text-center">
@@ -218,7 +258,11 @@ export function ProblemDetailExperience({
 }) {
   const graphSpec = graphSpecRegistry[problem.id];
   const hasMathViz = mathVizProblemIds.has(problem.id);
-  const tabs = allTabs.filter((tab) => !tab.requiresGraph || Boolean(graphSpec) || hasMathViz);
+  const tabs = allTabs.filter((tab) => {
+    if (tab.requiresGraph && !Boolean(graphSpec) && !hasMathViz) return false;
+    if (tab.requiresProofGraph && !problem.proofGraph) return false;
+    return true;
+  });
   const [activeTab, setActiveTab] = useState<DetailTab>("solutions");
   const [showGuide, setShowGuide] = useState(false);
 
@@ -241,7 +285,7 @@ export function ProblemDetailExperience({
   function showSolutions() {
     setActiveTab("solutions");
     requestAnimationFrame(() => {
-      document.getElementById("solutions-panel")?.scrollIntoView({ block: "start" });
+      document.getElementById("solutions-content")?.scrollIntoView({ block: "start", behavior: "smooth" });
     });
   }
 
@@ -258,6 +302,13 @@ export function ProblemDetailExperience({
     <main className="grid-surface min-h-screen">
       <section className="border-b border-white/10 bg-zinc-950/90">
         <div className="mx-auto max-w-7xl px-4 py-6 md:px-6 md:py-10">
+          {problem.dataNotice && (
+            <div className="mb-5 flex gap-3 border border-amber-400/25 bg-amber-400/[0.06] px-4 py-3 text-sm leading-6 text-amber-100">
+              <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-300" />
+              <span>{problem.dataNotice}</span>
+            </div>
+          )}
+
           {showGuide && (
             <div className="mb-5 flex flex-col gap-3 border border-cyan-400/25 bg-cyan-400/[0.06] p-4 text-sm leading-6 text-zinc-200 sm:flex-row sm:items-center sm:justify-between">
               <span>新手可以按这个顺序看：先读题，再比较不同解法，最后把自己的思路整理成可复核的投稿。</span>
@@ -319,7 +370,7 @@ export function ProblemDetailExperience({
               </div>
               <h1 className="mt-4 text-2xl font-black leading-tight text-white sm:text-3xl md:text-5xl">{problem.title}</h1>
               <p className="mt-4 max-w-3xl text-sm leading-7 text-zinc-400">
-                先看题目本体，再在解法 Tab 中比较不同路线。知识点和相关题放在辅助区，避免干扰主线阅读。
+                先看题目本体；到「比较」看路线差异，到「解法」展开完整解析。知识点和相关题放在辅助区，避免干扰主线阅读。
               </p>
             </div>
             <div className="grid grid-cols-3 border border-white/10 bg-black/20 text-center sm:max-w-md lg:max-w-none">
@@ -336,6 +387,9 @@ export function ProblemDetailExperience({
                 <span className="text-[11px] text-zinc-600">知识点</span>
               </div>
             </div>
+            {problem.proofGraph && (
+              <ProofGraphSummaryStrip problem={problem} submitHref={submitHref} />
+            )}
           </div>
           <div className="mt-4 grid gap-2 sm:hidden">
             <button
@@ -454,6 +508,16 @@ export function ProblemDetailExperience({
           </section>
         )}
 
+        {activeTab === "comparison" && (
+          <section className="space-y-4">
+            <ProofGraphMatrix problem={problem} />
+            <MethodBoundaryHighlights problem={problem} />
+            <ReasoningReplayPanel problem={problem} />
+            <ProofChallengeEdges problem={problem} />
+            <SolutionTreePanel problem={problem} />
+          </section>
+        )}
+
         {activeTab === "solutions" && (
           <section className="grid gap-5 lg:grid-cols-[18rem_minmax(0,1fr)]">
             <aside className="hidden lg:block">
@@ -466,14 +530,14 @@ export function ProblemDetailExperience({
                 </div>
               </div>
             </aside>
-            <div>
+            <div id="solutions-content">
               <div className="mb-4 flex flex-col gap-2 border border-white/10 bg-zinc-950 p-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <h2 className="font-bold text-white">解法对比</h2>
+                  <h2 className="font-bold text-white">完整解法</h2>
                   <p className="mt-1 text-xs text-zinc-600">
                     {hideSolutionsForContest
                       ? "比赛进行中，题解暂时隐藏，避免提前形成路径暗示。"
-                      : "先比较核心思路和五维指标，再展开完整解析。"}
+                      : "展开任意解法查看完整推理步骤和验证细节。"}
                   </p>
                 </div>
                 <Link href={submitHref} className="inline-flex h-9 items-center justify-center gap-2 border border-cyan-400/30 px-3 text-xs font-bold text-cyan-300">
@@ -495,7 +559,6 @@ export function ProblemDetailExperience({
                 </div>
               ) : (
                 <>
-              <SolutionTreePanel problem={problem} />
               {problem.solutions.length ? (
                 <div className="space-y-4">
                   {problem.solutions.map((solution, index) => (

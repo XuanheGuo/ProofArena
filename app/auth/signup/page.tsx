@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { createClient } from '@/lib/supabase-client';
 import Link from 'next/link';
 import { Crosshair } from 'lucide-react';
+import { hasSupabasePublicEnv } from '@/lib/supabase-env';
 
 export default function SignupPage() {
   const [email, setEmail] = useState('');
@@ -12,10 +13,15 @@ export default function SignupPage() {
   const [error, setError] = useState('');
   const [done, setDone] = useState(false);
   const [loading, setLoading] = useState(false);
-  const supabase = createClient();
+  const communityEnabled = hasSupabasePublicEnv();
+  const supabase = communityEnabled ? createClient() : null;
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!supabase) {
+      setError('社区数据库暂不可用，当前只能浏览静态题库。');
+      return;
+    }
     setError('');
     setLoading(true);
 
@@ -64,6 +70,12 @@ export default function SignupPage() {
           <h1 className="text-xl font-black tracking-wide text-white">注册 ProofArena</h1>
         </div>
 
+        {!communityEnabled && (
+          <div className="border border-amber-400/25 bg-amber-400/[0.06] px-4 py-3 text-sm leading-6 text-amber-100">
+            社区数据库暂不可用，注册和投稿会暂时关闭；题库和解法仍可静态浏览。
+          </div>
+        )}
+
         <form onSubmit={handleSignup} className="space-y-4">
           <div>
             <label htmlFor="username" className="block text-sm text-zinc-400 mb-1.5">用户名</label>
@@ -109,7 +121,7 @@ export default function SignupPage() {
 
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || !communityEnabled}
             className="w-full rounded bg-cyan-400 px-4 py-2 text-sm font-bold text-zinc-950 transition hover:bg-cyan-300 disabled:opacity-50"
           >
             {loading ? '注册中…' : '注册'}

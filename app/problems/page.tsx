@@ -1,4 +1,4 @@
-import { Target } from "lucide-react";
+import { AlertTriangle, Target } from "lucide-react";
 import { ProblemExplorer } from "@/components/ProblemExplorer";
 import { getProblems } from "@/lib/db";
 
@@ -12,6 +12,7 @@ export default async function ProblemsPage({
   const [params, problems] = await Promise.all([searchParams, getProblems()]);
   const solutionCount = problems.reduce((sum, problem) => sum + problem.solutions.length, 0);
   const regionCount = new Set(problems.map((problem) => problem.region)).size;
+  const dataNotice = problems.find((problem) => problem.dataNotice)?.dataNotice;
 
   return (
     <main className="grid-surface min-h-screen">
@@ -50,6 +51,12 @@ export default async function ProblemsPage({
               </span>
             ))}
           </div>
+          {dataNotice && (
+            <div className="mt-5 flex gap-3 border border-amber-400/25 bg-amber-400/[0.06] px-4 py-3 text-sm leading-6 text-amber-100">
+              <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-300" />
+              <span>{dataNotice}</span>
+            </div>
+          )}
         </div>
       </section>
 

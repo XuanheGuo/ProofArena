@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase-client';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Crosshair } from 'lucide-react';
+import { hasSupabasePublicEnv } from '@/lib/supabase-env';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -12,10 +13,15 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
-  const supabase = createClient();
+  const communityEnabled = hasSupabasePublicEnv();
+  const supabase = communityEnabled ? createClient() : null;
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!supabase) {
+      setError('社区数据库暂不可用，当前只能浏览静态题库。');
+      return;
+    }
     setError('');
     setLoading(true);
 
@@ -39,6 +45,12 @@ export default function LoginPage() {
           </span>
           <h1 className="text-xl font-black tracking-wide text-white">登录 ProofArena</h1>
         </div>
+
+        {!communityEnabled && (
+          <div className="border border-amber-400/25 bg-amber-400/[0.06] px-4 py-3 text-sm leading-6 text-amber-100">
+            社区数据库暂不可用，登录和投稿会暂时关闭；题库和解法仍可静态浏览。
+          </div>
+        )}
 
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
@@ -71,7 +83,7 @@ export default function LoginPage() {
 
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || !communityEnabled}
             className="w-full rounded bg-cyan-400 px-4 py-2 text-sm font-bold text-zinc-950 transition hover:bg-cyan-300 disabled:opacity-50"
           >
             {loading ? '登录中…' : '登录'}

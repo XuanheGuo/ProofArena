@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowUpRight, BookOpenCheck, Compass, Flame, Layers3, Sparkles, TimerReset } from "lucide-react";
+import { ArrowUpRight, BookOpenCheck, Compass, Flame, Layers3, NetworkIcon, Sparkles, TimerReset } from "lucide-react";
 import type { Problem } from "@/lib/types";
 import { getBestSolution, getLearningIndex } from "@/data/problems";
 import { MathBlock } from "@/components/MathBlock";
@@ -39,6 +39,12 @@ export function ProblemCard({ problem, rank }: { problem: Problem; rank?: number
           <span className={`border px-2 py-1 ${difficultyBadgeClass[problem.difficulty]}`}>
             {problem.difficulty}
           </span>
+          {problem.proofGraph && (
+            <span className="inline-flex items-center gap-1 border border-violet-400/30 bg-violet-400/[0.06] px-2 py-1 text-[10px] font-bold text-violet-300">
+              <NetworkIcon className="size-3" />
+              推理图谱
+            </span>
+          )}
         </div>
         <h2 className="mt-5 text-xl font-bold leading-8 text-white transition group-hover:text-cyan-200 sm:text-2xl">
           {problem.title}

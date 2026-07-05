@@ -56,6 +56,9 @@ const initialSolutionForm = {
   challengeClaim: '',
   challengeAdvantages: '',
   challengeRisk: '',
+  // optional graph-aware fields — map to stable ProofGraphV1 keys
+  observationWhy: '',
+  transformationJustification: '',
 };
 
 function getContestSubmissionState(contest?: Contest, contestProblem?: ContestProblem, now = Date.now()) {
@@ -407,6 +410,8 @@ export function SubmitForm({
       challengeClaim: clampText(solutionForm.challengeClaim, MAX_GENERAL_TEXT_CHARS),
       challengeAdvantages: clampText(solutionForm.challengeAdvantages, MAX_GENERAL_TEXT_CHARS),
       challengeRisk: clampText(solutionForm.challengeRisk, MAX_GENERAL_TEXT_CHARS),
+      observationWhy: clampText(solutionForm.observationWhy, MAX_GENERAL_TEXT_CHARS),
+      transformationJustification: clampText(solutionForm.transformationJustification, MAX_GENERAL_TEXT_CHARS),
     };
     const markdown = buildSolutionMarkdown(normalizedForm, selectedProblem, activeContestContext, imageUrls);
     const isPostContest = activeContestContext ? contestSubmissionState.isPostContest : false;
@@ -456,13 +461,24 @@ export function SubmitForm({
         steps: normalizedForm.steps,
         insight: normalizedForm.insight,
         verification: normalizedForm.verification,
-        json: challenge
-          ? {
-              solution: {
-                challenge,
-              },
-            }
-          : undefined,
+        json: {
+          solution: {
+            ...(challenge ? { challenge } : {}),
+            // stable keys that map to ProofGraphV1 fields
+            observationSignal: normalizedForm.approach,
+            observationWhy: normalizedForm.observationWhy,
+            transformationFrom: normalizedForm.keyTransform,
+            transformationJustification: normalizedForm.transformationJustification,
+            verificationSteps: normalizedForm.verification,
+            ...(challenge
+              ? {
+                  challengeClaim: challenge.claim,
+                  challengeAdvantages: challenge.advantages,
+                  challengeRisk: challenge.risk,
+                }
+              : {}),
+          },
+        },
       },
       status: 'pending',
     });
@@ -783,6 +799,28 @@ export function SubmitForm({
               <TextArea label="可验证位置" value={solutionForm.verification} onChange={(verification) => setSolutionForm({ ...solutionForm, verification })} rows={4} />
             </div>
             <CASVerifier steps={solutionForm.steps.split('\n').filter(Boolean)} />
+            <details className="group rounded border border-white/10 bg-black/20">
+              <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-3 text-sm font-bold text-zinc-400 marker:hidden hover:text-white">
+                推理结构（选填）
+                <span className="text-xs font-normal text-zinc-600">帮助审核员更快整理推理图谱</span>
+              </summary>
+              <div className="space-y-3 border-t border-white/10 px-4 pb-4 pt-3">
+                <TextArea
+                  label="为什么这个条件是入口"
+                  value={solutionForm.observationWhy}
+                  onChange={(observationWhy) => setSolutionForm({ ...solutionForm, observationWhy })}
+                  rows={2}
+                  placeholder="这个条件为什么触发了你的路线？"
+                />
+                <TextArea
+                  label="关键转化的合法性说明"
+                  value={solutionForm.transformationJustification}
+                  onChange={(transformationJustification) => setSolutionForm({ ...solutionForm, transformationJustification })}
+                  rows={2}
+                  placeholder="为什么这一步变换是合法的？"
+                />
+              </div>
+            </details>
             <ImageUploadField
               files={imageFiles}
               onAdd={updateImageFiles}

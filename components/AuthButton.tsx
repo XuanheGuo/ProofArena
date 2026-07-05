@@ -5,6 +5,7 @@ import { User } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase-client';
 import Link from 'next/link';
 import { LogIn, User as UserIcon, LogOut, ShieldCheck } from 'lucide-react';
+import { hasSupabasePublicEnv } from '@/lib/supabase-env';
 
 type UserRole = 'user' | 'contributor' | 'moderator' | 'admin';
 
@@ -15,12 +16,19 @@ function canReviewSubmissions(role?: UserRole | null) {
 export function AuthButton({ variant = 'icon' }: { variant?: 'icon' | 'menu' }) {
   const [user, setUser] = useState<User | null>(null);
   const [role, setRole] = useState<UserRole | null>(null);
-  const [loading, setLoading] = useState(true);
-  const supabase = createClient();
+  const communityEnabled = hasSupabasePublicEnv();
+  const [loading, setLoading] = useState(communityEnabled);
+  const supabase = communityEnabled ? createClient() : null;
 
   useEffect(() => {
+    if (!supabase) {
+      setLoading(false);
+      return;
+    }
+    const client = supabase;
+
     async function loadUserRole(userId: string) {
-      const { data } = await supabase
+      const { data } = await client
         .from('user_profiles')
         .select('role')
         .eq('id', userId)
@@ -29,7 +37,7 @@ export function AuthButton({ variant = 'icon' }: { variant?: 'icon' | 'menu' }) 
       setRole((data?.role as UserRole | undefined) ?? null);
     }
 
-    supabase.auth.getUser().then(({ data }) => {
+    client.auth.getUser().then(({ data }) => {
       setUser(data.user);
       if (data.user) {
         void loadUserRole(data.user.id);
@@ -39,7 +47,7 @@ export function AuthButton({ variant = 'icon' }: { variant?: 'icon' | 'menu' }) 
       setLoading(false);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
+    const { data: { subscription } } = client.auth.onAuthStateChange((_, session) => {
       const nextUser = session?.user ?? null;
       setUser(nextUser);
       if (nextUser) {
@@ -53,7 +61,7 @@ export function AuthButton({ variant = 'icon' }: { variant?: 'icon' | 'menu' }) 
   }, [supabase]);
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut();
+    await supabase?.auth.signOut();
   };
 
   if (loading) {
@@ -126,6 +134,14 @@ export function AuthButton({ variant = 'icon' }: { variant?: 'icon' | 'menu' }) 
   }
 
   if (variant === 'menu') {
+    if (!communityEnabled) {
+      return (
+        <div className="border border-amber-400/20 bg-amber-400/[0.06] px-3 py-2 text-xs leading-5 text-amber-200">
+          社区登录暂不可用，当前使用静态题库。
+        </div>
+      );
+    }
+
     return (
       <Link
         href="/auth/login"

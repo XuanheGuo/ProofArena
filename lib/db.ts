@@ -1,8 +1,23 @@
 import { createClient } from '@/lib/supabase-server';
 import { getProblem as getStaticProblem, problems as staticProblems } from '@/data/problems';
+import { hasSupabasePublicEnv } from '@/lib/supabase-env';
 import type { Problem, Solution, SolutionScores } from '@/lib/types';
 
 // ── Mappers ────────────────────────────────────────────────────────────────
+
+const DB_OFFLINE_NOTICE = '数据库暂时不可用，当前显示静态兜底题库；登录、投稿和最新社区内容可能暂时不同步。';
+
+function markSupabaseProblem(problem: Problem): Problem {
+  return { ...problem, dataSource: 'supabase', dataNotice: undefined };
+}
+
+function markFallbackProblem(problem: Problem, notice = DB_OFFLINE_NOTICE): Problem {
+  return { ...problem, dataSource: 'static-fallback', dataNotice: notice };
+}
+
+function markFallbackProblems(problems: Problem[], notice = DB_OFFLINE_NOTICE): Problem[] {
+  return problems.map((problem) => markFallbackProblem(problem, notice));
+}
 
 function toSolution(row: Record<string, unknown>): Solution {
   return {
@@ -57,7 +72,7 @@ function toProblem(row: Record<string, unknown>): Problem {
     ? (row.solutions as Record<string, unknown>[]).map(toSolution)
     : [];
 
-  return {
+  return markSupabaseProblem({
     id: row.id as string,
     year: row.year as number,
     region: row.region as Problem['region'],
@@ -75,6 +90,10 @@ function toProblem(row: Record<string, unknown>): Problem {
     answerPdf: row.answer_pdf as string | undefined,
     learningGuide: row.learning_guide as Problem['learningGuide'],
     solutionTree: row.solution_tree as Problem['solutionTree'],
+    // proof_graph: official per-problem ProofGraphV1, editorially approved.
+    // Distinct from solution.thinking_cues.proofGraphDraft (solution-level draft).
+    // Null on older rows — ProblemDetailExperience tolerates undefined gracefully.
+    proofGraph: (row.proof_graph ?? undefined) as Problem['proofGraph'],
     solutions,
     knowledgeIds: (row.knowledge_ids as string[]) ?? [],
     insightIds: (row.insight_ids as string[]) ?? [],
@@ -85,14 +104,14 @@ function toProblem(row: Record<string, unknown>): Problem {
     boundaryNotes: row.boundary_notes as Problem['boundaryNotes'],
     contrastProblems: row.contrast_problems as Problem['contrastProblems'],
     whyNotMethods: row.why_not_methods as Problem['whyNotMethods'],
-  };
+  });
 }
 
 // ── Data Access ────────────────────────────────────────────────────────────
 
 export async function getProblems(): Promise<Problem[]> {
-  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-    return staticProblems;
+  if (!hasSupabasePublicEnv()) {
+    return markFallbackProblems(staticProblems, '未配置 Supabase 环境变量，当前使用静态题库。');
   }
 
   const supabase = await createClient();
@@ -103,15 +122,18 @@ export async function getProblems(): Promise<Problem[]> {
 
   if (error) {
     console.error('[db] getProblems error:', error.message, error.code);
-    return staticProblems;
+    return markFallbackProblems(staticProblems);
   }
-  if (!data || data.length === 0) return staticProblems;
+  if (!data || data.length === 0) {
+    return markFallbackProblems(staticProblems, '数据库题库为空，当前显示静态兜底题库。');
+  }
   return data.map(toProblem);
 }
 
 export async function getProblem(id: string): Promise<Problem | null> {
-  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-    return getStaticProblem(id) ?? null;
+  if (!hasSupabasePublicEnv()) {
+    const fallback = getStaticProblem(id);
+    return fallback ? markFallbackProblem(fallback, '未配置 Supabase 环境变量，当前使用静态题库。') : null;
   }
 
   const supabase = await createClient();
@@ -121,7 +143,11 @@ export async function getProblem(id: string): Promise<Problem | null> {
     .eq('id', id)
     .single();
 
-  if (error || !data) return getStaticProblem(id) ?? null;
+  if (error || !data) {
+    if (error) console.error('[db] getProblem error:', error.message, error.code);
+    const fallback = getStaticProblem(id);
+    return fallback ? markFallbackProblem(fallback) : null;
+  }
   return toProblem(data);
 }
 

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase-client';
+import { hasSupabasePublicEnv } from '@/lib/supabase-env';
 import { User } from '@supabase/supabase-js';
 import { useRouter } from 'next/navigation';
 import {
@@ -159,35 +160,42 @@ function SubmissionProgress({ submission }: { submission: Submission }) {
 }
 
 export default function ProfilePage() {
+  const communityEnabled = hasSupabasePublicEnv();
   const [user, setUser] = useState<User | null>(null);
   const [appProfile, setAppProfile] = useState<AppProfile | null>(null);
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [publishedSolutions, setPublishedSolutions] = useState<PublishedSolution[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(communityEnabled);
   const router = useRouter();
-  const supabase = createClient();
+  const supabase = communityEnabled ? createClient() : null;
 
   useEffect(() => {
-    supabase.auth.getUser().then(async ({ data }) => {
+    if (!supabase) {
+      setLoading(false);
+      return;
+    }
+    const client = supabase;
+
+    client.auth.getUser().then(async ({ data }) => {
       if (!data.user) {
         router.push('/auth/login');
         return;
       }
       setUser(data.user);
 
-      const { data: profileData } = await supabase
+      const { data: profileData } = await client
         .from('user_profiles')
         .select('username, display_name, bio')
         .eq('id', data.user.id)
         .single();
 
-      const { data: subs } = await supabase
+      const { data: subs } = await client
         .from('submissions')
         .select('id, title, submission_type, problem_id, problem_source, kind, status, created_at, updated_at, moderator_notes, content, challenge_target_solution_id, challenge_claim, challenge_advantages, challenge_risk')
         .eq('user_id', data.user.id)
         .order('created_at', { ascending: false });
 
-      const { data: solutions } = await supabase
+      const { data: solutions } = await client
         .from('solutions')
         .select('id, problem_id, title, kind, author_role, scores, challenge_target_solution_id, challenge_target_solution_title, challenge_target_solution_author, challenge_claim, challenge_advantages, challenge_risk, created_at, source_submission_id')
         .eq('author_id', data.user.id)
@@ -199,6 +207,22 @@ export default function ProfilePage() {
       setLoading(false);
     });
   }, [supabase, router]);
+
+  if (!communityEnabled) {
+    return (
+      <div className="min-h-screen bg-zinc-950 px-4 py-16">
+        <div className="mx-auto max-w-2xl border border-amber-400/25 bg-amber-400/[0.06] p-6 text-center">
+          <h1 className="text-xl font-black text-white">社区数据库暂不可用</h1>
+          <p className="mt-3 text-sm leading-6 text-amber-100">
+            个人主页、投稿记录和公开作品集需要 Supabase。当前仍可浏览静态题库和解法。
+          </p>
+          <a href="/problems" className="mt-5 inline-block text-sm font-bold text-cyan-300 hover:text-cyan-200">
+            返回题库
+          </a>
+        </div>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
