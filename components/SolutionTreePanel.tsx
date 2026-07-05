@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { ArrowUpRight, ChevronDown, GitBranch, TreePine } from "lucide-react";
+import { MathBlock } from "@/components/MathBlock";
 import type { Problem, SolutionTreeMethod } from "@/lib/types";
 
 function SolutionMethodNode({
@@ -26,7 +27,7 @@ function SolutionMethodNode({
             <span className="flex size-6 shrink-0 items-center justify-center border border-emerald-400/25 bg-emerald-400/5 font-mono text-[10px] text-emerald-300">
               {depth + 1}
             </span>
-            <h4 className="text-sm font-bold text-white">{method.title}</h4>
+            <h4 className="text-sm font-bold text-white"><MathBlock>{method.title}</MathBlock></h4>
           </div>
           {method.description && <p className="mt-2 text-xs leading-5 text-zinc-500">{method.description}</p>}
         </div>
@@ -40,7 +41,7 @@ function SolutionMethodNode({
                 className="inline-flex h-8 items-center gap-1.5 border border-cyan-400/20 bg-cyan-400/5 px-2.5 text-xs font-bold text-cyan-100 transition hover:border-cyan-300/50 hover:text-cyan-200"
               >
                 {solution.badge}
-                <span className="max-w-32 truncate text-zinc-300">{solution.title}</span>
+                <span className="max-w-32 truncate text-zinc-300"><MathBlock>{solution.title}</MathBlock></span>
                 <ArrowUpRight className="size-3 shrink-0 text-cyan-300" />
               </a>
             ))}
@@ -100,7 +101,7 @@ export function SolutionTreePanel({ problem }: { problem: Problem }) {
                   <GitBranch className="size-4 text-emerald-300" />
                 </span>
                 <div>
-                  <h3 className="text-base font-bold text-white">{root.title}</h3>
+                  <h3 className="text-base font-bold text-white"><MathBlock>{root.title}</MathBlock></h3>
                   <p className="mt-2 text-sm leading-6 text-zinc-500">{root.description}</p>
                 </div>
               </div>

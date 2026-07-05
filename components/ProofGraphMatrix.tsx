@@ -124,7 +124,7 @@ function DesktopMatrix({ problem }: { problem: Problem }) {
                   href={`#${sol.id}`}
                   className="mt-1 line-clamp-2 text-xs font-bold leading-snug text-zinc-200 hover:text-cyan-300 [word-break:keep-all]"
                 >
-                  {sol.title}
+                  <MathBlock>{sol.title}</MathBlock>
                 </a>
               </td>
               {SCORE_COLS.map((col) => (
@@ -161,7 +161,7 @@ function MobileCard({ solution, problem }: { solution: Solution; problem: Proble
           {kindLabel(solution.kind)}
         </span>
         <a href={`#${solution.id}`} className="text-sm font-bold text-zinc-200 hover:text-cyan-300">
-          {solution.title}
+          <MathBlock>{solution.title}</MathBlock>
         </a>
       </div>
       <div className="mb-3 grid grid-cols-2 gap-x-4 gap-y-1.5 sm:grid-cols-3">

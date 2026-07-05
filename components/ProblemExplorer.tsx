@@ -2,7 +2,7 @@
 
 import { useCallback, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Search, SlidersHorizontal, X } from "lucide-react";
+import { ChevronDown, Search, SlidersHorizontal, X } from "lucide-react";
 import type { Difficulty, ExamRegion, ProblemSummary, QuestionType } from "@/lib/types";
 import { ProblemCard } from "@/components/ProblemCard";
 import { ProblemScrollbar } from "@/components/ProblemScrollbar";
@@ -104,22 +104,28 @@ export function ProblemExplorer({ problems }: ProblemExplorerProps) {
                 </button>
               )}
             </label>
-            <select
-              value={region}
-              onChange={(event) => handleRegion(event.target.value)}
-              className="h-11 border border-white/10 bg-zinc-950 px-3 text-sm text-zinc-300 outline-none"
-              aria-label="卷别"
-            >
-              {regions.map((item) => <option key={item}>{item}</option>)}
-            </select>
-            <select
-              value={topic}
-              onChange={(event) => handleTopic(event.target.value)}
-              className="h-11 border border-white/10 bg-zinc-950 px-3 text-sm text-zinc-300 outline-none"
-              aria-label="专题"
-            >
-              {topics.map((item) => <option key={item}>{item}</option>)}
-            </select>
+            <div className="relative">
+              <select
+                value={region}
+                onChange={(event) => handleRegion(event.target.value)}
+                className="h-11 w-full appearance-none border border-white/10 bg-zinc-950 pl-3 pr-9 text-sm text-zinc-300 outline-none transition focus:border-cyan-400/50"
+                aria-label="卷别"
+              >
+                {regions.map((item) => <option key={item}>{item}</option>)}
+              </select>
+              <ChevronDown className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-zinc-500" />
+            </div>
+            <div className="relative">
+              <select
+                value={topic}
+                onChange={(event) => handleTopic(event.target.value)}
+                className="h-11 w-full appearance-none border border-white/10 bg-zinc-950 pl-3 pr-9 text-sm text-zinc-300 outline-none transition focus:border-cyan-400/50"
+                aria-label="专题"
+              >
+                {topics.map((item) => <option key={item}>{item}</option>)}
+              </select>
+              <ChevronDown className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-zinc-500" />
+            </div>
           </div>
 
           <details className="mt-3 border border-white/10 bg-black/20">

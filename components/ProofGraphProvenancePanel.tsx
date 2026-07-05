@@ -140,14 +140,14 @@ function ForkProvenance({ solutions }: { solutions: Solution[] }) {
       {forked.map((s) => (
         <div key={s.id} className="flex flex-wrap items-center gap-2 rounded border border-white/10 bg-zinc-950 p-3 text-xs">
           <a href={`#${s.id}`} className="border border-violet-400/30 bg-violet-400/[0.06] px-1.5 py-0.5 text-violet-300 hover:bg-violet-400/10">
-            {s.title}
+            <MathBlock>{s.title}</MathBlock>
           </a>
           <span className="text-zinc-600">← fork 自</span>
           <a
             href={`#${s.thinkingCues.forkOf!.solutionId}`}
             className="border border-white/10 px-1.5 py-0.5 text-zinc-400 hover:border-violet-400/30 hover:text-violet-300"
           >
-            {s.thinkingCues.forkOf!.solutionTitle}
+            <MathBlock>{s.thinkingCues.forkOf!.solutionTitle}</MathBlock>
           </a>
         </div>
       ))}

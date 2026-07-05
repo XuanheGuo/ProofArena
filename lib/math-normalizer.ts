@@ -61,6 +61,17 @@ function normalizeSqrtArgument(value: string) {
     .replace(/\bsqrt\s*([A-Za-z0-9πΠα-ωΑ-Ω]+(?:\^\d+)?)/gi, (_, argument: string) => `\\sqrt{${argument}}`);
 }
 
+// For contexts that can't render KaTeX (native <option> labels): strips the
+// math delimiters but keeps the raw LaTeX source, so "$P$" reads as "P" and
+// "$\frac{1}{2}$" at least drops the distracting dollar signs.
+export function stripMathDelimiters(value: string): string {
+  return value
+    .replace(/\\\[([\s\S]+?)\\\]/g, "$1")
+    .replace(/\\\(([\s\S]+?)\\\)/g, "$1")
+    .replace(/\$\$([\s\S]+?)\$\$/g, "$1")
+    .replace(/\$([^$]+)\$/g, "$1");
+}
+
 export function unwrapMath(token: string) {
   if (token.startsWith("\\[") && token.endsWith("\\]")) {
     return { math: token.slice(2, -2), display: true };

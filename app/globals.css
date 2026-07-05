@@ -99,6 +99,10 @@ select {
   color: #ffffff;
 }
 
+[data-theme="dark"] ::selection {
+  background: #6366f1;
+}
+
 :focus-visible {
   outline: 2px solid #22d3ee;
   outline-offset: 2px;
@@ -336,7 +340,7 @@ select {
 /* Share cards have their own reading surface, so light mode does not inherit dark gradients. */
 [data-theme="light"] .share-card {
   border-color: rgba(63, 63, 70, 0.18) !important;
-  border-top-color: #0891b2 !important;
+  border-top-color: #4f46e5 !important;
   background: #ffffff !important;
   box-shadow: 0 16px 36px rgba(24, 24, 27, 0.08) !important;
 }
@@ -353,7 +357,7 @@ select {
 [data-theme="light"] .share-card .text-cyan-100,
 [data-theme="light"] .share-card .text-cyan-200,
 [data-theme="light"] .share-card .text-cyan-300 {
-  color: #0e7490 !important;
+  color: #4f46e5 !important;
 }
 
 [data-theme="light"] .share-card .text-amber-300 {

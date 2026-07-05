@@ -17,6 +17,7 @@ import {
   Sparkles,
   Trophy,
 } from "lucide-react";
+import { MathBlock } from "@/components/MathBlock";
 import { contestStatusMeta, contestSolutionTypeMeta } from "@/lib/contest-meta";
 import { ContestThoughtArena } from "@/components/ContestThoughtArena";
 import { getContest, getContestLeaderboard, getContestSubmissionStats, getContests, getContestThoughts, getContestUserRankings } from "@/lib/contests";
@@ -391,7 +392,7 @@ export default async function ContestDetailPage({ params }: PageProps) {
                   >
                     <span className="font-mono text-sm text-cyan-300">#{index + 1}</span>
                     <span className="min-w-0">
-                      <span className="block font-bold text-white">{solution.title}</span>
+                      <span className="block font-bold text-white"><MathBlock>{solution.title}</MathBlock></span>
                       <span className="mt-1 block text-xs text-zinc-500">
                         Day {contestProblem.dayIndex} · {problem.title} · {solution.author}
                       </span>
