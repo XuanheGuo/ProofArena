@@ -29,6 +29,7 @@ import { ReasoningReplayPanel } from "@/components/ReasoningReplayPanel";
 import { ProofChallengeEdges } from "@/components/ProofChallengeEdges";
 import { SolutionDiffPanel } from "@/components/SolutionDiffPanel";
 import { ProofGraphProvenancePanel } from "@/components/ProofGraphProvenancePanel";
+import { ProofGraphReleaseCard } from "@/components/ProofGraphReleaseCard";
 import { graphSpecRegistry } from "@/data/graph-specs";
 import { difficultyBadgeClass } from "@/lib/problem-presentation";
 import { getSolutionKindMeta } from "@/lib/solution-kinds";
@@ -229,9 +230,12 @@ function ProofGraphSummaryStrip({
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-2 border border-white/10 bg-black/20 px-4 py-2">
-      <p className="text-xs text-zinc-500">
+      <p className="flex flex-wrap items-center gap-1.5 text-xs text-zinc-500">
         <span className="font-bold text-zinc-400">推理图谱</span>
-        {summary && <span className="ml-1.5 text-zinc-600">{summary}</span>}
+        <span className="border border-emerald-400/30 bg-emerald-400/[0.06] px-1.5 py-0.5 text-[10px] font-bold text-emerald-300">
+          当前版本
+        </span>
+        {summary && <span className="text-zinc-600">{summary}</span>}
       </p>
       <div className="flex flex-wrap items-center gap-2">
         <button
@@ -273,6 +277,7 @@ function ComparisonTabNav({ problem }: { problem: Problem }) {
     ),
   );
   const sections = [
+    { id: "comparison-release", label: "发布信息", show: Boolean(pg) },
     { id: "comparison-matrix", label: "解法比较", show: true },
     { id: "comparison-boundaries", label: "方法边界", show: Boolean(pg?.methodBoundaries.length) },
     { id: "comparison-replay", label: "推导过程", show: hasReplay },
@@ -590,6 +595,11 @@ export function ProblemDetailExperience({
         {activeTab === "comparison" && (
           <section id="proof-graph-comparison-content" className="space-y-4 scroll-mt-28">
             <ComparisonTabNav problem={problem} />
+            {problem.proofGraph && (
+              <div id="comparison-release" className="scroll-mt-28">
+                <ProofGraphReleaseCard problem={problem} />
+              </div>
+            )}
             <div id="comparison-matrix" className="scroll-mt-28">
               <ProofGraphMatrix problem={problem} />
             </div>
