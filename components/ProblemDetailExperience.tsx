@@ -95,11 +95,13 @@ function SolutionCompareCard({ solution, rank }: { solution: Solution; rank: num
                 href={`#${solution.thinkingCues.forkOf.solutionId}`}
                 className="border border-violet-400/40 bg-violet-400/10 px-2 py-0.5 text-[11px] font-bold text-violet-300 transition hover:bg-violet-400/20"
               >
-                Fork 自：{solution.thinkingCues.forkOf.solutionTitle}
+                Fork 自：<MathBlock>{solution.thinkingCues.forkOf.solutionTitle}</MathBlock>
               </a>
             )}
           </div>
-          <h3 className="mt-3 text-lg font-bold leading-snug text-white sm:text-xl">{solution.title}</h3>
+          <h3 className="mt-3 text-lg font-bold leading-snug text-white sm:text-xl">
+            <MathBlock>{solution.title}</MathBlock>
+          </h3>
           <p className="mt-2 text-sm leading-7 text-zinc-300">
             <MathBlock>{solution.inspiration}</MathBlock>
           </p>

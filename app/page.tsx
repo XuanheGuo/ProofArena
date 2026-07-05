@@ -23,7 +23,6 @@ export default async function HomePage() {
   const stats = [
     [String(summaries.length).padStart(2, "0"), "精编真题"],
     [String(solutionCount).padStart(2, "0"), "完整解法"],
-    ["逐题", "人工校订"],
   ];
 
   return (
@@ -67,13 +66,19 @@ export default async function HomePage() {
             </div>
           </div>
         </div>
-        <div className="relative mx-4 -mt-16 grid max-w-7xl grid-cols-3 border border-white/10 bg-zinc-950/90 backdrop-blur md:mx-auto md:w-[calc(100%-3rem)]">
-          {stats.map(([value, label]) => (
-            <div key={label} className="border-r border-white/10 p-4 last:border-r-0 md:p-6">
-              <strong className="font-display block text-2xl font-black tabular-nums text-white md:text-3xl">{value}</strong>
-              <span className="mt-1 block text-xs text-zinc-500">{label}</span>
-            </div>
-          ))}
+        <div className="relative mx-4 -mt-16 flex flex-col border border-white/10 bg-zinc-950/90 backdrop-blur md:mx-auto md:w-[calc(100%-3rem)] md:flex-row">
+          <div className="grid grid-cols-2">
+            {stats.map(([value, label]) => (
+              <div key={label} className="border-r border-white/10 p-4 last:border-r-0 md:p-6">
+                <strong className="font-display block text-2xl font-black tabular-nums text-white md:text-3xl">{value}</strong>
+                <span className="mt-1 block text-xs text-zinc-500">{label}</span>
+              </div>
+            ))}
+          </div>
+          <div className="flex items-center gap-2 border-t border-white/10 px-4 py-3 text-xs font-bold text-emerald-300 md:border-l md:border-t-0 md:px-6">
+            <CheckCircle2 className="size-4 shrink-0" />
+            逐题人工校订
+          </div>
         </div>
       </section>
 

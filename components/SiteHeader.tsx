@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BookOpenCheck, Code2, Crosshair, Hammer, Info, Menu, Send, Swords, Trophy, X } from "lucide-react";
+import { BookOpenCheck, Code2, Crosshair, Info, Menu, Send, Swords, Trophy, X } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { AuthButton } from "@/components/AuthButton";
 
@@ -11,7 +11,6 @@ const navigation = [
   { href: "/problems", label: "题目", description: "浏览真题并进入解法对比", icon: Swords },
   { href: "/contests", label: "比赛", description: "进入思路擂台和活动合集", icon: Trophy },
   { href: "/library", label: "思路库", description: "查看知识点、方法边界和关联题", icon: BookOpenCheck },
-  { href: "/studio", label: "Studio", description: "内部内容整理工作台", icon: Hammer, badge: "内部" },
   { href: "/submit", label: "投稿", description: "提交题目、解法或改进建议", icon: Send },
   { href: "/about", label: "关于", description: "了解 ProofArena 的组织方式", icon: Info },
 ];
@@ -37,7 +36,7 @@ export function SiteHeader() {
           </span>
         </Link>
         <nav className="hidden min-w-0 items-center gap-1 text-sm md:flex">
-          {navigation.map(({ href, label, icon: Icon, badge }) => (
+          {navigation.map(({ href, label, icon: Icon }) => (
             <Link
               key={href}
               href={href}
@@ -47,7 +46,6 @@ export function SiteHeader() {
             >
               <Icon className="size-4" />
               <span className="hidden md:inline">{label}</span>
-              {badge && <span className="hidden border border-cyan-400/20 px-1.5 py-0.5 font-mono text-[9px] uppercase text-cyan-300 lg:inline">{badge}</span>}
             </Link>
           ))}
           <AuthButton />
@@ -77,7 +75,7 @@ export function SiteHeader() {
       {open && (
         <div id="mobile-site-menu" className="border-t border-white/10 bg-zinc-950/95 px-3 py-3 shadow-xl md:hidden">
           <div className="grid gap-2">
-            {navigation.map(({ href, label, description, icon: Icon, badge }) => (
+            {navigation.map(({ href, label, description, icon: Icon }) => (
               <Link
                 key={href}
                 href={href}
@@ -89,7 +87,6 @@ export function SiteHeader() {
                 <span className="min-w-0 flex-1">
                   <span className="flex items-center gap-2 text-sm font-bold text-white">
                     {label}
-                    {badge && <span className="border border-cyan-400/20 px-1.5 py-0.5 font-mono text-[9px] uppercase text-cyan-300">{badge}</span>}
                   </span>
                   <span className="mt-0.5 block text-xs leading-5 text-zinc-500">{description}</span>
                 </span>

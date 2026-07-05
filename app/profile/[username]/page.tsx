@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase-client';
 import { hasSupabasePublicEnv } from '@/lib/supabase-env';
+import { MathBlock } from '@/components/MathBlock';
 import {
   Award,
   Calendar,
@@ -240,12 +241,12 @@ export default function PublicProfilePage() {
                         {score ? score.toFixed(1) : '—'}
                       </span>
                     </div>
-                    <h3 className="mt-4 line-clamp-2 font-bold text-white">{s.title}</h3>
+                    <h3 className="mt-4 line-clamp-2 font-bold text-white"><MathBlock>{s.title}</MathBlock></h3>
                     <p className="mt-1 text-xs text-zinc-600">{s.problem_id}</p>
                     {s.challenge_target_solution_id && (
                       <p className="mt-3 inline-flex items-center gap-1.5 rounded border border-amber-400/20 bg-amber-400/[0.05] px-2.5 py-1 text-xs text-amber-200">
                         <Swords className="size-3" />
-                        挑战 {s.challenge_target_solution_title ?? s.challenge_target_solution_id}
+                        挑战 <MathBlock>{s.challenge_target_solution_title ?? s.challenge_target_solution_id}</MathBlock>
                       </p>
                     )}
                     <p className="mt-3 text-xs text-zinc-700">

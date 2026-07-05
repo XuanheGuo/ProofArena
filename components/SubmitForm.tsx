@@ -9,6 +9,8 @@ import { contestSolutionTypeMeta } from '@/lib/contest-meta';
 import { ALLOWED_IMAGE_TYPES, MAX_CONTEST_THOUGHT_CHARS, MAX_GENERAL_TEXT_CHARS, MAX_IMAGE_BYTES, MAX_IMAGE_COUNT, MAX_TITLE_CHARS, clampText, extensionForImageType, isAllowedImage } from '@/lib/security';
 import { getEffectiveProblemStatus, type Contest, type ContestProblem, type ContestSolutionType } from '@/lib/types';
 import { CASVerifier } from '@/components/CASVerifier';
+import { MathBlock } from '@/components/MathBlock';
+import { stripMathDelimiters } from '@/lib/math-normalizer';
 
 type SubmitMode = 'problem' | 'solution';
 type SolutionKind = 'standard' | 'insight' | 'robust' | 'teaching';
@@ -695,7 +697,7 @@ export function SubmitForm({
               <div className="flex items-start justify-between gap-3 border border-violet-400/30 bg-violet-400/[0.06] p-3 text-sm">
                 <div className="min-w-0">
                   <span className="font-bold text-violet-200">你正在 fork：</span>
-                  <span className="text-zinc-300">{src.title}</span>
+                  <span className="text-zinc-300"><MathBlock>{src.title}</MathBlock></span>
                   <span className="mx-2 text-zinc-600">/</span>
                   <span className="text-zinc-500">{src.author}</span>
                   <p className="mt-1 text-xs leading-5 text-zinc-600">
@@ -759,7 +761,7 @@ export function SubmitForm({
                   </div>
                   {selectedChallengeSolution && (
                     <span className="shrink-0 border border-amber-400/30 px-2.5 py-1 text-xs font-bold text-amber-200">
-                      正在挑战：{selectedChallengeSolution.title}
+                      正在挑战：<MathBlock>{selectedChallengeSolution.title}</MathBlock>
                     </span>
                   )}
                 </div>
@@ -780,7 +782,7 @@ export function SubmitForm({
                       <option value="">不挑战，作为独立补充解法</option>
                       {selectedProblem.solutions.map((solution) => (
                         <option key={solution.id} value={solution.id}>
-                          {solution.title} · {solution.author}
+                          {stripMathDelimiters(solution.title)} · {solution.author}
                         </option>
                       ))}
                     </select>

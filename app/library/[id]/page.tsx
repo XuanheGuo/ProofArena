@@ -189,7 +189,7 @@ export default async function LibraryDetailPage({
             {relatedSolutions.map(({ problem, solution }) => (
               <Link key={`${problem.id}-${solution.id}`} href={`/problems/${problem.id}#${solution.id}`} className="group bg-zinc-950 p-5 transition hover:bg-white/[0.03]">
                 <span className="text-xs font-bold text-amber-300">解法 · {problem.number}</span>
-                <h3 className="mt-2 font-bold text-white">{solution.title}</h3>
+                <h3 className="mt-2 font-bold text-white"><MathBlock>{solution.title}</MathBlock></h3>
                 <p className="mt-2 line-clamp-2 text-xs leading-6 text-zinc-500">
                   <MathBlock>{solution.inspiration}</MathBlock>
                 </p>

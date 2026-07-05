@@ -5,6 +5,7 @@ import { useState } from "react";
 import type { ReactNode } from "react";
 import { ChevronDown, GitBranch, GitCompare } from "lucide-react";
 import { MathBlock } from "@/components/MathBlock";
+import { stripMathDelimiters } from "@/lib/math-normalizer";
 import type { Problem, ProofChallengeEdge, ProofObservation, ProofStrategyBranch, ProofTransformation, Solution } from "@/lib/types";
 
 // ── score config ──────────────────────────────────────────────────────────────
@@ -103,7 +104,7 @@ function KeyTransformSection({
       <SectionHeader title="关键转化" source={source} />
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="rounded border border-white/5 bg-black/20 p-3">
-          <p className="mb-1 text-[10px] font-bold text-zinc-500">{solA.title}</p>
+          <p className="mb-1 text-[10px] font-bold text-zinc-500"><MathBlock>{solA.title}</MathBlock></p>
           {tA.length > 0 ? (
             <ul className="space-y-1">
               {tA.map((t) => (
@@ -119,7 +120,7 @@ function KeyTransformSection({
           )}
         </div>
         <div className="rounded border border-white/5 bg-black/20 p-3">
-          <p className="mb-1 text-[10px] font-bold text-zinc-500">{solB.title}</p>
+          <p className="mb-1 text-[10px] font-bold text-zinc-500"><MathBlock>{solB.title}</MathBlock></p>
           {tB.length > 0 ? (
             <ul className="space-y-1">
               {tB.map((t) => (
@@ -146,8 +147,8 @@ function ScoresSection({ solA, solB }: { solA: Solution; solB: Solution }) {
       <div className="rounded border border-white/5 bg-black/20 p-3">
         <div className="mb-2 grid grid-cols-[4rem_minmax(0,1fr)_minmax(0,1fr)] gap-2 text-[10px] font-bold text-zinc-600">
           <span>维度</span>
-          <span className="truncate text-cyan-300">{solA.title}</span>
-          <span className="truncate text-amber-300">{solB.title}</span>
+          <span className="truncate text-cyan-300"><MathBlock>{solA.title}</MathBlock></span>
+          <span className="truncate text-amber-300"><MathBlock>{solB.title}</MathBlock></span>
         </div>
         <div className="space-y-1.5">
           {SCORE_ROWS.map((row) => {
@@ -193,7 +194,7 @@ function TradeoffsSection({ solA, solB }: { solA: Solution; solB: Solution }) {
       <SectionHeader title="代价与局限" source="field" />
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="rounded border border-white/5 bg-black/20 p-3">
-          <p className="mb-2 text-[10px] font-bold text-zinc-500">{solA.title}</p>
+          <p className="mb-2 text-[10px] font-bold text-zinc-500"><MathBlock>{solA.title}</MathBlock></p>
           {itemsA.length ? (
             <ul className="space-y-1">
               {itemsA.slice(0, 4).map((item) => (
@@ -205,7 +206,7 @@ function TradeoffsSection({ solA, solB }: { solA: Solution; solB: Solution }) {
           ) : <p className="text-xs text-zinc-600">—</p>}
         </div>
         <div className="rounded border border-white/5 bg-black/20 p-3">
-          <p className="mb-2 text-[10px] font-bold text-zinc-500">{solB.title}</p>
+          <p className="mb-2 text-[10px] font-bold text-zinc-500"><MathBlock>{solB.title}</MathBlock></p>
           {itemsB.length ? (
             <ul className="space-y-1">
               {itemsB.slice(0, 4).map((item) => (
@@ -276,7 +277,7 @@ export function SolutionDiffPanel({ problem }: { problem: Problem }) {
             >
               {solutions.filter((s) => s.id !== bId).map((s) => (
                 <option key={s.id} value={s.id}>
-                  [{kindLabel[s.kind] ?? s.kind}] {s.title}
+                  [{kindLabel[s.kind] ?? s.kind}] {stripMathDelimiters(s.title)}
                 </option>
               ))}
             </select>
@@ -290,7 +291,7 @@ export function SolutionDiffPanel({ problem }: { problem: Problem }) {
             >
               {solutions.filter((s) => s.id !== aId).map((s) => (
                 <option key={s.id} value={s.id}>
-                  [{kindLabel[s.kind] ?? s.kind}] {s.title}
+                  [{kindLabel[s.kind] ?? s.kind}] {stripMathDelimiters(s.title)}
                 </option>
               ))}
             </select>
@@ -360,11 +361,11 @@ export function SolutionDiffPanel({ problem }: { problem: Problem }) {
                 <div className="rounded border border-amber-400/20 bg-amber-400/[0.04] p-3">
                   <div className="mb-2 flex flex-wrap items-center gap-1.5 text-xs">
                     <span className="border border-cyan-400/30 px-1.5 py-0.5 font-bold text-cyan-200">
-                      {solutions.find((s) => s.id === edge.challengerSolutionId)?.title ?? edge.challengerSolutionId}
+                      <MathBlock>{solutions.find((s) => s.id === edge.challengerSolutionId)?.title ?? edge.challengerSolutionId}</MathBlock>
                     </span>
                     <span className="text-zinc-600">挑战</span>
                     <span className="border border-white/10 px-1.5 py-0.5 text-zinc-400">
-                      {solutions.find((s) => s.id === edge.targetSolutionId)?.title ?? edge.targetSolutionId}
+                      <MathBlock>{solutions.find((s) => s.id === edge.targetSolutionId)?.title ?? edge.targetSolutionId}</MathBlock>
                     </span>
                   </div>
                   <p className="text-xs leading-5 text-zinc-300"><MathBlock>{edge.claim}</MathBlock></p>

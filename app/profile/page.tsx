@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase-client';
 import { hasSupabasePublicEnv } from '@/lib/supabase-env';
+import { MathBlock } from '@/components/MathBlock';
 import { User } from '@supabase/supabase-js';
 import { useRouter } from 'next/navigation';
 import {
@@ -404,11 +405,11 @@ export default function ProfilePage() {
                       <span className="border border-white/10 px-2 py-1 text-xs text-zinc-400">{kindLabel[solution.kind] ?? solution.kind}</span>
                       <span className="font-display text-lg font-black text-cyan-300">{score ? score.toFixed(1) : '—'}</span>
                     </div>
-                    <h3 className="mt-4 line-clamp-2 font-bold text-white">{solution.title}</h3>
+                    <h3 className="mt-4 line-clamp-2 font-bold text-white"><MathBlock>{solution.title}</MathBlock></h3>
                     <p className="mt-2 text-xs text-zinc-600">{solution.problem_id}</p>
                     {solution.challenge_target_solution_id && (
                       <p className="mt-4 rounded border border-amber-400/20 bg-amber-400/[0.05] px-3 py-2 text-xs leading-5 text-amber-100">
-                        挑战 {solution.challenge_target_solution_title ?? solution.challenge_target_solution_id}
+                        挑战 <MathBlock>{solution.challenge_target_solution_title ?? solution.challenge_target_solution_id}</MathBlock>
                       </p>
                     )}
                   </a>

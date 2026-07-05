@@ -158,7 +158,7 @@ export function ConceptBoundaryPanel(props: ConceptBoundaryPanelProps) {
             <div className="space-y-3">
               {boundaryNotes.map((note) => (
                 <div key={note.title} className="border-l-2 border-emerald-400 bg-emerald-400/[0.04] p-4">
-                  <h3 className="text-sm font-bold text-white">{note.title}</h3>
+                  <h3 className="text-sm font-bold text-white"><MathBlock>{note.title}</MathBlock></h3>
                   <p className="mt-2 text-sm leading-7 text-zinc-300">
                     <MathBlock>{note.note}</MathBlock>
                   </p>
