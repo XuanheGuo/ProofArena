@@ -199,6 +199,28 @@ export function ProofGraphEditor({ problems }: { problems: ProblemSummary[] }) {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "has" | "missing">("all");
+
+  const filteredProblems = problems.filter((p) => {
+    if (statusFilter === "has" && !p.proofGraph) return false;
+    if (statusFilter === "missing" && p.proofGraph) return false;
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase();
+    return (
+      p.title.toLowerCase().includes(q) ||
+      p.id.toLowerCase().includes(q) ||
+      p.region.toLowerCase().includes(q) ||
+      String(p.year).includes(q) ||
+      p.number.toLowerCase().includes(q)
+    );
+  });
+
+  // Auto-select first visible problem when the current selection is filtered out.
+  const effectiveId =
+    filteredProblems.some((p) => p.id === selectedId)
+      ? selectedId
+      : (filteredProblems[0]?.id ?? "");
 
   const validation = validate(jsonText);
 
@@ -212,11 +234,23 @@ export function ProofGraphEditor({ problems }: { problems: ProblemSummary[] }) {
     setError("");
   }
 
+  // When filter auto-selects a different problem, sync JSON.
+  const [lastEffectiveId, setLastEffectiveId] = useState(effectiveId);
+  if (effectiveId !== lastEffectiveId) {
+    setLastEffectiveId(effectiveId);
+    const problem = problems.find((p) => p.id === effectiveId);
+    setJsonText(JSON.stringify(problem?.proofGraph ?? EMPTY_SKELETON, null, 2));
+    setDrafts([]);
+    setDraftsOpen(false);
+    setMessage("");
+    setError("");
+  }
+
   async function loadDrafts() {
-    if (!selectedId) return;
+    if (!effectiveId) return;
     setDraftsLoading(true);
     try {
-      const result = await loadSolutionDrafts(selectedId);
+      const result = await loadSolutionDrafts(effectiveId);
       setDrafts(result);
       setDraftsOpen(true);
     } catch {
@@ -237,7 +271,7 @@ export function ProofGraphEditor({ problems }: { problems: ProblemSummary[] }) {
     setSaving(true);
     setMessage("");
     setError("");
-    const result = await saveProofGraph(selectedId, validation.parsed);
+    const result = await saveProofGraph(effectiveId, validation.parsed);
     setSaving(false);
     if (result.success) {
       setMessage("已保存。");
@@ -246,7 +280,7 @@ export function ProofGraphEditor({ problems }: { problems: ProblemSummary[] }) {
     }
   }
 
-  const selectedProblem = problems.find((p) => p.id === selectedId);
+  const selectedProblem = problems.find((p) => p.id === effectiveId);
 
   const LABEL_MAP: Partial<Record<keyof ProofGraphV1, string>> = {
     observations: "观察", branches: "分支", transformations: "转化",
@@ -257,6 +291,41 @@ export function ProofGraphEditor({ problems }: { problems: ProblemSummary[] }) {
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_24rem]">
       {/* ── Main editor column ── */}
       <div className="space-y-4">
+        {/* Filter + search */}
+        <div className="space-y-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              type="search"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="搜索题目（标题、ID、地区、年份…）"
+              className="h-9 min-w-0 flex-1 rounded border border-white/10 bg-zinc-900 px-3 text-sm text-white outline-none placeholder:text-zinc-600 focus:border-cyan-400/50"
+            />
+            <div className="flex gap-1">
+              {(["all", "has", "missing"] as const).map((v) => {
+                const label = v === "all" ? "全部" : v === "has" ? "已有图谱 ✓" : "缺少图谱";
+                return (
+                  <button
+                    key={v}
+                    type="button"
+                    onClick={() => setStatusFilter(v)}
+                    className={`h-9 whitespace-nowrap border px-3 text-xs font-bold transition ${
+                      statusFilter === v
+                        ? "border-cyan-400 bg-cyan-400 text-zinc-950"
+                        : "border-white/10 text-zinc-400 hover:border-cyan-400/30 hover:text-cyan-200"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          <p className="text-[11px] text-zinc-600">
+            显示 {filteredProblems.length} / {problems.length} 题
+          </p>
+        </div>
+
         {/* Problem selector */}
         <label className="grid gap-2 text-sm">
           <span className="flex flex-wrap items-center justify-between gap-2">
@@ -271,16 +340,20 @@ export function ProofGraphEditor({ problems }: { problems: ProblemSummary[] }) {
             )}
           </span>
           <select
-            value={selectedId}
+            value={effectiveId}
             onChange={(e) => selectProblem(e.target.value)}
             className="h-11 rounded border border-white/10 bg-zinc-900 px-3 text-sm text-white outline-none focus:border-cyan-400/50"
           >
-            {problems.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.year} {p.region} · {p.number} · {p.title}
-                {p.proofGraph ? " ✓" : ""}
-              </option>
-            ))}
+            {filteredProblems.length === 0 ? (
+              <option value="">（无匹配题目）</option>
+            ) : (
+              filteredProblems.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.year} {p.region} · {p.number} · {p.title}
+                  {p.proofGraph ? " ✓" : ""}
+                </option>
+              ))
+            )}
           </select>
         </label>
 
