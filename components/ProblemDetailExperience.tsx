@@ -24,6 +24,7 @@ import { SolutionTreePanel } from "@/components/SolutionTreePanel";
 import { MathVisualization, mathVizProblemIds } from "@/components/MathVisualization";
 import { SolutionRatingPanel } from "@/components/SolutionRatingPanel";
 import { ProofGraphMatrix } from "@/components/ProofGraphMatrix";
+import { MethodBoundaryHighlights } from "@/components/MethodBoundaryHighlights";
 import { ReasoningReplayPanel } from "@/components/ReasoningReplayPanel";
 import { ProofChallengeEdges } from "@/components/ProofChallengeEdges";
 import { graphSpecRegistry } from "@/data/graph-specs";
@@ -225,7 +226,7 @@ function ProofGraphSummaryStrip({
         href={submitHref}
         className="inline-flex h-8 items-center gap-1.5 border border-cyan-400/30 px-3 text-xs font-bold text-cyan-300 transition hover:bg-cyan-400/10"
       >
-        提交 / 挑战解法
+        提交新解法
       </a>
     </div>
   );
@@ -546,11 +547,13 @@ export function ProblemDetailExperience({
               ) : (
                 <>
               {problem.proofGraph && (
-                <div className="mb-4">
+                <div className="space-y-4 mb-4">
                   <ProofGraphMatrix problem={problem} />
+                  <MethodBoundaryHighlights problem={problem} />
+                  <ReasoningReplayPanel problem={problem} />
+                  <ProofChallengeEdges problem={problem} />
                 </div>
               )}
-              <SolutionTreePanel problem={problem} />
               {problem.solutions.length ? (
                 <div className="space-y-4">
                   {problem.solutions.map((solution, index) => (
@@ -564,12 +567,7 @@ export function ProblemDetailExperience({
                   action={<Link href={submitHref} className="text-sm font-bold text-cyan-300">提交第一个解法</Link>}
                 />
               )}
-              {problem.proofGraph && (
-                <div className="mt-4 space-y-4">
-                  <ReasoningReplayPanel problem={problem} />
-                  <ProofChallengeEdges problem={problem} />
-                </div>
-              )}
+              <SolutionTreePanel problem={problem} />
                 </>
               )}
             </div>
