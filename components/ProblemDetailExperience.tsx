@@ -252,6 +252,56 @@ function ProofGraphSummaryStrip({
   );
 }
 
+function ComparisonTabNav({ problem }: { problem: Problem }) {
+  const pg = problem.proofGraph;
+  const hasReplay = Boolean(
+    pg && (
+      pg.observations.length > 0 ||
+      pg.branches.length > 0 ||
+      pg.transformations.length > 0 ||
+      pg.verificationSteps.length > 0 ||
+      pg.methodBoundaries.length > 0
+    ),
+  );
+  const hasProvenance = Boolean(
+    pg && (
+      pg.observations.length > 0 ||
+      pg.transformations.length > 0 ||
+      pg.challengeEdges.length > 0 ||
+      pg.methodBoundaries.length > 0 ||
+      problem.solutions.some((solution) => solution.thinkingCues?.forkOf)
+    ),
+  );
+  const sections = [
+    { id: "comparison-matrix", label: "解法比较", show: true },
+    { id: "comparison-boundaries", label: "方法边界", show: Boolean(pg?.methodBoundaries.length) },
+    { id: "comparison-replay", label: "推导过程", show: hasReplay },
+    { id: "comparison-challenges", label: "解法挑战", show: Boolean(pg?.challengeEdges.length) },
+    { id: "comparison-diff", label: "解法 Diff", show: problem.solutions.length >= 2 },
+    { id: "comparison-provenance", label: "图谱来源", show: hasProvenance },
+    { id: "comparison-tree", label: "思路树", show: Boolean(problem.solutionTree?.roots.length) },
+  ].filter((section) => section.show);
+
+  return (
+    <nav className="border border-white/10 bg-black/20 px-3 py-2" aria-label="比较工具目录">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="mr-1 text-[10px] font-bold uppercase tracking-wide text-zinc-600">
+          比较工具
+        </span>
+        {sections.map((section) => (
+          <a
+            key={section.id}
+            href={`#${section.id}`}
+            className="inline-flex h-7 items-center border border-white/10 px-2.5 text-xs font-bold text-zinc-400 transition hover:border-cyan-400/35 hover:text-cyan-200"
+          >
+            {section.label}
+          </a>
+        ))}
+      </div>
+    </nav>
+  );
+}
+
 function EmptyState({ title, description, action }: { title: string; description: string; action?: React.ReactNode }) {
   return (
     <div className="border border-white/10 bg-zinc-950 px-6 py-12 text-center">
@@ -539,13 +589,28 @@ export function ProblemDetailExperience({
 
         {activeTab === "comparison" && (
           <section id="proof-graph-comparison-content" className="space-y-4 scroll-mt-28">
-            <ProofGraphMatrix problem={problem} />
-            <MethodBoundaryHighlights problem={problem} />
-            <ReasoningReplayPanel problem={problem} />
-            <ProofChallengeEdges problem={problem} />
-            <SolutionDiffPanel problem={problem} />
-            <ProofGraphProvenancePanel problem={problem} />
-            <SolutionTreePanel problem={problem} />
+            <ComparisonTabNav problem={problem} />
+            <div id="comparison-matrix" className="scroll-mt-28">
+              <ProofGraphMatrix problem={problem} />
+            </div>
+            <div id="comparison-boundaries" className="scroll-mt-28">
+              <MethodBoundaryHighlights problem={problem} />
+            </div>
+            <div id="comparison-replay" className="scroll-mt-28">
+              <ReasoningReplayPanel problem={problem} />
+            </div>
+            <div id="comparison-challenges" className="scroll-mt-28">
+              <ProofChallengeEdges problem={problem} />
+            </div>
+            <div id="comparison-diff" className="scroll-mt-28">
+              <SolutionDiffPanel problem={problem} />
+            </div>
+            <div id="comparison-provenance" className="scroll-mt-28">
+              <ProofGraphProvenancePanel problem={problem} />
+            </div>
+            <div id="comparison-tree" className="scroll-mt-28">
+              <SolutionTreePanel problem={problem} />
+            </div>
           </section>
         )}
 
