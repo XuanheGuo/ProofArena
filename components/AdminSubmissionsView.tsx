@@ -102,6 +102,8 @@ type ReviewForm = {
   graphBoundaryWhyNotPriority: string;
   graphBoundaryWhereItBreaks: string;
   graphBoundaryWhenItWorks: string;
+  // fork provenance — read-only in Cycle A
+  forkOf: string;
 };
 
 const scoreLabels: Array<[keyof SolutionScores, string, string]> = [
@@ -284,6 +286,9 @@ function formFromSubmission(submission: Submission): ReviewForm {
     graphBoundaryWhyNotPriority: String(solution.methodBoundaryWhyNotPriority ?? ''),
     graphBoundaryWhereItBreaks: String(solution.methodBoundaryWhereItBreaks ?? ''),
     graphBoundaryWhenItWorks: String(solution.methodBoundaryWhenItWorks ?? ''),
+    forkOf: typeof solution.forkOf === 'object' && solution.forkOf !== null
+      ? JSON.stringify(solution.forkOf)
+      : '',
   };
 }
 
@@ -333,6 +338,8 @@ function contentFromForm(submission: Submission, form: ReviewForm): SubmissionCo
     // the authoritative field rendered publicly; this key is for graph assembly only.
     verificationSteps: form.verifiableSteps ? splitList(form.verifiableSteps) : undefined,
     // moderator_notes is NOT stored here — it stays in submission.moderator_notes only.
+    // forkOf: provenance preserved as-is; reviewer cannot edit in Cycle A.
+    forkOf: form.forkOf ? (() => { try { return JSON.parse(form.forkOf); } catch { return undefined; } })() : undefined,
   };
 
   return {
@@ -736,6 +743,21 @@ export function AdminSubmissionsView() {
                           <TextField label="解法标签" value={form.tags} onChange={(value) => updateField('tags', value)} placeholder="导数、切线、不等式" />
                         </div>
                       </section>
+
+                      {form.forkOf && (() => {
+                        try {
+                          const f = JSON.parse(form.forkOf) as { solutionId?: string; solutionTitle?: string; solutionAuthor?: string };
+                          return (
+                            <section className="rounded border border-violet-400/25 bg-violet-400/[0.055] p-3">
+                              <p className="text-xs font-bold text-violet-200">Fork 来源（只读）</p>
+                              <p className="mt-1 text-xs leading-5 text-zinc-300">
+                                {f.solutionTitle ?? f.solutionId}
+                                {f.solutionAuthor && <span className="ml-2 text-zinc-500">/ {f.solutionAuthor}</span>}
+                              </p>
+                            </section>
+                          );
+                        } catch { return null; }
+                      })()}
 
                       {form.challengeTargetSolutionId && (
                         <section className="space-y-4 rounded border border-amber-400/25 bg-amber-400/[0.055] p-4">

@@ -295,6 +295,10 @@ async function publishSolution(submission: Submission): Promise<{
               },
             }
           : {}),
+        // forkOf: fork provenance stored under thinking_cues until a dedicated column is added.
+        ...(solutionData.forkOf && typeof solutionData.forkOf === 'object'
+          ? { forkOf: solutionData.forkOf }
+          : {}),
       },
       inspiration: (solutionData.inspiration as string) || '',
       transfer_value: (solutionData.transferValue as string) || '',

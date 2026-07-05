@@ -23,6 +23,9 @@ type ProblemOption = {
     author: string;
     kind: SolutionKind;
     scores?: Record<string, number>;
+    origin?: string;
+    keyTransform?: string;
+    inspiration?: string;
   }>;
 };
 
@@ -243,10 +246,12 @@ ${imageUrls.map((url) => `- ${url}`).join('\n')}
 export function SubmitForm({
   problems,
   initialProblemId,
+  initialForkSolutionId,
   contestContext,
 }: {
   problems: ProblemOption[];
   initialProblemId?: string;
+  initialForkSolutionId?: string;
   contestContext?: {
     contest: Contest;
     contestProblem?: ContestProblem;
@@ -277,6 +282,26 @@ export function SubmitForm({
     problemId: initialSelectedProblemId,
   });
   const [imageFiles, setImageFiles] = useState<File[]>([]);
+  const [forkDismissed, setForkDismissed] = useState(false);
+
+  // One-time fork prefill on mount.
+  const [forkInitialized, setForkInitialized] = useState(false);
+  useEffect(() => {
+    if (forkInitialized || !initialForkSolutionId) return;
+    setForkInitialized(true);
+    const source = availableProblems
+      .find((p) => p.id === initialSelectedProblemId)
+      ?.solutions?.find((s) => s.id === initialForkSolutionId);
+    if (!source) return;
+    setSolutionForm((current) => ({
+      ...current,
+      title: `[fork] ${source.title}`,
+      kind: source.kind,
+      approach: source.origin ?? '',
+      keyTransform: source.keyTransform ?? '',
+      insight: source.inspiration ?? '',
+    }));
+  }, [forkInitialized, initialForkSolutionId, availableProblems]);
   const supabase = createClient();
 
   const selectedProblem = useMemo(
@@ -477,6 +502,15 @@ export function SubmitForm({
                   challengeRisk: challenge.risk,
                 }
               : {}),
+            // fork provenance — stored separately from challenge metadata
+            ...(initialForkSolutionId && !forkDismissed
+              ? (() => {
+                  const src = selectedProblem?.solutions?.find((s) => s.id === initialForkSolutionId);
+                  return src
+                    ? { forkOf: { solutionId: src.id, solutionTitle: src.title, solutionAuthor: src.author } }
+                    : {};
+                })()
+              : {}),
           },
         },
       },
@@ -653,6 +687,32 @@ export function SubmitForm({
               这场比赛还没有关联可投稿的题目。请等待管理员在比赛后台关联题目后再提交。
             </div>
           )}
+          {/* Fork banner */}
+          {initialForkSolutionId && !forkDismissed && (() => {
+            const src = selectedProblem?.solutions?.find((s) => s.id === initialForkSolutionId);
+            if (!src) return null;
+            return (
+              <div className="flex items-start justify-between gap-3 border border-violet-400/30 bg-violet-400/[0.06] p-3 text-sm">
+                <div className="min-w-0">
+                  <span className="font-bold text-violet-200">你正在 fork：</span>
+                  <span className="text-zinc-300">{src.title}</span>
+                  <span className="mx-2 text-zinc-600">/</span>
+                  <span className="text-zinc-500">{src.author}</span>
+                  <p className="mt-1 text-xs leading-5 text-zinc-600">
+                    思路来源、关键转化和最值得学的地方已预填。请修改成你自己的路线；如果要挑战原解，请在下方另选挑战对象并写明主张。
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setForkDismissed(true)}
+                  className="shrink-0 text-xs text-zinc-500 hover:text-white"
+                  aria-label="关闭 fork 提示"
+                >
+                  ✕
+                </button>
+              </div>
+            );
+          })()}
           <label className="grid gap-2 text-sm">
             <span className="font-bold text-white">选择对应题目</span>
             <select

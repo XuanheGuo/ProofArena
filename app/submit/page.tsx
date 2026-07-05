@@ -36,6 +36,7 @@ export default async function SubmitPage({
   const [params, problems] = await Promise.all([searchParams, getProblems()]);
   const contestSlug = typeof params.contest === "string" ? params.contest : undefined;
   const initialProblemId = typeof params.problem === "string" ? params.problem : undefined;
+  const initialForkSolutionId = typeof params.fork === "string" ? params.fork : undefined;
   const contest = contestSlug ? await getContest(contestSlug) : undefined;
   const contestProblem = contest?.problems.find((item) => item.problemId === initialProblemId);
   const problemOptions = problems.map((problem) => ({
@@ -48,6 +49,9 @@ export default async function SubmitPage({
       author: solution.author,
       kind: solution.kind,
       scores: solution.scores,
+      origin: solution.origin,
+      keyTransform: solution.keyTransform,
+      inspiration: solution.inspiration,
     })),
   }));
 
@@ -122,6 +126,7 @@ export default async function SubmitPage({
           <SubmitForm
             problems={problemOptions}
             initialProblemId={initialProblemId}
+            initialForkSolutionId={initialForkSolutionId}
             contestContext={contest ? { contest, contestProblem } : undefined}
           />
         </section>

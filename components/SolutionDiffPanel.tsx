@@ -1,7 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
-import { GitCompare } from "lucide-react";
+import { GitBranch, GitCompare } from "lucide-react";
 import { MathBlock } from "@/components/MathBlock";
 import { ScoreBar } from "@/components/ScoreBar";
 import type { Problem, ProofChallengeEdge, ProofObservation, ProofStrategyBranch, ProofTransformation, Solution } from "@/lib/types";
@@ -235,7 +236,7 @@ export function SolutionDiffPanel({ problem }: { problem: Problem }) {
       <div className="p-4">
         {/* Solution selectors */}
         <div className="mb-4 grid gap-2 sm:grid-cols-2">
-          <label className="grid gap-1 text-xs">
+          <div className="grid gap-1 text-xs">
             <span className="font-bold text-cyan-300">路线 A</span>
             <select
               value={aId}
@@ -248,8 +249,15 @@ export function SolutionDiffPanel({ problem }: { problem: Problem }) {
                 </option>
               ))}
             </select>
-          </label>
-          <label className="grid gap-1 text-xs">
+            <Link
+              href={`/submit?problem=${problem.id}&fork=${solA.id}`}
+              className="inline-flex h-7 items-center gap-1 border border-cyan-400/25 px-2.5 text-[10px] font-bold text-cyan-300 transition hover:bg-cyan-400/10"
+            >
+              <GitBranch className="size-3" />
+              Fork 这条解法
+            </Link>
+          </div>
+          <div className="grid gap-1 text-xs">
             <span className="font-bold text-amber-300">路线 B</span>
             <select
               value={bId}
@@ -262,7 +270,14 @@ export function SolutionDiffPanel({ problem }: { problem: Problem }) {
                 </option>
               ))}
             </select>
-          </label>
+            <Link
+              href={`/submit?problem=${problem.id}&fork=${solB.id}`}
+              className="inline-flex h-7 items-center gap-1 border border-amber-400/25 px-2.5 text-[10px] font-bold text-amber-300 transition hover:bg-amber-400/10"
+            >
+              <GitBranch className="size-3" />
+              Fork 这条解法
+            </Link>
+          </div>
         </div>
 
         <div className="space-y-5">
