@@ -27,9 +27,6 @@ const lightColors: Record<GraphColor, string> = {
 
 const dashMap = { solid: 0, dashed: 2 } as const;
 
-const jsxgraphPromise: Promise<JXGApi> | null =
-  typeof window === "undefined" ? null : import("jsxgraph");
-
 export function FunctionGraphPanel({ spec }: { spec: FunctionGraphSpec }) {
   const reactId = useId();
   const boardId = `fg-${reactId.replace(/:/g, "")}`;
@@ -50,7 +47,7 @@ export function FunctionGraphPanel({ spec }: { spec: FunctionGraphSpec }) {
         await waitForElement(boardId);
         if (disposed) return;
 
-        const JXG = await withTimeout(jsxgraphPromise ?? import("jsxgraph"), 8000);
+        const JXG = await withTimeout(import("jsxgraph"), 8000);
         if (disposed) return;
         localApi = JXG;
 
@@ -253,12 +250,12 @@ export function FunctionGraphPanel({ spec }: { spec: FunctionGraphSpec }) {
             {spec.sliders.map((s) => (
               <div key={s.name} className="flex items-center justify-between text-xs text-zinc-500">
                 <span className="font-mono text-cyan-400">{s.label}</span>
-                <span>[{s.min}, {s.max}] step {s.step}</span>
+                <span>[{s.min}, {s.max}]，步长 {s.step}</span>
               </div>
             ))}
           </div>
           <p className="mt-5 font-mono text-[10px] uppercase leading-5 text-zinc-600">
-            Drag sliders · wheel to zoom · drag to pan
+            拖动滑块 · 滚轮缩放 · 拖拽平移
           </p>
         </aside>
       </div>

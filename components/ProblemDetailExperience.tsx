@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
@@ -19,9 +20,7 @@ import type { Contest, ContestProblem, KnowledgeNode, Problem, Solution } from "
 import { MathBlock } from "@/components/MathBlock";
 import { ScoreBar } from "@/components/ScoreBar";
 import { VerificationPanel } from "@/components/VerificationPanel";
-import { FunctionGraphPanel } from "@/components/FunctionGraphPanel";
 import { SolutionTreePanel } from "@/components/SolutionTreePanel";
-import { MathVisualization, mathVizProblemIds } from "@/components/MathVisualization";
 import { SolutionRatingPanel } from "@/components/SolutionRatingPanel";
 import { ProofGraphMatrix } from "@/components/ProofGraphMatrix";
 import { MethodBoundaryHighlights } from "@/components/MethodBoundaryHighlights";
@@ -34,6 +33,16 @@ import { graphSpecRegistry } from "@/data/graph-specs";
 import { difficultyBadgeClass } from "@/lib/problem-presentation";
 import { getSolutionKindMeta } from "@/lib/solution-kinds";
 import { contestSolutionTypeMeta } from "@/lib/contest-meta";
+import { mathVizProblemIds } from "@/lib/math-viz-problem-ids";
+
+const FunctionGraphPanel = dynamic(
+  () => import("@/components/FunctionGraphPanel").then((mod) => mod.FunctionGraphPanel),
+  { ssr: false, loading: () => <div className="min-h-96 border border-cyan-400/25 bg-zinc-950 lg:min-h-[34rem]" /> },
+);
+const MathVisualization = dynamic(
+  () => import("@/components/MathVisualization").then((mod) => mod.MathVisualization),
+  { ssr: false, loading: () => <div className="min-h-96 border border-cyan-400/25 bg-zinc-950 lg:min-h-[34rem]" /> },
+);
 
 type DetailTab = "problem" | "comparison" | "solutions" | "knowledge" | "related" | "graph";
 

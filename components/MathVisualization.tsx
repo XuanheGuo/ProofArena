@@ -7,8 +7,6 @@ import { MathBlock } from "@/components/MathBlock";
 type VisualizationKind = "tianjin-tangent-ellipse" | "trajectory-classifier" | "derivative-proof";
 type JXGApi = typeof import("jsxgraph");
 
-export const mathVizProblemIds = new Set(["tj-2026-18", "ng2-2026-18", "tj-2026-20"]);
-
 interface VisualizationSpec {
   kind: VisualizationKind;
   title: string;
@@ -64,8 +62,6 @@ const lightGraphColors = {
 
 let colors = darkGraphColors;
 
-const jsxgraphPromise: Promise<JXGApi> | null = typeof window === "undefined" ? null : import("jsxgraph");
-
 export function MathVisualization({ problemId }: { problemId: string }) {
   const reactId = useId();
   const boardId = `math-viz-${reactId.replace(/:/g, "")}`;
@@ -86,7 +82,7 @@ export function MathVisualization({ problemId }: { problemId: string }) {
       try {
         await waitForBoardElement(boardId);
         if (disposed) return;
-        const JXGModule = await withTimeout(jsxgraphPromise ?? import("jsxgraph"), 8000);
+        const JXGModule = await withTimeout(import("jsxgraph"), 8000);
         if (disposed) return;
         const JXGApi = JXGModule;
         localJXGApi = JXGApi;
@@ -197,7 +193,7 @@ export function MathVisualization({ problemId }: { problemId: string }) {
             </p>
           </div>
           <p className="mt-5 font-mono text-[10px] uppercase leading-5 text-zinc-600">
-            Drag points / move sliders / wheel to zoom
+            拖动点 · 拖动滑块 · 滚轮缩放
           </p>
         </aside>
       </div>
