@@ -1,3 +1,4 @@
+import { cache } from 'react';
 import { createClient } from '@/lib/supabase-server';
 import { getProblem as getStaticProblem, problems as staticProblems } from '@/data/problems';
 import { hasSupabasePublicEnv } from '@/lib/supabase-env';
@@ -130,7 +131,7 @@ export async function getProblems(): Promise<Problem[]> {
   return data.map(toProblem);
 }
 
-export async function getProblem(id: string): Promise<Problem | null> {
+export const getProblem = cache(async (id: string): Promise<Problem | null> => {
   if (!hasSupabasePublicEnv()) {
     const fallback = getStaticProblem(id);
     return fallback ? markFallbackProblem(fallback, '未配置 Supabase 环境变量，当前使用静态题库。') : null;
@@ -149,7 +150,7 @@ export async function getProblem(id: string): Promise<Problem | null> {
     return fallback ? markFallbackProblem(fallback) : null;
   }
   return toProblem(data);
-}
+});
 
 // ── Pure Utility Functions (no DB needed) ──────────────────────────────────
 

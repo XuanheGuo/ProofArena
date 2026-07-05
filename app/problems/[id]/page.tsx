@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ProblemDetailExperience } from "@/components/ProblemDetailExperience";
 import { getProblem, getProblems } from "@/lib/db";
@@ -6,6 +7,25 @@ import { getContestForProblem } from "@/lib/contests";
 import type { KnowledgeNode } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
+  const problem = await getProblem(id);
+  if (!problem) return {};
+
+  const rawDescription = problem.statement[0]?.replace(/\$/g, "") ?? "";
+  const description =
+    rawDescription.length > 120 ? `${rawDescription.slice(0, 120)}…` : rawDescription;
+
+  return {
+    title: `${problem.title} · ${problem.year}${problem.region} | ProofArena`,
+    description: description || undefined,
+  };
+}
 
 function uniqueKnowledgeNodes(ids: string[]) {
   const seen = new Set<string>();

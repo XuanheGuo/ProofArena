@@ -1,10 +1,10 @@
-import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, CheckCircle2, Compass, Send, Swords, Trophy } from "lucide-react";
 import { getLearningIndex, getProblems } from "@/lib/db";
 import { getFeaturedContest } from "@/lib/contests";
 import { difficultyBadgeClass } from "@/lib/problem-presentation";
 import { MathBlock } from "@/components/MathBlock";
+import { ContestPromoCard } from "@/components/ContestPromoCard";
 
 export const revalidate = 3600;
 
@@ -23,15 +23,8 @@ export default async function HomePage() {
   return (
     <main>
       <section className="hero-arena relative min-h-[68vh] overflow-hidden border-b border-white/10">
-        <Image
-          src="/arena-background.png"
-          alt=""
-          fill
-          priority
-          className="pointer-events-none object-cover object-center opacity-65"
-        />
         <div className="hero-overlay pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,#09090b_5%,rgba(9,9,11,.92)_36%,rgba(9,9,11,.25)_75%,#09090b_100%)]" />
-        <div className="grid-surface pointer-events-none absolute inset-0 opacity-40" />
+        <div className="grid-surface pointer-events-none absolute inset-0 opacity-50" />
         <div className="relative mx-auto flex min-h-[68vh] max-w-7xl items-center px-4 py-16 md:px-6">
           <div className="max-w-3xl">
             <div className="mb-5 flex items-center gap-3 font-mono text-xs uppercase tracking-[0.18em] text-cyan-300">
@@ -158,7 +151,7 @@ export default async function HomePage() {
               一个正确但考场上写不完的解法，和一个短、稳、能迁移的解法，不该得到相同评价。
             </p>
           </div>
-          <div className="grid gap-px bg-white/10 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-px bg-white/10 lg:grid-cols-5">
             {[
               [CheckCircle2, "正确性", "推理链完整、边界无遗漏"],
               [Swords, "考场性", "时间可控、路径容易识别"],
@@ -192,21 +185,7 @@ export default async function HomePage() {
       </footer>
 
       {currentContest && (
-        <Link
-          href={`/contests/${currentContest.slug}`}
-          className="fixed bottom-4 right-4 z-50 w-[calc(100vw-2rem)] max-w-[20rem] border border-amber-400/25 bg-zinc-950/95 p-3 shadow-2xl shadow-black/30 transition hover:border-amber-300/50 sm:bottom-5 sm:right-5"
-        >
-          <div className="flex items-start gap-3">
-            <span className="grid size-9 shrink-0 place-items-center bg-amber-300 text-zinc-950">
-              <Trophy className="size-4" />
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block text-sm font-bold text-white">{currentContest.title}</span>
-              <span className="mt-1 line-clamp-2 block text-xs leading-5 text-zinc-500">{currentContest.tagline}</span>
-            </span>
-            <ArrowRight className="mt-1 size-4 shrink-0 text-zinc-500" />
-          </div>
-        </Link>
+        <ContestPromoCard slug={currentContest.slug} title={currentContest.title} />
       )}
     </main>
   );

@@ -95,12 +95,12 @@ function drawHyperbolaFocalTriangle(
   board.create("line", [F, P], segStyle(c.red));
   board.create("line", [A, P], segStyle(c.green));
 
-  // Dynamic labels
+  // Dynamic labels (kept clear of the slider's own name/value readout above y≈3)
   board.create(
     "text",
     [
       -5,
-      3.6,
+      2.55,
       () => `e = ${getE().toFixed(3)}   |FA| = ${(1 + getE()).toFixed(3)}`,
     ],
     { color: c.amber, fontSize: 13, fixed: true, highlight: false },
@@ -109,7 +109,7 @@ function drawHyperbolaFocalTriangle(
     "text",
     [
       -5,
-      3.0,
+      1.95,
       () => {
         const px = Px();
         const py = Py();
