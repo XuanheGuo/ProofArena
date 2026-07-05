@@ -28,6 +28,7 @@ import { MethodBoundaryHighlights } from "@/components/MethodBoundaryHighlights"
 import { ReasoningReplayPanel } from "@/components/ReasoningReplayPanel";
 import { ProofChallengeEdges } from "@/components/ProofChallengeEdges";
 import { SolutionDiffPanel } from "@/components/SolutionDiffPanel";
+import { ProofGraphProvenancePanel } from "@/components/ProofGraphProvenancePanel";
 import { graphSpecRegistry } from "@/data/graph-specs";
 import { difficultyBadgeClass } from "@/lib/problem-presentation";
 import { getSolutionKindMeta } from "@/lib/solution-kinds";
@@ -543,6 +544,7 @@ export function ProblemDetailExperience({
             <ReasoningReplayPanel problem={problem} />
             <ProofChallengeEdges problem={problem} />
             <SolutionDiffPanel problem={problem} />
+            <ProofGraphProvenancePanel problem={problem} />
             <SolutionTreePanel problem={problem} />
           </section>
         )}
