@@ -112,23 +112,6 @@ const emptyProblem = {
   unlockMode: "manual" as DbContestProblem["unlock_mode"],
 };
 
-const emptyDraftProblem = {
-  year: new Date().getFullYear(),
-  region: "天津卷" as ExamRegion,
-  paper: "",
-  number: "",
-  difficulty: "中档" as Difficulty,
-  questionType: "解答" as QuestionType,
-  tags: "",
-  title: "",
-  statement: "",
-  answer: "",
-  notes: "",
-};
-
-function generateDraftId() {
-  return `draft-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
-}
 
 const emptyAward = {
   type: "best_overall" as ContestAwardType,
@@ -172,7 +155,6 @@ export function AdminContestsView({ problems }: { problems: ProblemOption[] }) {
   const [problemSourceMode, setProblemSourceMode] = useState<"public" | "draft">("public");
   const [awardForm, setAwardForm] = useState(emptyAward);
   const [draftProblems, setDraftProblems] = useState<DbProblemDraft[]>([]);
-  const [draftForm, setDraftForm] = useState(emptyDraftProblem);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
@@ -247,36 +229,6 @@ export function AdminContestsView({ problems }: { problems: ProblemOption[] }) {
       return;
     }
     setDraftProblems((data ?? []) as DbProblemDraft[]);
-  }
-
-  async function createDraftProblem() {
-    setSaving(true);
-    setError("");
-    setMessage("");
-
-    const { error: insertError } = await supabase.from("problem_drafts").insert({
-      id: generateDraftId(),
-      year: Number(draftForm.year),
-      region: draftForm.region,
-      paper: draftForm.paper.trim(),
-      number: draftForm.number.trim(),
-      difficulty: draftForm.difficulty,
-      question_type: draftForm.questionType,
-      tags: draftForm.tags.split(/[,，]/).map((tag) => tag.trim()).filter(Boolean),
-      title: draftForm.title.trim(),
-      statement: draftForm.statement.split(/\n+/).map((line) => line.trim()).filter(Boolean),
-      answer: draftForm.answer.trim(),
-      notes: draftForm.notes.trim(),
-    });
-
-    setSaving(false);
-    if (insertError) {
-      setError(insertError.message || "创建未公开题目失败。请确认已执行 012_problem_vault.sql。");
-      return;
-    }
-    setDraftForm(emptyDraftProblem);
-    setMessage("未公开题目已创建，可以在「添加赛题」里关联为未公开题库来源。");
-    await loadDraftProblems();
   }
 
   async function promoteDraft(draftId: string) {
@@ -836,63 +788,16 @@ export function AdminContestsView({ problems }: { problems: ProblemOption[] }) {
             ))}
           </div>
 
-          <div className="mt-5 grid gap-4 border-t border-white/10 pt-5 md:grid-cols-2">
-            <TextField label="年份" type="number" value={String(draftForm.year)} onChange={(year) => setDraftForm({ ...draftForm, year: Number(year) })} />
-            <label className="grid gap-2 text-sm">
-              <span className="font-bold text-white">卷别</span>
-              <select
-                value={draftForm.region}
-                onChange={(event) => setDraftForm({ ...draftForm, region: event.target.value as ExamRegion })}
-                className="h-11 border border-white/10 bg-black/20 px-3 text-sm text-white"
-              >
-                {EXAM_REGIONS.map((region) => <option key={region} value={region}>{region}</option>)}
-              </select>
-            </label>
-            <TextField label="卷面（如：数学）" value={draftForm.paper} onChange={(paper) => setDraftForm({ ...draftForm, paper })} />
-            <TextField label="题号" value={draftForm.number} onChange={(number) => setDraftForm({ ...draftForm, number })} />
-            <label className="grid gap-2 text-sm">
-              <span className="font-bold text-white">难度</span>
-              <select
-                value={draftForm.difficulty}
-                onChange={(event) => setDraftForm({ ...draftForm, difficulty: event.target.value as Difficulty })}
-                className="h-11 border border-white/10 bg-black/20 px-3 text-sm text-white"
-              >
-                {DIFFICULTIES.map((difficulty) => <option key={difficulty} value={difficulty}>{difficulty}</option>)}
-              </select>
-            </label>
-            <label className="grid gap-2 text-sm">
-              <span className="font-bold text-white">题型</span>
-              <select
-                value={draftForm.questionType}
-                onChange={(event) => setDraftForm({ ...draftForm, questionType: event.target.value as QuestionType })}
-                className="h-11 border border-white/10 bg-black/20 px-3 text-sm text-white"
-              >
-                {QUESTION_TYPES.map((type) => <option key={type} value={type}>{type}</option>)}
-              </select>
-            </label>
-            <TextField label="标签（逗号分隔）" value={draftForm.tags} onChange={(tags) => setDraftForm({ ...draftForm, tags })} />
-            <div className="md:col-span-2">
-              <TextField label="标题" value={draftForm.title} onChange={(title) => setDraftForm({ ...draftForm, title })} />
-            </div>
-            <div className="md:col-span-2">
-              <TextArea label="题干（一行一段）" value={draftForm.statement} onChange={(statement) => setDraftForm({ ...draftForm, statement })} rows={6} />
-            </div>
-            <div className="md:col-span-2">
-              <TextArea label="参考答案" value={draftForm.answer} onChange={(answer) => setDraftForm({ ...draftForm, answer })} rows={3} />
-            </div>
-            <div className="md:col-span-2">
-              <TextArea label="内部备注（仅管理员可见，不会展示给参赛者）" value={draftForm.notes} onChange={(notes) => setDraftForm({ ...draftForm, notes })} rows={3} />
-            </div>
+          <div className="mt-5 border-t border-white/10 pt-4">
+            <Link
+              href="/admin/problem-vault/new"
+              className="inline-flex items-center gap-2 border border-violet-400/40 bg-violet-400/[0.06] px-4 py-2 text-sm font-bold text-violet-300 transition hover:border-violet-400/60 hover:bg-violet-400/10"
+            >
+              <Plus className="size-4" />
+              新建草稿题目
+            </Link>
+            <p className="mt-2 text-xs text-zinc-600">在草稿箱中创建和编辑题目，完成后回到此处关联赛题。</p>
           </div>
-          <button
-            type="button"
-            onClick={createDraftProblem}
-            disabled={saving || !draftForm.title.trim() || !draftForm.statement.trim()}
-            className="mt-5 inline-flex h-10 items-center justify-center gap-2 border border-violet-400/40 px-4 text-sm font-bold text-violet-300 disabled:opacity-50"
-          >
-            <Plus className="size-4" />
-            创建未公开题目
-          </button>
         </section>
 
         {selectedContest && (
