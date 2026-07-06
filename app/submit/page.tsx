@@ -13,6 +13,8 @@ import {
 import { SubmitForm } from "@/components/SubmitForm";
 import { getContest } from "@/lib/contests";
 import { getProblems } from "@/lib/db";
+import { adaptProblemDraftToProblem, getProblemDraftForContestDisplay } from "@/lib/problem-drafts";
+import { isContestProblemLocked } from "@/lib/types";
 
 export const metadata: Metadata = {
   title: "提交题目或解法 | ProofArena",
@@ -38,22 +40,55 @@ export default async function SubmitPage({
   const initialProblemId = typeof params.problem === "string" ? params.problem : undefined;
   const initialForkSolutionId = typeof params.fork === "string" ? params.fork : undefined;
   const contest = contestSlug ? await getContest(contestSlug) : undefined;
-  const contestProblem = contest?.problems.find((item) => item.problemId === initialProblemId);
-  const problemOptions = problems.map((problem) => ({
-    id: problem.id,
-    title: problem.title,
-    source: `${problem.year} ${problem.region} · ${problem.paper}${problem.number ? ` · ${problem.number}` : ""}`,
-    solutions: problem.solutions.map((solution) => ({
-      id: solution.id,
-      title: solution.title,
-      author: solution.author,
-      kind: solution.kind,
-      scores: solution.scores,
-      origin: solution.origin,
-      keyTransform: solution.keyTransform,
-      inspiration: solution.inspiration,
+
+  // A contest problem may be backed by either a public problem (problemId)
+  // or a Problem Vault draft (draftProblemId).  Find the match either way.
+  const contestProblem = contest?.problems.find(
+    (item) => item.problemId === initialProblemId || item.draftProblemId === initialProblemId,
+  );
+
+  // If the matched contest problem is backed by a draft (not yet in the
+  // public catalog), fetch its minimal data via the service-role path so
+  // participants can still read the title/statement and submit. We only do
+  // this when the contest problem is unlocked — isContestProblemLocked
+  // guards against premature reveal here just as it does in the dedicated
+  // /contests/[slug]/problems/[id] route.
+  let draftProblemOption: { id: string; title: string; source: string; solutions: never[] } | null = null;
+  if (
+    contest &&
+    contestProblem?.draftProblemId &&
+    !isContestProblemLocked(contest, contestProblem)
+  ) {
+    const draft = await getProblemDraftForContestDisplay(contestProblem.draftProblemId);
+    if (draft) {
+      const adapted = adaptProblemDraftToProblem(draft);
+      draftProblemOption = {
+        id: adapted.id,
+        title: adapted.title,
+        source: `${adapted.year} ${adapted.region}${adapted.number ? ` · ${adapted.number}` : ""}`,
+        solutions: [],
+      };
+    }
+  }
+
+  const problemOptions = [
+    ...(draftProblemOption ? [draftProblemOption] : []),
+    ...problems.map((problem) => ({
+      id: problem.id,
+      title: problem.title,
+      source: `${problem.year} ${problem.region} · ${problem.paper}${problem.number ? ` · ${problem.number}` : ""}`,
+      solutions: problem.solutions.map((solution) => ({
+        id: solution.id,
+        title: solution.title,
+        author: solution.author,
+        kind: solution.kind,
+        scores: solution.scores,
+        origin: solution.origin,
+        keyTransform: solution.keyTransform,
+        inspiration: solution.inspiration,
+      })),
     })),
-  }));
+  ];
 
   return (
     <main className="grid-surface min-h-screen">

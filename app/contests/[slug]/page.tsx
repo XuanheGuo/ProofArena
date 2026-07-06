@@ -22,8 +22,10 @@ import { contestStatusMeta, contestSolutionTypeMeta } from "@/lib/contest-meta";
 import { ContestThoughtArena } from "@/components/ContestThoughtArena";
 import { getContest, getContestLeaderboard, getContestSubmissionStats, getContests, getContestThoughts, getContestUserRankings } from "@/lib/contests";
 import { getProblems, getSolutionAverage } from "@/lib/db";
+import { getProblemDraftTitles } from "@/lib/problem-drafts";
 import { difficultyBadgeClass } from "@/lib/problem-presentation";
-import { getEffectiveProblemStatus } from "@/lib/types";
+import { getEffectiveProblemStatus, isContestProblemLocked } from "@/lib/types";
+import { formatContestDateTime } from "@/lib/format-contest-time";
 
 type PageProps = {
   params: Promise<{ slug: string }>;
@@ -34,15 +36,6 @@ export const revalidate = 300;
 export async function generateStaticParams() {
   const contests = await getContests();
   return contests.map((contest) => ({ slug: contest.slug }));
-}
-
-function formatDateTime(value: string) {
-  return new Intl.DateTimeFormat("zh-CN", {
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(new Date(value));
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
@@ -79,14 +72,35 @@ export default async function ContestDetailPage({ params }: PageProps) {
     getContestThoughts(slug),
   ]);
   const problemMap = new Map(problems.map((problem) => [problem.id, problem]));
-  const linkedContestProblems = contest.problems.map((contestProblem) => ({
+  const now = new Date();
+  const status = contestStatusMeta[contest.status];
+  const linkedWithStatus = contest.problems.map((contestProblem) => ({
     contestProblem,
     problem: contestProblem.problemId ? problemMap.get(contestProblem.problemId) : undefined,
+    effectiveStatus: getEffectiveProblemStatus(contestProblem, now),
+    // A contest problem is "enterable" the moment it has a route target —
+    // whether that target lives in the public catalog or is still a
+    // Problem Vault draft — as long as it isn't locked.
+    isLocked: isContestProblemLocked(contest, contestProblem, now),
+    routeId: contestProblem.problemId ?? contestProblem.draftProblemId ?? null,
   }));
-  const solutionCount = linkedContestProblems.reduce((sum, item) => sum + (item.problem?.solutions.length ?? 0), 0);
-  const bestSolutions = linkedContestProblems
-    .flatMap(({ contestProblem, problem }) => {
-      if (!problem) return [];
+  const solutionCount = linkedWithStatus.reduce((sum, item) => sum + (item.problem?.solutions.length ?? 0), 0);
+
+  // Once unlocked, a draft-backed contest problem's title has to come from a
+  // trusted server read — RLS on problem_drafts denies regular visitors.
+  // Never fetch (let alone render) a title for one that's still locked.
+  const unlockedDraftIds = linkedWithStatus
+    .filter((item) => !item.isLocked && item.contestProblem.draftProblemId)
+    .map((item) => item.contestProblem.draftProblemId as string);
+  const draftTitleMap = await getProblemDraftTitles(unlockedDraftIds);
+
+  // Only ever surface a best-solution fallback entry for a contest problem
+  // that has actually unlocked — otherwise this "best solution" fallback
+  // would announce a locked day's title, author, and link before it should
+  // be visible at all.
+  const bestSolutions = linkedWithStatus
+    .flatMap(({ contestProblem, problem, isLocked }) => {
+      if (!problem || isLocked) return [];
       return problem.solutions.map((solution) => ({
         contestProblem,
         problem,
@@ -96,16 +110,17 @@ export default async function ContestDetailPage({ params }: PageProps) {
     })
     .sort((a, b) => b.average - a.average)
     .slice(0, 5);
-  const now = new Date();
-  const status = contestStatusMeta[contest.status];
-  const linkedWithStatus = linkedContestProblems.map((item) => ({
-    ...item,
-    effectiveStatus: getEffectiveProblemStatus(item.contestProblem, now),
-  }));
-  const todayProblem = linkedWithStatus.find(({ effectiveStatus }) => effectiveStatus === "open")?.contestProblem;
-  const hideLeaderboard = contest.status === "active";
+  const todayProblem = linkedWithStatus.find((item) => !item.isLocked && item.effectiveStatus === "open")?.contestProblem;
+  const todayRouteId = todayProblem?.problemId ?? todayProblem?.draftProblemId;
+  // Hide the leaderboard for the whole draft period too, not just while
+  // active: pre-launch, any fallback ranking would just be leftover static
+  // solution data for problems that haven't been revealed yet.
+  const hideLeaderboard = contest.status === "active" || contest.status === "draft";
   const useDbLeaderboard = leaderboard.solutions.length > 0;
-  const problemTitles = Object.fromEntries(problems.map((problem) => [problem.id, problem.title]));
+  const problemTitles = {
+    ...Object.fromEntries(problems.map((problem) => [problem.id, problem.title])),
+    ...draftTitleMap,
+  };
 
   return (
     <main className="grid-surface min-h-screen">
@@ -120,16 +135,16 @@ export default async function ContestDetailPage({ params }: PageProps) {
               <div className="flex flex-wrap items-center gap-2 text-xs">
                 <span className={`border px-2.5 py-1 font-bold ${status.className}`}>{status.label}</span>
                 <span className="border border-white/10 px-2.5 py-1 text-zinc-500">
-                  {formatDateTime(contest.startAt)} - {formatDateTime(contest.endAt)}
+                  {formatContestDateTime(contest.startAt)} - {formatContestDateTime(contest.endAt)}（北京时间）
                 </span>
               </div>
               <h1 className="mt-5 text-3xl font-black leading-tight text-white sm:text-4xl md:text-5xl">{contest.title}</h1>
               <p className="mt-4 max-w-3xl text-base leading-8 text-zinc-300">{contest.tagline}</p>
               <p className="mt-2 text-sm leading-7 text-zinc-500">{contest.description}</p>
               <div className="mt-6 flex flex-wrap gap-2">
-                {todayProblem?.problemId && (
+                {todayRouteId && (
                   <Link
-                    href={`/contests/${contest.slug}/problems/${todayProblem.problemId}`}
+                    href={`/contests/${contest.slug}/problems/${todayRouteId}`}
                     className="inline-flex h-10 items-center gap-2 bg-cyan-400 px-5 text-sm font-bold text-zinc-950 transition hover:bg-cyan-300"
                   >
                     <Flame className="size-4" />
@@ -224,12 +239,12 @@ export default async function ContestDetailPage({ params }: PageProps) {
             <div className="flex items-end justify-between gap-4">
               <div>
                 <h2 className="text-xl font-black text-white">题目安排</h2>
-                <p className="mt-1 text-sm text-zinc-500">第一期题目可以继续通过 seed 或后台调整，不影响活动页面结构。</p>
               </div>
             </div>
             <div className="grid gap-3">
-              {linkedWithStatus.map(({ contestProblem, problem, effectiveStatus }) => {
-                const isLocked = effectiveStatus === "locked";
+              {linkedWithStatus.map(({ contestProblem, problem, effectiveStatus, isLocked, routeId }) => {
+                const draftTitle = contestProblem.draftProblemId ? draftTitleMap[contestProblem.draftProblemId] : undefined;
+                const displayTitle = problem?.title ?? draftTitle;
                 return (
                   <article key={contestProblem.id} className={`border bg-zinc-950 transition ${isLocked ? "border-white/[0.06] opacity-50" : "border-white/10 hover:border-white/20"}`}>
                     <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-start sm:justify-between">
@@ -238,6 +253,9 @@ export default async function ContestDetailPage({ params }: PageProps) {
                           <span className="bg-cyan-400 px-2 py-0.5 font-bold text-zinc-950">Day {contestProblem.dayIndex}</span>
                           <span className="border border-white/15 px-2 py-0.5 text-zinc-400">{contestProblem.title}</span>
                           {problem && !isLocked && <span className={`border px-2 py-0.5 ${difficultyBadgeClass[problem.difficulty]}`}>{problem.difficulty}</span>}
+                          {!isLocked && !problem && draftTitle && (
+                            <span className="border border-violet-400/30 bg-violet-400/10 px-2 py-0.5 text-violet-300">未公开新题</span>
+                          )}
                           {(() => {
                             const statusLabel = getProblemStatusLabel(effectiveStatus, contest);
                             return statusLabel ? (
@@ -252,7 +270,7 @@ export default async function ContestDetailPage({ params }: PageProps) {
                           )}
                         </div>
                         <h3 className="mt-3 font-bold text-white">
-                          {isLocked ? contestProblem.theme : (problem?.title ?? "题目待关联")}
+                          {isLocked ? contestProblem.theme : (displayTitle ?? "题目待关联")}
                         </h3>
                         <p className="mt-1.5 text-sm leading-6 text-zinc-500">{contestProblem.theme}</p>
                       </div>
@@ -274,17 +292,17 @@ export default async function ContestDetailPage({ params }: PageProps) {
                     <div className="flex flex-col gap-2 border-t border-white/[0.07] px-4 pb-4 pt-3 sm:flex-row sm:items-center sm:justify-between">
                       <span className="inline-flex items-center gap-1.5 text-xs text-zinc-500">
                         <CalendarDays className="size-3.5 shrink-0" />
-                        {formatDateTime(contestProblem.openAt)} — {formatDateTime(contestProblem.closeAt)}
+                        {formatContestDateTime(contestProblem.openAt)} — {formatContestDateTime(contestProblem.closeAt)}（北京时间）
                       </span>
                       {isLocked ? (
                         <span className="inline-flex items-center gap-1.5 text-xs text-zinc-500">
                           <Lock className="size-3.5" />
-                          {contestProblem.unlockMode === "auto_time" ? `${formatDateTime(contestProblem.openAt)} 自动解锁` : "等待管理员解锁"}
+                          {contestProblem.unlockMode === "auto_time" ? `${formatContestDateTime(contestProblem.openAt)}（北京时间）自动解锁` : "等待管理员解锁"}
                         </span>
-                      ) : problem ? (
+                      ) : routeId ? (
                         <div className="flex flex-wrap items-center gap-2">
                           <Link
-                            href={`/contests/${contest.slug}/problems/${problem.id}`}
+                            href={`/contests/${contest.slug}/problems/${routeId}`}
                             className="inline-flex h-8 items-center gap-1.5 border border-white/15 px-3 text-xs font-bold text-zinc-200 transition hover:border-cyan-400/40 hover:text-cyan-300"
                           >
                             进入题目
@@ -292,7 +310,7 @@ export default async function ContestDetailPage({ params }: PageProps) {
                           </Link>
                           {(contest.status === "active" || contest.status === "judging") && (
                             <Link
-                              href={`/submit?contest=${contest.slug}&problem=${problem.id}`}
+                              href={`/submit?contest=${contest.slug}&problem=${routeId}`}
                               className="inline-flex h-8 items-center gap-1.5 border border-amber-400/40 bg-amber-400/10 px-3 text-xs font-bold text-amber-300 transition hover:bg-amber-400/15"
                             >
                               提交解法
@@ -333,7 +351,9 @@ export default async function ContestDetailPage({ params }: PageProps) {
             {hideLeaderboard ? (
               <div className="mt-5 border border-amber-500/25 bg-amber-500/[0.08] p-8 text-center">
                 <Trophy className="mx-auto size-6 text-amber-400" />
-                <p className="mt-3 text-sm font-bold text-white">比赛进行中，榜单暂不展示</p>
+                <p className="mt-3 text-sm font-bold text-white">
+                  {contest.status === "draft" ? "比赛尚未开始，榜单暂不展示" : "比赛进行中，榜单暂不展示"}
+                </p>
                 <p className="mx-auto mt-2 max-w-md text-xs leading-5 text-zinc-500">
                   等进入评审阶段后再公开候选榜，避免参赛时被已有高分路线带偏。
                 </p>

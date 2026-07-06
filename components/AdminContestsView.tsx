@@ -2,11 +2,17 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Award, CalendarDays, CheckCircle2, Clock, Database, Lock, LockOpen, Plus, RefreshCw, Save, Trash2, Trophy } from "lucide-react";
+import { Award, BookMarked, CalendarDays, CheckCircle2, Clock, Database, Lock, LockOpen, Plus, RefreshCw, Save, Trash2, Trophy, UploadCloud } from "lucide-react";
 import { contests as seededContests } from "@/data/contests";
 import { contestAwardMeta, contestSolutionTypeMeta, contestStatusMeta } from "@/lib/contest-meta";
-import type { ContestAwardType, ContestStatus } from "@/lib/types";
+import type { ContestAwardType, ContestStatus, Difficulty, ExamRegion, QuestionType } from "@/lib/types";
 import { createClient } from "@/lib/supabase-client";
+import { formatContestDateTime } from "@/lib/format-contest-time";
+import { promoteProblemDraft } from "@/lib/promote-problem-draft";
+
+const EXAM_REGIONS: ExamRegion[] = ["天津卷", "北京卷", "新高考 I 卷", "新高考 II 卷", "清华强基", "北大强基"];
+const DIFFICULTIES: Difficulty[] = ["基础", "中档", "压轴"];
+const QUESTION_TYPES: QuestionType[] = ["单选", "多选", "填空", "解答"];
 
 type ProblemOption = {
   id: string;
@@ -34,6 +40,7 @@ type DbContestProblem = {
   id: string;
   contest_id: string;
   problem_id: string | null;
+  draft_problem_id: string | null;
   day_index: number;
   title: string;
   theme: string;
@@ -42,6 +49,28 @@ type DbContestProblem = {
   weight: number;
   status: "locked" | "open" | "reviewing" | "closed";
   unlock_mode: "manual" | "auto_time";
+};
+
+// A Problem Vault entry — see lib/problem-drafts.ts. Fetched directly from
+// the client here (like contests/contest_problems already are); RLS on
+// problem_drafts restricts rows to admin/moderator, so a non-moderator
+// session just sees an empty vault rather than an error.
+type DbProblemDraft = {
+  id: string;
+  year: number;
+  region: string;
+  paper: string;
+  number: string;
+  difficulty: string;
+  question_type: string;
+  tags: string[];
+  title: string;
+  statement: string[];
+  answer: string;
+  notes: string;
+  status: "drafting" | "promoted";
+  promoted_problem_id: string | null;
+  created_at: string;
 };
 
 type DbAward = {
@@ -72,6 +101,7 @@ const emptyContest = {
 
 const emptyProblem = {
   problemId: "",
+  draftProblemId: "",
   dayIndex: 1,
   title: "",
   theme: "",
@@ -81,6 +111,24 @@ const emptyProblem = {
   status: "locked" as DbContestProblem["status"],
   unlockMode: "manual" as DbContestProblem["unlock_mode"],
 };
+
+const emptyDraftProblem = {
+  year: new Date().getFullYear(),
+  region: "天津卷" as ExamRegion,
+  paper: "",
+  number: "",
+  difficulty: "中档" as Difficulty,
+  questionType: "解答" as QuestionType,
+  tags: "",
+  title: "",
+  statement: "",
+  answer: "",
+  notes: "",
+};
+
+function generateDraftId() {
+  return `draft-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
+}
 
 const emptyAward = {
   type: "best_overall" as ContestAwardType,
@@ -92,11 +140,19 @@ const emptyAward = {
   userId: "",
 };
 
+// `<input type="datetime-local">` reads and writes values in the browser's
+// local timezone, with no timezone info attached. toInputDate must therefore
+// format in local time too — formatting in UTC here (as this used to) makes
+// the input show a time that's shifted from what's actually stored, and
+// resaving without touching the field silently shifts it again by the same
+// offset every time. fromInputDate parsing the local-time string back with
+// `new Date(...)` is the correct, symmetric inverse of this.
 function toInputDate(value: string) {
   if (!value) return "";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "";
-  return date.toISOString().slice(0, 16);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
 function fromInputDate(value: string) {
@@ -113,7 +169,10 @@ export function AdminContestsView({ problems }: { problems: ProblemOption[] }) {
   const [selectedId, setSelectedId] = useState<string>("");
   const [contestForm, setContestForm] = useState(emptyContest);
   const [problemForm, setProblemForm] = useState(emptyProblem);
+  const [problemSourceMode, setProblemSourceMode] = useState<"public" | "draft">("public");
   const [awardForm, setAwardForm] = useState(emptyAward);
+  const [draftProblems, setDraftProblems] = useState<DbProblemDraft[]>([]);
+  const [draftForm, setDraftForm] = useState(emptyDraftProblem);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
@@ -124,8 +183,14 @@ export function AdminContestsView({ problems }: { problems: ProblemOption[] }) {
     [contests, selectedId],
   );
 
+  const draftProblemMap = useMemo(
+    () => new Map(draftProblems.map((draft) => [draft.id, draft])),
+    [draftProblems],
+  );
+
   useEffect(() => {
     void loadContests();
+    void loadDraftProblems();
   }, []);
 
   useEffect(() => {
@@ -161,6 +226,68 @@ export function AdminContestsView({ problems }: { problems: ProblemOption[] }) {
     const rows = (data ?? []) as DbContest[];
     setContests(rows);
     if (!selectedId && rows[0]) setSelectedId(rows[0].id);
+  }
+
+  async function loadDraftProblems() {
+    const { data, error: loadError } = await supabase
+      .from("problem_drafts")
+      .select("id, year, region, paper, number, difficulty, question_type, tags, title, statement, answer, notes, status, promoted_problem_id, created_at")
+      .order("created_at", { ascending: false });
+
+    // Non-fatal: a non-moderator session (RLS denies all rows) or a DB not
+    // yet migrated to 012_problem_vault.sql just shows an empty vault
+    // instead of breaking the rest of the admin page.
+    if (loadError) {
+      setDraftProblems([]);
+      return;
+    }
+    setDraftProblems((data ?? []) as DbProblemDraft[]);
+  }
+
+  async function createDraftProblem() {
+    setSaving(true);
+    setError("");
+    setMessage("");
+
+    const { error: insertError } = await supabase.from("problem_drafts").insert({
+      id: generateDraftId(),
+      year: Number(draftForm.year),
+      region: draftForm.region,
+      paper: draftForm.paper.trim(),
+      number: draftForm.number.trim(),
+      difficulty: draftForm.difficulty,
+      question_type: draftForm.questionType,
+      tags: draftForm.tags.split(/[,，]/).map((tag) => tag.trim()).filter(Boolean),
+      title: draftForm.title.trim(),
+      statement: draftForm.statement.split(/\n+/).map((line) => line.trim()).filter(Boolean),
+      answer: draftForm.answer.trim(),
+      notes: draftForm.notes.trim(),
+    });
+
+    setSaving(false);
+    if (insertError) {
+      setError(insertError.message || "创建未公开题目失败。请确认已执行 012_problem_vault.sql。");
+      return;
+    }
+    setDraftForm(emptyDraftProblem);
+    setMessage("未公开题目已创建，可以在「添加赛题」里关联为未公开题库来源。");
+    await loadDraftProblems();
+  }
+
+  async function promoteDraft(draftId: string) {
+    setSaving(true);
+    setError("");
+    setMessage("");
+
+    const result = await promoteProblemDraft(draftId);
+
+    setSaving(false);
+    if (!result.success) {
+      setError(result.error || "发布到公开题库失败。");
+      return;
+    }
+    setMessage("已发布到公开题库；关联的赛题已自动切换为正式题目。");
+    await Promise.all([loadContests(), loadDraftProblems()]);
   }
 
   async function syncSeedContest() {
@@ -266,6 +393,7 @@ export function AdminContestsView({ problems }: { problems: ProblemOption[] }) {
     const { error: insertError } = await supabase.from("contest_problems").insert({
       contest_id: selectedContest.id,
       problem_id: problemForm.problemId || null,
+      draft_problem_id: problemForm.draftProblemId || null,
       day_index: Number(problemForm.dayIndex),
       title: problemForm.title.trim(),
       theme: problemForm.theme.trim(),
@@ -489,6 +617,9 @@ export function AdminContestsView({ problems }: { problems: ProblemOption[] }) {
             <TextField label="结束时间" type="datetime-local" value={contestForm.endAt} onChange={(endAt) => setContestForm({ ...contestForm, endAt })} />
             <TextField label="讨论开始时间" type="datetime-local" value={contestForm.discussionStartAt} onChange={(discussionStartAt) => setContestForm({ ...contestForm, discussionStartAt })} />
             <TextField label="讨论结束时间" type="datetime-local" value={contestForm.discussionEndAt} onChange={(discussionEndAt) => setContestForm({ ...contestForm, discussionEndAt })} />
+            <p className="md:col-span-2 text-xs leading-5 text-zinc-500">
+              以上时间按你当前设备的本地时区读写。请确保这台设备的系统时区是北京时间（UTC+8），否则这里显示和保存的时间都会按设备时区偏移。
+            </p>
             <div className="md:col-span-2">
               <TextArea label="一句话定位" value={contestForm.tagline} onChange={(tagline) => setContestForm({ ...contestForm, tagline })} rows={3} />
             </div>
@@ -504,6 +635,114 @@ export function AdminContestsView({ problems }: { problems: ProblemOption[] }) {
           >
             <Save className="size-4" />
             保存比赛
+          </button>
+        </section>
+
+        <section className="border border-white/10 bg-zinc-950 p-5">
+          <div className="mb-2 flex items-center gap-2 text-sm font-bold text-white">
+            <BookMarked className="size-4 text-violet-300" />
+            未公开题库 Problem Vault
+          </div>
+          <p className="mb-4 text-xs leading-5 text-zinc-500">
+            比赛新题、Proof Graph 建设中题目、官方题解未发布题目放在这里，默认只有管理员/协管员能读写，不会出现在 /problems 或题目列表里。发布后才会进入公开题库，同时任何关联的赛题会自动切换为正式题目。
+          </p>
+
+          <div className="space-y-2">
+            {draftProblems.length === 0 && (
+              <p className="text-sm text-zinc-500">还没有未公开题目。</p>
+            )}
+            {draftProblems.map((draft) => (
+              <div key={draft.id} className="flex flex-col gap-2 border border-white/10 bg-black/20 p-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
+                  <p className="truncate font-bold text-white">{draft.title}</p>
+                  <p className="mt-0.5 text-xs text-zinc-500">
+                    {draft.year} {draft.region}{draft.paper ? ` · ${draft.paper}` : ""}{draft.number ? ` · ${draft.number}` : ""}
+                  </p>
+                </div>
+                <div className="flex shrink-0 items-center gap-2">
+                  <span className={`border px-2 py-0.5 text-[11px] font-bold ${draft.status === "promoted" ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300" : "border-amber-400/30 bg-amber-400/10 text-amber-300"}`}>
+                    {draft.status === "promoted" ? "已发布" : "草稿中"}
+                  </span>
+                  {draft.status === "promoted" && draft.promoted_problem_id ? (
+                    <Link
+                      href={`/problems/${draft.promoted_problem_id}`}
+                      target="_blank"
+                      className="text-xs font-bold text-cyan-300 hover:underline"
+                    >
+                      查看正式题目 ↗
+                    </Link>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => promoteDraft(draft.id)}
+                      disabled={saving}
+                      className="inline-flex h-8 items-center gap-1.5 border border-violet-400/40 bg-violet-400/10 px-3 text-xs font-bold text-violet-300 transition hover:bg-violet-400/15 disabled:opacity-50"
+                    >
+                      <UploadCloud className="size-3.5" />
+                      发布到公开题库
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-5 grid gap-4 border-t border-white/10 pt-5 md:grid-cols-2">
+            <TextField label="年份" type="number" value={String(draftForm.year)} onChange={(year) => setDraftForm({ ...draftForm, year: Number(year) })} />
+            <label className="grid gap-2 text-sm">
+              <span className="font-bold text-white">卷别</span>
+              <select
+                value={draftForm.region}
+                onChange={(event) => setDraftForm({ ...draftForm, region: event.target.value as ExamRegion })}
+                className="h-11 border border-white/10 bg-black/20 px-3 text-sm text-white"
+              >
+                {EXAM_REGIONS.map((region) => <option key={region} value={region}>{region}</option>)}
+              </select>
+            </label>
+            <TextField label="卷面（如：数学）" value={draftForm.paper} onChange={(paper) => setDraftForm({ ...draftForm, paper })} />
+            <TextField label="题号" value={draftForm.number} onChange={(number) => setDraftForm({ ...draftForm, number })} />
+            <label className="grid gap-2 text-sm">
+              <span className="font-bold text-white">难度</span>
+              <select
+                value={draftForm.difficulty}
+                onChange={(event) => setDraftForm({ ...draftForm, difficulty: event.target.value as Difficulty })}
+                className="h-11 border border-white/10 bg-black/20 px-3 text-sm text-white"
+              >
+                {DIFFICULTIES.map((difficulty) => <option key={difficulty} value={difficulty}>{difficulty}</option>)}
+              </select>
+            </label>
+            <label className="grid gap-2 text-sm">
+              <span className="font-bold text-white">题型</span>
+              <select
+                value={draftForm.questionType}
+                onChange={(event) => setDraftForm({ ...draftForm, questionType: event.target.value as QuestionType })}
+                className="h-11 border border-white/10 bg-black/20 px-3 text-sm text-white"
+              >
+                {QUESTION_TYPES.map((type) => <option key={type} value={type}>{type}</option>)}
+              </select>
+            </label>
+            <TextField label="标签（逗号分隔）" value={draftForm.tags} onChange={(tags) => setDraftForm({ ...draftForm, tags })} />
+            <div className="md:col-span-2">
+              <TextField label="标题" value={draftForm.title} onChange={(title) => setDraftForm({ ...draftForm, title })} />
+            </div>
+            <div className="md:col-span-2">
+              <TextArea label="题干（一行一段）" value={draftForm.statement} onChange={(statement) => setDraftForm({ ...draftForm, statement })} rows={6} />
+            </div>
+            <div className="md:col-span-2">
+              <TextArea label="参考答案" value={draftForm.answer} onChange={(answer) => setDraftForm({ ...draftForm, answer })} rows={3} />
+            </div>
+            <div className="md:col-span-2">
+              <TextArea label="内部备注（仅管理员可见，不会展示给参赛者）" value={draftForm.notes} onChange={(notes) => setDraftForm({ ...draftForm, notes })} rows={3} />
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={createDraftProblem}
+            disabled={saving || !draftForm.title.trim() || !draftForm.statement.trim()}
+            className="mt-5 inline-flex h-10 items-center justify-center gap-2 border border-violet-400/40 px-4 text-sm font-bold text-violet-300 disabled:opacity-50"
+          >
+            <Plus className="size-4" />
+            创建未公开题目
           </button>
         </section>
 
@@ -524,10 +763,21 @@ export function AdminContestsView({ problems }: { problems: ProblemOption[] }) {
                       <div className="min-w-0 flex-1">
                         <p className="font-bold text-white">{item.title}</p>
                         <p className="mt-0.5 text-xs text-zinc-400">{item.theme}</p>
-                        <p className="mt-1 text-xs text-zinc-500">{item.problem_id ?? <span className="text-zinc-600 italic">未关联题目</span>}</p>
+                        {item.problem_id ? (
+                          <p className="mt-1 text-xs text-zinc-500">{item.problem_id}</p>
+                        ) : item.draft_problem_id ? (
+                          <p className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-zinc-400">
+                            <span className="border border-violet-400/30 bg-violet-400/10 px-1.5 py-0.5 text-[10px] font-bold text-violet-300">
+                              未公开题库
+                            </span>
+                            {draftProblemMap.get(item.draft_problem_id)?.title ?? item.draft_problem_id}
+                          </p>
+                        ) : (
+                          <p className="mt-1 text-xs italic text-zinc-600">未关联题目</p>
+                        )}
                         <p className="mt-1 inline-flex items-center gap-1 text-xs text-zinc-500">
                           <Clock className="size-3" />
-                          {toInputDate(item.open_at) || "未设置"} → {toInputDate(item.close_at) || "未设置"}
+                          {formatContestDateTime(item.open_at)} → {formatContestDateTime(item.close_at)}（北京时间）
                         </p>
                       </div>
                     </div>
@@ -549,22 +799,48 @@ export function AdminContestsView({ problems }: { problems: ProblemOption[] }) {
                       >
                         {["locked", "open", "reviewing", "closed"].map((s) => <option key={s}>{s}</option>)}
                       </select>
-                      <button
-                        type="button"
-                        onClick={() => updateContestProblem(item, { status: "open" })}
-                        className="inline-flex h-8 items-center gap-1.5 border border-emerald-500/40 bg-emerald-500/10 px-3 text-xs font-bold text-emerald-300 transition hover:bg-emerald-500/15"
-                      >
-                        <LockOpen className="size-3.5" />
-                        解锁
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => updateContestProblem(item, { status: "locked" })}
-                        className="inline-flex h-8 items-center gap-1.5 border border-amber-500/40 bg-amber-500/10 px-3 text-xs font-bold text-amber-300 transition hover:bg-amber-500/15"
-                      >
-                        <Lock className="size-3.5" />
-                        锁定
-                      </button>
+                      {(() => {
+                        const isAutoTime = (item.unlock_mode ?? "manual") === "auto_time";
+                        const autoTimeHint = "自动解锁模式下由开放/截止时间控制，此按钮已禁用。请先把「解锁方式」切换为「手动控制」再使用。";
+                        return (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => updateContestProblem(item, { status: "open" })}
+                              disabled={isAutoTime}
+                              title={isAutoTime ? autoTimeHint : undefined}
+                              className="inline-flex h-8 items-center gap-1.5 border border-emerald-500/40 bg-emerald-500/10 px-3 text-xs font-bold text-emerald-300 transition hover:bg-emerald-500/15 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-emerald-500/10"
+                            >
+                              <LockOpen className="size-3.5" />
+                              解锁
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => updateContestProblem(item, { status: "locked" })}
+                              disabled={isAutoTime}
+                              title={isAutoTime ? autoTimeHint : undefined}
+                              className="inline-flex h-8 items-center gap-1.5 border border-amber-500/40 bg-amber-500/10 px-3 text-xs font-bold text-amber-300 transition hover:bg-amber-500/15 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-amber-500/10"
+                            >
+                              <Lock className="size-3.5" />
+                              锁定
+                            </button>
+                            {isAutoTime && (
+                              <span className="text-[11px] text-zinc-600">自动解锁模式下解锁/锁定按钮已禁用</span>
+                            )}
+                          </>
+                        );
+                      })()}
+                      {item.draft_problem_id && draftProblemMap.get(item.draft_problem_id)?.status !== "promoted" && (
+                        <button
+                          type="button"
+                          onClick={() => promoteDraft(item.draft_problem_id as string)}
+                          disabled={saving}
+                          className="inline-flex h-8 items-center gap-1.5 border border-violet-400/40 bg-violet-400/10 px-3 text-xs font-bold text-violet-300 transition hover:bg-violet-400/15 disabled:opacity-50"
+                        >
+                          <UploadCloud className="size-3.5" />
+                          发布到公开题库
+                        </button>
+                      )}
                       <button
                         type="button"
                         onClick={() => deleteContestProblem(item.id)}
@@ -580,19 +856,57 @@ export function AdminContestsView({ problems }: { problems: ProblemOption[] }) {
               <div className="mt-5 grid gap-4 border-t border-white/10 pt-5 md:grid-cols-2">
                 <TextField label="Day" type="number" value={String(problemForm.dayIndex)} onChange={(dayIndex) => setProblemForm({ ...problemForm, dayIndex: Number(dayIndex) })} />
                 <TextField label="标题" value={problemForm.title} onChange={(title) => setProblemForm({ ...problemForm, title })} />
-                <label className="grid gap-2 text-sm md:col-span-2">
-                  <span className="font-bold text-white">关联题目</span>
-                  <select
-                    value={problemForm.problemId}
-                    onChange={(event) => setProblemForm({ ...problemForm, problemId: event.target.value })}
-                    className="h-11 border border-white/10 bg-black/20 px-3 text-sm text-white"
-                  >
-                    <option value="">暂不关联</option>
-                    {problems.map((problem) => (
-                      <option key={problem.id} value={problem.id}>{problem.source} · {problem.title}</option>
-                    ))}
-                  </select>
-                </label>
+                <div className="grid gap-2 text-sm md:col-span-2">
+                  <span className="font-bold text-white">赛题来源</span>
+                  <div className="inline-flex w-fit border border-white/10">
+                    <button
+                      type="button"
+                      onClick={() => { setProblemSourceMode("public"); setProblemForm({ ...problemForm, draftProblemId: "" }); }}
+                      className={`px-3 py-1.5 text-xs font-bold transition ${problemSourceMode === "public" ? "bg-cyan-400 text-zinc-950" : "text-zinc-400 hover:text-white"}`}
+                    >
+                      公开题库
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setProblemSourceMode("draft"); setProblemForm({ ...problemForm, problemId: "" }); }}
+                      className={`px-3 py-1.5 text-xs font-bold transition ${problemSourceMode === "draft" ? "bg-violet-400 text-zinc-950" : "text-zinc-400 hover:text-white"}`}
+                    >
+                      未公开题库
+                    </button>
+                  </div>
+                </div>
+                {problemSourceMode === "public" ? (
+                  <label className="grid gap-2 text-sm md:col-span-2">
+                    <span className="font-bold text-white">关联题目</span>
+                    <select
+                      value={problemForm.problemId}
+                      onChange={(event) => setProblemForm({ ...problemForm, problemId: event.target.value })}
+                      className="h-11 border border-white/10 bg-black/20 px-3 text-sm text-white"
+                    >
+                      <option value="">暂不关联</option>
+                      {problems.map((problem) => (
+                        <option key={problem.id} value={problem.id}>{problem.source} · {problem.title}</option>
+                      ))}
+                    </select>
+                  </label>
+                ) : (
+                  <label className="grid gap-2 text-sm md:col-span-2">
+                    <span className="font-bold text-white">关联未公开题目</span>
+                    <select
+                      value={problemForm.draftProblemId}
+                      onChange={(event) => setProblemForm({ ...problemForm, draftProblemId: event.target.value })}
+                      className="h-11 border border-white/10 bg-black/20 px-3 text-sm text-white"
+                    >
+                      <option value="">暂不关联</option>
+                      {draftProblems.filter((draft) => draft.status === "drafting").map((draft) => (
+                        <option key={draft.id} value={draft.id}>{draft.year} {draft.region} · {draft.title}</option>
+                      ))}
+                    </select>
+                    {draftProblems.filter((draft) => draft.status === "drafting").length === 0 && (
+                      <span className="text-xs text-zinc-600">未公开题库还没有可选题目，先在下方「未公开题库」区新建一个。</span>
+                    )}
+                  </label>
+                )}
                 <TextField label="开放时间" type="datetime-local" value={problemForm.openAt} onChange={(openAt) => setProblemForm({ ...problemForm, openAt })} />
                 <TextField label="截止时间" type="datetime-local" value={problemForm.closeAt} onChange={(closeAt) => setProblemForm({ ...problemForm, closeAt })} />
                 <TextField label="权重" type="number" value={String(problemForm.weight)} onChange={(weight) => setProblemForm({ ...problemForm, weight: Number(weight) })} />
@@ -608,6 +922,9 @@ export function AdminContestsView({ problems }: { problems: ProblemOption[] }) {
                     <option value="auto_time">到时自动解锁（按开放/截止时间）</option>
                   </select>
                 </label>
+                <p className="text-xs leading-5 text-zinc-500 md:col-span-2">
+                  开放/截止时间按你当前设备的本地时区读写；请确保设备时区为北京时间（UTC+8）。
+                </p>
               </div>
               <button
                 type="button"

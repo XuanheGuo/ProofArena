@@ -23,6 +23,7 @@ type ContestProblemRow = {
   id: string;
   contest_id: string;
   problem_id: string | null;
+  draft_problem_id: string | null;
   day_index: number;
   title: string;
   theme: string;
@@ -64,6 +65,7 @@ function toContest(row: ContestRow): Contest {
         id: problem.id,
         contestId: problem.contest_id,
         problemId: problem.problem_id,
+        draftProblemId: problem.draft_problem_id ?? null,
         dayIndex: problem.day_index,
         title: problem.title,
         theme: problem.theme,
@@ -134,11 +136,17 @@ export async function getContest(slug: string): Promise<Contest | undefined> {
 // context (banner, day/theme, submit CTA). The canonical /problems/[id]
 // route no longer auto-scans every contest; it uses the much cheaper
 // getActiveContestLockForProblem below for its "hide solutions" gate.
-export async function getContestForProblem(problemId: string, slug: string) {
+//
+// `id` may be either a public `problems.id` or a Problem Vault
+// `problem_drafts.id` — the route's [id] segment covers both, since a
+// contest problem can be backed by either source (never both at once).
+export async function getContestForProblem(id: string, slug: string) {
   const contest = await getContest(slug);
   if (!contest) return null;
 
-  const contestProblem = contest.problems.find((problem) => problem.problemId === problemId);
+  const contestProblem = contest.problems.find(
+    (problem) => problem.problemId === id || problem.draftProblemId === id,
+  );
   return contestProblem ? { contest, contestProblem } : null;
 }
 
@@ -223,10 +231,14 @@ export async function getContestSubmissionStats(contestSlug: string) {
   }
 
   const supabase = createPublicClient();
+  // Rejected submissions are spam/noise, not real participation — they must
+  // not inflate the public submission/participant counts shown on the
+  // contest list and detail pages.
   const { data } = await supabase
     .from("submissions")
     .select("user_id")
-    .eq("contest_slug", contestSlug);
+    .eq("contest_slug", contestSlug)
+    .neq("status", "rejected");
 
   if (!data) return { submissionCount: 0, participantCount: 0 };
 

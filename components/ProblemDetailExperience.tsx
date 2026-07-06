@@ -335,6 +335,7 @@ export function ProblemDetailExperience({
   relatedProblems,
   contestContext,
   contestLock,
+  isDraftProblem,
 }: {
   problem: Problem;
   knowledgeNodes: KnowledgeNode[];
@@ -348,13 +349,31 @@ export function ProblemDetailExperience({
   // populated on /contests/[slug]/problems/[id]), this carries no day/theme
   // details — just enough to hide solutions and point at the contest.
   contestLock?: { slug: string };
+  // True when `problem` was adapted from a Problem Vault draft rather than
+  // the public catalog (see lib/problem-drafts.ts). Its id isn't a valid
+  // submission target yet — solutions can't attach to a draft id — so the
+  // submit CTA must not preselect it in the submission form.
+  isDraftProblem?: boolean;
 }) {
   const graphSpec = graphSpecRegistry[problem.id];
   const hasMathViz = mathVizProblemIds.has(problem.id);
+  const activeContestSlug = contestContext?.contest.slug ?? contestLock?.slug;
+  const submitHref = activeContestSlug
+    ? isDraftProblem
+      ? `/submit?contest=${activeContestSlug}`
+      : `/submit?contest=${activeContestSlug}&problem=${problem.id}`
+    : "/submit";
+  const isContestSubmission = Boolean(contestContext || contestLock);
+  // While a contest is active, existing solutions (and anything derived from
+  // them — comparison tools, the proof graph strip, the reference answer)
+  // must stay hidden so later participants aren't nudged toward an existing
+  // route. The server already redacts the underlying data for this case;
+  // these checks are the client-side belt to that server-side suspenders.
+  const hideSolutionsForContest = contestContext?.contest.status === "active" || Boolean(contestLock);
   const tabs = allTabs.filter((tab) => {
     if (tab.requiresGraph && !Boolean(graphSpec) && !hasMathViz) return false;
     if (tab.requiresProofGraph && !problem.proofGraph) return false;
-    if (tab.id === "comparison" && problem.solutions.length < 2) return false;
+    if (tab.id === "comparison" && (problem.solutions.length < 2 || hideSolutionsForContest)) return false;
     return true;
   });
   const [activeTab, setActiveTab] = useState<DetailTab>("solutions");
@@ -439,12 +458,6 @@ export function ProblemDetailExperience({
     () => [...problem.learningGuide.observation.slice(0, 2), ...problem.learningGuide.triggers.slice(0, 2)],
     [problem],
   );
-  const activeContestSlug = contestContext?.contest.slug ?? contestLock?.slug;
-  const submitHref = activeContestSlug
-    ? `/submit?contest=${activeContestSlug}&problem=${problem.id}`
-    : "/submit";
-  const isContestSubmission = Boolean(contestContext || contestLock);
-  const hideSolutionsForContest = contestContext?.contest.status === "active" || Boolean(contestLock);
 
   return (
     <main className="grid-surface min-h-screen">
@@ -535,7 +548,7 @@ export function ProblemDetailExperience({
                 <span className="text-[11px] text-zinc-600">知识点</span>
               </div>
             </div>
-            {problem.proofGraph && (
+            {problem.proofGraph && !hideSolutionsForContest && (
               <ProofGraphSummaryStrip problem={problem} submitHref={submitHref} onOpenComparison={showComparison} />
             )}
           </div>
@@ -643,24 +656,34 @@ export function ProblemDetailExperience({
               </div>
             </div>
             <aside className="space-y-4">
-              <details className="border border-white/10 bg-zinc-950">
-                <summary className="flex list-none flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm font-bold text-white marker:hidden">
-                  参考答案
-                  <span className="text-xs font-normal text-zinc-600">展开查看</span>
-                </summary>
-                <div className="border-t border-white/10 p-4 text-sm leading-7 text-zinc-300">
-                  <MathBlock>{problem.answer}</MathBlock>
+              {hideSolutionsForContest ? (
+                <div className="border border-amber-400/25 bg-amber-400/[0.06] p-4 text-sm leading-6 text-zinc-400">
+                  比赛进行中，参考答案和原题扫描页暂时隐藏，避免提前泄题。
                 </div>
-              </details>
-              <a
-                href={`${problem.sourcePdf}#page=${problem.sourcePage}`}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex h-11 w-full items-center justify-center gap-2 border border-cyan-400/30 bg-cyan-400/5 px-4 text-sm font-bold text-cyan-300 transition hover:bg-cyan-400/10"
-              >
-                查看原题扫描页
-                <ArrowUpRight className="size-4" />
-              </a>
+              ) : (
+                <>
+                  <details className="border border-white/10 bg-zinc-950">
+                    <summary className="flex list-none flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm font-bold text-white marker:hidden">
+                      参考答案
+                      <span className="text-xs font-normal text-zinc-600">展开查看</span>
+                    </summary>
+                    <div className="border-t border-white/10 p-4 text-sm leading-7 text-zinc-300">
+                      <MathBlock>{problem.answer}</MathBlock>
+                    </div>
+                  </details>
+                  {problem.sourcePdf && (
+                    <a
+                      href={`${problem.sourcePdf}#page=${problem.sourcePage}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex h-11 w-full items-center justify-center gap-2 border border-cyan-400/30 bg-cyan-400/5 px-4 text-sm font-bold text-cyan-300 transition hover:bg-cyan-400/10"
+                    >
+                      查看原题扫描页
+                      <ArrowUpRight className="size-4" />
+                    </a>
+                  )}
+                </>
+              )}
             </aside>
           </section>
         )}

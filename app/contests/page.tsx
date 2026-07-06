@@ -4,6 +4,7 @@ import { ArrowUpRight, CalendarDays, ClipboardList, Swords, Trophy, UsersRound }
 import { getProblemSummaries } from "@/lib/db";
 import { contestStatusMeta } from "@/lib/contest-meta";
 import { getContests, getContestSubmissionStats } from "@/lib/contests";
+import { formatContestDateTime } from "@/lib/format-contest-time";
 
 export const metadata: Metadata = {
   title: "比赛活动 | ProofArena",
@@ -11,15 +12,6 @@ export const metadata: Metadata = {
 };
 
 export const revalidate = 300;
-
-function formatDate(value: string) {
-  return new Intl.DateTimeFormat("zh-CN", {
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(new Date(value));
-}
 
 export default async function ContestsPage() {
   const [problems, contests] = await Promise.all([getProblemSummaries(), getContests()]);
@@ -100,7 +92,7 @@ export default async function ContestsPage() {
                   <div className="flex flex-wrap items-center gap-2">
                     <span className={`border px-2 py-0.5 text-[11px] font-bold ${status.className}`}>{status.label}</span>
                     <span className="text-[11px] text-zinc-500">
-                      {formatDate(contest.startAt)} – {formatDate(contest.endAt)}
+                      {formatContestDateTime(contest.startAt)} – {formatContestDateTime(contest.endAt)}（北京时间）
                     </span>
                   </div>
                   <h2 className="mt-4 text-xl font-black leading-snug text-white sm:text-2xl">{contest.title}</h2>

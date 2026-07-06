@@ -7,6 +7,7 @@ import { MathBlock } from "@/components/MathBlock";
 import { MAX_COMMENT_CHARS, clampText } from "@/lib/security";
 import type { ContestThoughtEntry } from "@/lib/contests";
 import type { Contest } from "@/lib/types";
+import { formatContestDateTime } from "@/lib/format-contest-time";
 
 type RatingDraft = {
   clarity: number;
@@ -19,15 +20,6 @@ const ratingDims: Array<{ key: keyof RatingDraft; label: string }> = [
   { key: "insight", label: "启发" },
   { key: "potential", label: "潜力" },
 ];
-
-function formatDate(value: string) {
-  return new Intl.DateTimeFormat("zh-CN", {
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(new Date(value));
-}
 
 function isDiscussionOpen(contest: Contest) {
   if (!contest.discussionStartAt || !contest.discussionEndAt) return contest.status === "judging" || contest.status === "finished";
@@ -169,7 +161,7 @@ export function ContestThoughtArena({
         </div>
         <div className="border border-white/10 bg-zinc-950 px-3 py-2 text-xs text-zinc-500">
           {contest.discussionStartAt && contest.discussionEndAt
-            ? `${formatDate(contest.discussionStartAt)} - ${formatDate(contest.discussionEndAt)}`
+            ? `${formatContestDateTime(contest.discussionStartAt)} - ${formatContestDateTime(contest.discussionEndAt)}（北京时间）`
             : "评审/结束阶段开放讨论"}
         </div>
       </div>
@@ -202,7 +194,7 @@ export function ContestThoughtArena({
                       </span>
                     )}
                     {thought.isPostContest && <span className="border border-zinc-600 px-2 py-0.5 text-zinc-400">赛后补充</span>}
-                    <span className="text-zinc-600">{formatDate(thought.createdAt)} · {thought.author}</span>
+                    <span className="text-zinc-600">{formatContestDateTime(thought.createdAt)} · {thought.author}</span>
                   </div>
                   <h3 className="mt-3 text-base font-bold text-white">{thought.title}</h3>
                   <div className="mt-3 whitespace-pre-wrap text-sm leading-7 text-zinc-300">
@@ -273,7 +265,7 @@ export function ContestThoughtArena({
                     <div className="mt-3 space-y-2">
                       {thought.comments.slice(-3).map((comment) => (
                         <div key={comment.id} className="border-l border-white/10 pl-3">
-                          <p className="text-xs text-zinc-500">{comment.author} · {formatDate(comment.createdAt)}</p>
+                          <p className="text-xs text-zinc-500">{comment.author} · {formatContestDateTime(comment.createdAt)}</p>
                           <p className="mt-1 text-xs leading-5 text-zinc-300">{comment.content}</p>
                         </div>
                       ))}

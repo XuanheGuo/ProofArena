@@ -49,6 +49,7 @@ type Submission = {
   id: string;
   submission_type: 'problem' | 'solution';
   problem_id: string | null;
+  draft_problem_id?: string | null;
   problem_source: string | null;
   kind: SolutionKind;
   title: string;
@@ -551,7 +552,13 @@ export function AdminSubmissionsView() {
   };
   const getTargetLabel = (submission: Submission) => {
     if (submission.submission_type === 'problem') return submission.problem_source ?? '新题';
-    return submission.problem_source ? `${submission.problem_source} · ${submission.problem_id ?? '未绑定题目'}` : submission.problem_id ?? '未绑定题目';
+    if (submission.problem_source) {
+      const id = submission.problem_id ?? submission.draft_problem_id ?? '未绑定题目';
+      const draftBadge = submission.draft_problem_id ? ' [未公开]' : '';
+      return `${submission.problem_source} · ${id}${draftBadge}`;
+    }
+    if (submission.draft_problem_id) return `未公开题目 · ${submission.draft_problem_id}`;
+    return submission.problem_id ?? '未绑定题目';
   };
 
   const currentMarkdown = useMemo(() => {
@@ -1028,8 +1035,10 @@ function ReviewCardPreview({ submission, form }: { submission: Submission; form:
   const pitfalls = splitList(form.pitfalls);
   const verifiableSteps = splitList(form.verifiableSteps);
   const target = submission.problem_source
-    ? `${submission.problem_source}${submission.problem_id ? ` · ${submission.problem_id}` : ''}`
-    : submission.problem_id ?? '未绑定题目';
+    ? `${submission.problem_source}${submission.problem_id ? ` · ${submission.problem_id}` : submission.draft_problem_id ? ` · ${submission.draft_problem_id} [未公开]` : ''}`
+    : submission.draft_problem_id
+      ? `未公开题目 · ${submission.draft_problem_id}`
+      : submission.problem_id ?? '未绑定题目';
 
   return (
     <article className="overflow-hidden rounded border border-white/10 bg-zinc-950">

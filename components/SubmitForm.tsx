@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { AlertCircle, CheckCircle2, FileImage, FilePlus2, Lightbulb, LogIn, Send, X } from 'lucide-react';
 import type { User } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase-client';
-import { contestSolutionTypeMeta } from '@/lib/contest-meta';
+import { contestSolutionTypeMeta, contestSolutionTypeOptions } from '@/lib/contest-meta';
 import { ALLOWED_IMAGE_TYPES, MAX_CONTEST_THOUGHT_CHARS, MAX_GENERAL_TEXT_CHARS, MAX_IMAGE_BYTES, MAX_IMAGE_COUNT, MAX_TITLE_CHARS, clampText, extensionForImageType, isAllowedImage } from '@/lib/security';
 import { getEffectiveProblemStatus, type Contest, type ContestProblem, type ContestSolutionType } from '@/lib/types';
 import { CASVerifier } from '@/components/CASVerifier';
@@ -315,7 +315,12 @@ export function SubmitForm({
     [selectedProblem, solutionForm.challengeTargetSolutionId],
   );
   const selectedContestProblem = useMemo(
-    () => contestContext?.contest.problems.find((problem) => problem.problemId === solutionForm.problemId) ?? contestContext?.contestProblem,
+    () =>
+      contestContext?.contest.problems.find(
+        (problem) =>
+          problem.problemId === solutionForm.problemId ||
+          problem.draftProblemId === solutionForm.problemId,
+      ) ?? contestContext?.contestProblem,
     [contestContext, solutionForm.problemId]
   );
   const activeContestContext = contestContext
@@ -455,7 +460,17 @@ export function SubmitForm({
       : null;
     return supabase.from('submissions').insert({
       submission_type: 'solution',
-      problem_id: solutionForm.problemId,
+      // When the contest problem is draft-backed the id in solutionForm.problemId
+      // is a problem_drafts.id, not a problems.id. Route it to the correct column
+      // so the DB FK and the 012 trigger can enforce contest membership properly.
+      // After the draft is promoted, promote-problem-draft.ts relinks these rows
+      // to the real problem_id automatically.
+      problem_id: activeContestContext?.contestProblem?.draftProblemId
+        ? null
+        : solutionForm.problemId,
+      draft_problem_id: activeContestContext?.contestProblem?.draftProblemId
+        ? solutionForm.problemId
+        : null,
       problem_source: selectedProblem?.source,
       user_id: user?.id,
       kind: normalizedForm.kind,
@@ -656,9 +671,25 @@ export function SubmitForm({
       {done && (
         <div className="flex items-start gap-3 border border-emerald-500/40 bg-emerald-500/[0.08] px-4 py-3">
           <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-400" />
-          <p className="text-sm leading-6 text-zinc-300">
-            已提交{done === 'problem' ? '题目' : '解法'}，感谢贡献。管理员审核后会进入正式题库。
-          </p>
+          <div className="text-sm leading-6 text-zinc-300">
+            {done === 'problem' ? (
+              <p>已提交题目，感谢贡献。管理员审核后会进入正式题库。</p>
+            ) : isContestMode ? (
+              <>
+                <p>已提交参赛思路，感谢参赛！管理员审核通过后，会进入本场比赛的思路专区，讨论阶段开放互评——不会自动进入正式题库。</p>
+                {contestContext && (
+                  <Link
+                    href={`/contests/${contestContext.contest.slug}`}
+                    className="mt-2 inline-block text-xs font-bold text-cyan-300 hover:underline"
+                  >
+                    返回比赛主页
+                  </Link>
+                )}
+              </>
+            ) : (
+              <p>已提交解法，感谢贡献。管理员审核后会进入正式题库。</p>
+            )}
+          </div>
         </div>
       )}
 
@@ -734,6 +765,26 @@ export function SubmitForm({
 
           {isContestMode ? (
             <>
+              <div className="grid gap-4 xl:grid-cols-2">
+                <TextField
+                  label="投稿标题（选填）"
+                  value={solutionForm.title}
+                  onChange={(title) => setSolutionForm({ ...solutionForm, title })}
+                  placeholder="给你的思路起个名字，例如：切线放缩入口"
+                />
+                <label className="grid min-w-0 gap-2 text-sm">
+                  <span className="font-bold text-white">解法类型</span>
+                  <select
+                    value={solutionForm.contestSolutionType}
+                    onChange={(event) => setSolutionForm({ ...solutionForm, contestSolutionType: event.target.value as ContestSolutionType })}
+                    className="h-11 w-full min-w-0 rounded border border-white/10 bg-zinc-900 px-3 text-sm text-white outline-none focus:border-amber-400/50"
+                  >
+                    {contestSolutionTypeOptions.map((option) => (
+                      <option key={option.value} value={option.value}>{option.label}</option>
+                    ))}
+                  </select>
+                </label>
+              </div>
               <TextArea
                 required
                 label="你的思路"

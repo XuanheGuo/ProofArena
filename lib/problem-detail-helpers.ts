@@ -42,3 +42,20 @@ export function getRelatedProblemSummaries(
     .slice(0, limit)
     .map(({ item }) => item);
 }
+
+// Server-side redaction for problems currently locked by an active contest.
+// The problem statement stays visible (contestants need to read it to
+// compete), but everything that would leak an existing solution path —
+// solutions, the reference answer, and the proof graph / solution tree —
+// must never reach the client. Do this before the data leaves the server
+// component; hiding it in the client component alone is not enough since the
+// full payload would still be present in the HTML/RSC flight data.
+export function redactLockedProblem(problem: Problem): Problem {
+  return {
+    ...problem,
+    solutions: [],
+    answer: "",
+    proofGraph: undefined,
+    solutionTree: undefined,
+  };
+}

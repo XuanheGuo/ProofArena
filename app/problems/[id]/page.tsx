@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { ProblemDetailExperience } from "@/components/ProblemDetailExperience";
 import { getProblem, getProblemSummaries } from "@/lib/db";
 import { getActiveContestLockForProblem } from "@/lib/contests";
-import { getKnowledgeNodesForProblem, getRelatedProblemSummaries } from "@/lib/problem-detail-helpers";
+import { getKnowledgeNodesForProblem, getRelatedProblemSummaries, redactLockedProblem } from "@/lib/problem-detail-helpers";
 
 export const revalidate = 300;
 
@@ -51,12 +51,17 @@ export default async function ProblemDetailPage({
 
   if (!problem) notFound();
 
-  const knowledgeNodes = getKnowledgeNodesForProblem(problem);
+  // Contest lock only hides existing solutions/answer/proof graph — the
+  // problem statement itself stays visible so contestants can read and
+  // solve it. Redact server-side so the hidden data never reaches the
+  // client bundle in the first place.
+  const safeProblem = contestLock ? redactLockedProblem(problem) : problem;
+  const knowledgeNodes = getKnowledgeNodesForProblem(safeProblem);
   const relatedProblems = getRelatedProblemSummaries(problem, allSummaries);
 
   return (
     <ProblemDetailExperience
-      problem={problem}
+      problem={safeProblem}
       knowledgeNodes={knowledgeNodes}
       relatedProblems={relatedProblems}
       contestLock={contestLock ?? undefined}

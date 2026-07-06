@@ -197,6 +197,11 @@ export interface ContestProblem {
   id: string;
   contestId: string;
   problemId: string | null;
+  // Set when this contest problem is a brand-new problem still sitting in
+  // the unpublished Problem Vault (see lib/problem-drafts.ts) rather than
+  // the public `problems` catalog. Mutually exclusive with `problemId` —
+  // a contest problem is backed by exactly one or the other, never both.
+  draftProblemId?: string | null;
   dayIndex: number;
   title: string;
   theme: string;
@@ -215,6 +220,22 @@ export function getEffectiveProblemStatus(problem: ContestProblem, now = new Dat
     return "locked";
   }
   return problem.status;
+}
+
+// While the contest itself is still a draft, no per-problem schedule should
+// be trusted — an admin could set openAt in the past while drafting, or the
+// contest could simply never have been announced yet. So a contest problem
+// counts as locked whenever the contest is a draft, in addition to the
+// normal per-problem open/close window check. Shared by every surface that
+// decides whether to reveal a contest problem's title/statement (the
+// dedicated problem page, the contest detail page's problem list, the
+// submit form's available-problems resolution).
+export function isContestProblemLocked(
+  contest: Pick<Contest, "status">,
+  contestProblem: ContestProblem,
+  now = new Date(),
+): boolean {
+  return contest.status === "draft" || getEffectiveProblemStatus(contestProblem, now) === "locked";
 }
 
 export interface ContestAward {

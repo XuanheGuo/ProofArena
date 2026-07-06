@@ -1,6 +1,7 @@
 'use server';
 
-import { createClient, createServiceClient } from '@/lib/supabase-server';
+import { createServiceClient } from '@/lib/supabase-server';
+import { requireModerator } from '@/lib/require-moderator';
 import { revalidateContestSlug, revalidatePublicProblemPaths } from '@/lib/revalidate-public';
 import { MAX_TITLE_CHARS, clampText } from '@/lib/security';
 import type { SolutionScores } from '@/lib/types';
@@ -41,32 +42,6 @@ type Submission = {
   challenge_advantages?: string[] | null;
   challenge_risk?: string | null;
 };
-
-async function requireModerator() {
-  const supabase = await createClient();
-  const { data: auth, error: authError } = await supabase.auth.getUser();
-  const user = auth.user;
-
-  if (authError || !user) {
-    return { ok: false as const, error: '需要登录后才能发布投稿。', supabase };
-  }
-
-  if (user.email === 'xuanheguo@icloud.com') {
-    return { ok: true as const, supabase };
-  }
-
-  const { data: profile, error: profileError } = await supabase
-    .from('user_profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single();
-
-  if (profileError || !profile || !['moderator', 'admin'].includes(profile.role as string)) {
-    return { ok: false as const, error: '当前账号没有发布投稿的权限。', supabase };
-  }
-
-  return { ok: true as const, supabase };
-}
 
 function splitProcessSteps(value: string): string[] {
   if (!value.trim()) return [];
