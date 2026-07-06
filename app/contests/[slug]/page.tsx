@@ -64,13 +64,13 @@ export default async function ContestDetailPage({ params }: PageProps) {
   const contest = await getContest(slug);
   if (!contest) notFound();
 
-  const [problems, leaderboard, contestStats, userRankings, contestThoughts] = await Promise.all([
+  const [problems, leaderboard, contestStats, userRankings] = await Promise.all([
     getProblems(),
     getContestLeaderboard(slug),
     getContestSubmissionStats(slug),
     getContestUserRankings(slug, contest.awards),
-    getContestThoughts(slug),
   ]);
+  const contestThoughts = await getContestThoughts(slug, contest);
   const problemMap = new Map(problems.map((problem) => [problem.id, problem]));
   const now = new Date();
   const status = contestStatusMeta[contest.status];

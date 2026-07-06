@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { CheckCircle2, ImageIcon, MessageSquareText, Send, Star } from "lucide-react";
+import { CheckCircle2, Clock, ImageIcon, MessageSquareText, Send, Star } from "lucide-react";
 import { createClient } from "@/lib/supabase-client";
 import { MathBlock } from "@/components/MathBlock";
 import { MAX_COMMENT_CHARS, clampText } from "@/lib/security";
@@ -183,14 +183,39 @@ export function ContestThoughtArena({
         <div className="mt-5 space-y-4">
           {sortedItems.map((thought, index) => {
             const draft = draftFor(thought.id);
+
+            // Redacted: this contest problem is still open. Show count only.
+            if (thought.isRedacted) {
+              const problemLabel = thought.problemId
+                ? (problemTitles[thought.problemId] ?? thought.problemId)
+                : thought.draftProblemId
+                  ? (problemTitles[thought.draftProblemId] ?? "本题")
+                  : "本题";
+              return (
+                <div key={thought.id} className="flex items-start gap-3 border border-amber-400/20 bg-amber-400/[0.04] px-5 py-4">
+                  <Clock className="mt-0.5 size-4 shrink-0 text-amber-400" />
+                  <div>
+                    <p className="text-sm font-bold text-amber-200">
+                      {problemLabel} 已收到 {thought.redactedCount ?? 0} 份思路，题目关闭后开放讨论
+                    </p>
+                    <p className="mt-1 text-xs leading-5 text-zinc-500">
+                      提交窗口关闭或比赛进入评审后，全部思路的正文、图片和评分将在此处公开。
+                    </p>
+                  </div>
+                </div>
+              );
+            }
+
             return (
               <article key={thought.id} className="border border-white/10 bg-zinc-950">
                 <div className="p-4 md:p-5">
                   <div className="flex flex-wrap items-center gap-2 text-xs">
                     <span className="font-mono text-zinc-600">#{index + 1}</span>
-                    {thought.problemId && (
+                    {(thought.problemId || thought.draftProblemId) && (
                       <span className="border border-cyan-400/25 bg-cyan-400/[0.06] px-2 py-0.5 text-cyan-300">
-                        {problemTitles[thought.problemId] ?? thought.problemId}
+                        {thought.problemId
+                          ? (problemTitles[thought.problemId] ?? thought.problemId)
+                          : (problemTitles[thought.draftProblemId!] ?? "未公开新题")}
                       </span>
                     )}
                     {thought.isPostContest && <span className="border border-zinc-600 px-2 py-0.5 text-zinc-400">赛后补充</span>}

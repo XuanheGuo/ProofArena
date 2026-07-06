@@ -2,6 +2,7 @@ import { contests as staticContests, getContest as getStaticContest } from "@/da
 import { isPublicSubmissionImageUrl } from "@/lib/security";
 import { createPublicClient } from "@/lib/supabase-public";
 import type { Contest, ContestAward, ContestProblem } from "@/lib/types";
+import { getEffectiveProblemStatus } from "@/lib/types";
 
 type ContestRow = {
   id: string;
@@ -268,6 +269,7 @@ export type ContestThoughtComment = {
 export type ContestThoughtEntry = {
   id: string;
   problemId: string | null;
+  draftProblemId: string | null;
   contestProblemKey: string | null;
   title: string;
   author: string;
@@ -278,11 +280,17 @@ export type ContestThoughtEntry = {
   createdAt: string;
   rating: ContestThoughtRatingSummary | null;
   comments: ContestThoughtComment[];
+  // When true the entry represents an aggregated placeholder for a still-open
+  // contest problem: content/images/comments/rating are all empty. The count
+  // of redacted submissions is in `redactedCount`.
+  isRedacted?: boolean;
+  redactedCount?: number;
 };
 
 type ContestThoughtRow = {
   id: string;
   problem_id: string | null;
+  draft_problem_id: string | null;
   contest_problem_key: string | null;
   title: string;
   user_id: string | null;
@@ -305,13 +313,30 @@ function firstProfile(
   return Array.isArray(profile) ? profile[0] : profile;
 }
 
-export async function getContestThoughts(contestSlug: string): Promise<ContestThoughtEntry[]> {
+export async function getContestThoughts(contestSlug: string, contest?: Contest | null): Promise<ContestThoughtEntry[]> {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) return [];
+
+  // Determine which contest problems are currently "still open" and need content redaction.
+  // A problem is "still open" when contest.status === "active" and the problem window has not
+  // yet closed. Once the problem closes, or the contest moves to judging/finished, full content
+  // is revealed. draft-backed problems are identified by draftProblemId.
+  const now = new Date();
+  const openProblemIds = new Set<string>();
+  const openDraftProblemIds = new Set<string>();
+  if (contest && contest.status === "active") {
+    for (const cp of contest.problems) {
+      const eff = getEffectiveProblemStatus(cp, now);
+      if (eff === "open") {
+        if (cp.problemId) openProblemIds.add(cp.problemId);
+        if (cp.draftProblemId) openDraftProblemIds.add(cp.draftProblemId);
+      }
+    }
+  }
 
   const supabase = createPublicClient();
   const { data: submissions, error } = await supabase
     .from("submissions")
-    .select("id, problem_id, contest_problem_key, title, user_id, content, attachment_urls, is_post_contest, created_at, user_profiles(display_name, username)")
+    .select("id, problem_id, draft_problem_id, contest_problem_key, title, user_id, content, attachment_urls, is_post_contest, created_at, user_profiles(display_name, username)")
     .eq("contest_slug", contestSlug)
     .eq("submission_type", "solution")
     .eq("status", "approved")
@@ -319,7 +344,62 @@ export async function getContestThoughts(contestSlug: string): Promise<ContestTh
 
   if (error || !submissions || submissions.length === 0) return [];
 
-  const ids = submissions.map((item) => item.id as string);
+  const allRows = submissions as unknown as ContestThoughtRow[];
+
+  // Partition into open (redact) vs closed (show full content) rows.
+  const openRows: ContestThoughtRow[] = [];
+  const closedRows: ContestThoughtRow[] = [];
+  for (const s of allRows) {
+    const isOpen =
+      (s.problem_id != null && openProblemIds.has(s.problem_id)) ||
+      (s.draft_problem_id != null && openDraftProblemIds.has(s.draft_problem_id));
+    if (isOpen) openRows.push(s);
+    else closedRows.push(s);
+  }
+
+  // Build one redacted placeholder per open problem (groups all its submissions into a count).
+  const redactedEntries: ContestThoughtEntry[] = [];
+  if (openRows.length > 0) {
+    const groups = new Map<
+      string,
+      { problemId: string | null; draftProblemId: string | null; contestProblemKey: string | null; count: number }
+    >();
+    for (const s of openRows) {
+      const groupKey = s.draft_problem_id ?? s.problem_id ?? s.contest_problem_key ?? "unknown";
+      if (!groups.has(groupKey)) {
+        groups.set(groupKey, {
+          problemId: s.problem_id,
+          draftProblemId: s.draft_problem_id,
+          contestProblemKey: s.contest_problem_key,
+          count: 0,
+        });
+      }
+      groups.get(groupKey)!.count++;
+    }
+    for (const [groupKey, group] of groups) {
+      redactedEntries.push({
+        id: `redacted-${groupKey}`,
+        problemId: group.problemId,
+        draftProblemId: group.draftProblemId,
+        contestProblemKey: group.contestProblemKey,
+        title: "",
+        author: "",
+        userId: null,
+        contentText: "",
+        imageUrls: [],
+        isPostContest: false,
+        createdAt: "",
+        rating: null,
+        comments: [],
+        isRedacted: true,
+        redactedCount: group.count,
+      });
+    }
+  }
+
+  if (closedRows.length === 0) return redactedEntries;
+
+  const ids = closedRows.map((item) => item.id);
 
   const [{ data: ratings }, { data: comments }] = await Promise.all([
     supabase
@@ -359,7 +439,7 @@ export async function getContestThoughts(contestSlug: string): Promise<ContestTh
     });
   }
 
-  return (submissions as unknown as ContestThoughtRow[]).map((submission) => {
+  const fullEntries = closedRows.map((submission) => {
     const profile = firstProfile(submission.user_profiles);
     const imageUrls = (submission.attachment_urls ?? submission.content?.imageUrls ?? submission.content?.images ?? [])
       .filter((url): url is string => typeof url === "string" && isPublicSubmissionImageUrl(url))
@@ -378,6 +458,7 @@ export async function getContestThoughts(contestSlug: string): Promise<ContestTh
     return {
       id: submission.id,
       problemId: submission.problem_id,
+      draftProblemId: submission.draft_problem_id,
       contestProblemKey: submission.contest_problem_key,
       title: submission.title,
       author: profile?.display_name || profile?.username || "匿名用户",
@@ -390,6 +471,8 @@ export async function getContestThoughts(contestSlug: string): Promise<ContestTh
       comments: commentMap.get(submission.id) ?? [],
     };
   });
+
+  return [...redactedEntries, ...fullEntries];
 }
 
 export type ContestUserRankEntry = {
