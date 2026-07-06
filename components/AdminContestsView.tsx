@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Award, BookMarked, CalendarDays, CheckCircle2, Clock, Database, Lock, LockOpen, Plus, RefreshCw, Save, Trash2, Trophy, UploadCloud } from "lucide-react";
+import { AlertTriangle, Award, BookMarked, CalendarDays, CheckCircle2, Clock, Database, Lock, LockOpen, Play, Plus, RefreshCw, Save, Trash2, Trophy, UploadCloud } from "lucide-react";
 import { contests as seededContests } from "@/data/contests";
 import { contestAwardMeta, contestSolutionTypeMeta, contestStatusMeta } from "@/lib/contest-meta";
 import type { ContestAwardType, ContestStatus, Difficulty, ExamRegion, QuestionType } from "@/lib/types";
@@ -177,6 +177,11 @@ export function AdminContestsView({ problems }: { problems: ProblemOption[] }) {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [pendingTransition, setPendingTransition] = useState<{
+    to: ContestStatus;
+    label: string;
+    impact: string;
+  } | null>(null);
 
   const selectedContest = useMemo(
     () => contests.find((contest) => contest.id === selectedId) ?? null,
@@ -470,6 +475,27 @@ export function AdminContestsView({ problems }: { problems: ProblemOption[] }) {
     await loadContests();
   }
 
+  async function transitionContest(toStatus: ContestStatus) {
+    if (!selectedContest) return;
+    setSaving(true);
+    setError("");
+    setMessage("");
+    setPendingTransition(null);
+
+    const { error: updateError } = await supabase
+      .from("contests")
+      .update({ status: toStatus })
+      .eq("id", selectedContest.id);
+
+    setSaving(false);
+    if (updateError) {
+      setError(updateError.message || "状态更新失败。");
+      return;
+    }
+    setMessage(`比赛状态已更新为「${contestStatusMeta[toStatus].label}」。`);
+    await loadContests();
+  }
+
   async function deleteAward(awardId: string) {
     setSaving(true);
     setError("");
@@ -590,6 +616,129 @@ export function AdminContestsView({ problems }: { problems: ProblemOption[] }) {
         )}
         {error && (
           <div className="border border-red-500/40 bg-red-500/[0.08] px-4 py-2.5 text-sm text-red-300">{error}</div>
+        )}
+
+        {selectedContest && (() => {
+          const now = Date.now();
+          const startAt = new Date(selectedContest.start_at).getTime();
+          const endAt = new Date(selectedContest.end_at).getTime();
+          const overdueStart = selectedContest.status === "draft" && now >= startAt;
+          const overdueEnd = selectedContest.status === "active" && now >= endAt;
+          return (overdueStart || overdueEnd) ? (
+            <div className="flex items-start gap-3 border border-red-500/50 bg-red-500/[0.08] px-4 py-3">
+              <AlertTriangle className="mt-0.5 size-4 shrink-0 text-red-400" />
+              <p className="text-sm leading-6 text-red-200">
+                {overdueStart && (
+                  <>
+                    <strong className="text-red-300">开赛时间已过</strong>，但比赛状态仍是「未开始」。请点击下方「开始比赛」按钮将状态切换为进行中。
+                  </>
+                )}
+                {overdueEnd && (
+                  <>
+                    <strong className="text-red-300">截止时间已过</strong>，但比赛状态仍是「进行中」。请点击下方「进入评审」按钮关闭投稿通道。
+                  </>
+                )}
+              </p>
+            </div>
+          ) : null;
+        })()}
+
+        {selectedContest && (
+          <section className="border border-white/10 bg-zinc-950 p-5">
+            <div className="mb-4 flex items-center gap-2 text-sm font-bold text-white">
+              <Play className="size-4 text-cyan-300" />
+              运营控制
+            </div>
+            <div className="mb-4 flex flex-wrap items-center gap-3">
+              {(["draft", "active", "judging", "finished"] as ContestStatus[]).map((s, i, arr) => {
+                const meta = contestStatusMeta[s];
+                const isCurrent = selectedContest.status === s;
+                return (
+                  <span key={s} className="flex items-center gap-1.5 text-xs">
+                    <span className={`border px-2 py-0.5 font-bold ${isCurrent ? meta.className : "border-white/10 text-zinc-600"}`}>
+                      {meta.label}
+                    </span>
+                    {i < arr.length - 1 && <span className="text-zinc-700">→</span>}
+                  </span>
+                );
+              })}
+            </div>
+
+            {pendingTransition ? (
+              <div className="border border-amber-400/40 bg-amber-400/[0.07] p-4">
+                <p className="text-sm font-bold text-amber-200">确认操作：{pendingTransition.label}</p>
+                <p className="mt-1 text-sm leading-6 text-zinc-400">{pendingTransition.impact}</p>
+                <div className="mt-3 flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => transitionContest(pendingTransition.to)}
+                    disabled={saving}
+                    className="inline-flex h-9 items-center gap-2 bg-amber-400 px-4 text-xs font-bold text-zinc-950 disabled:opacity-50"
+                  >
+                    确认执行
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPendingTransition(null)}
+                    className="inline-flex h-9 items-center border border-white/15 px-4 text-xs text-zinc-400 hover:text-white"
+                  >
+                    取消
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {selectedContest.status === "draft" && (
+                  <button
+                    type="button"
+                    onClick={() => setPendingTransition({
+                      to: "active",
+                      label: "开始比赛（draft → active）",
+                      impact: "开始后：允许参赛者投稿，题目按解锁计划开放。投稿通道将立即开启，请确认所有赛题时间和内容已就绪。",
+                    })}
+                    disabled={saving}
+                    className="inline-flex h-9 items-center gap-2 bg-emerald-500 px-4 text-xs font-bold text-white transition hover:bg-emerald-400 disabled:opacity-50"
+                  >
+                    <Play className="size-3.5" />
+                    开始比赛
+                  </button>
+                )}
+                {selectedContest.status === "active" && (
+                  <button
+                    type="button"
+                    onClick={() => setPendingTransition({
+                      to: "judging",
+                      label: "进入评审（active → judging）",
+                      impact: "进入评审后：正式投稿截止，参赛者仍可提交赛后补充；思路专区开放全文讨论和评分；榜单仍隐藏至结束。",
+                    })}
+                    disabled={saving}
+                    className="inline-flex h-9 items-center gap-2 bg-amber-500 px-4 text-xs font-bold text-white transition hover:bg-amber-400 disabled:opacity-50"
+                  >
+                    <Trophy className="size-3.5" />
+                    进入评审
+                  </button>
+                )}
+                {selectedContest.status === "judging" && (
+                  <button
+                    type="button"
+                    onClick={() => setPendingTransition({
+                      to: "finished",
+                      label: "结束比赛（judging → finished）",
+                      impact: "结束后：比赛彻底关闭，榜单和讨论区完全公开，思路专区继续开放（若设置了讨论时段则按时段限制）。此操作不可逆，请确认已完成奖项标注。",
+                    })}
+                    disabled={saving}
+                    className="inline-flex h-9 items-center gap-2 bg-sky-500 px-4 text-xs font-bold text-white transition hover:bg-sky-400 disabled:opacity-50"
+                  >
+                    <CheckCircle2 className="size-3.5" />
+                    结束比赛
+                  </button>
+                )}
+                {selectedContest.status === "finished" && (
+                  <span className="inline-flex h-9 items-center text-sm text-zinc-500">比赛已结束，无可切换状态。</span>
+                )}
+              </div>
+            )}
+          </section>
         )}
 
         <section className="border border-white/10 bg-zinc-950 p-5">

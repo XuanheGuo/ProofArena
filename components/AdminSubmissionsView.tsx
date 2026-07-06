@@ -378,6 +378,8 @@ export function AdminSubmissionsView() {
   const [scopeFilter, setScopeFilter] = useState<'all' | 'regular' | 'contest'>(() =>
     contestParam ? 'contest' : 'all'
   );
+  const [contestSlugFilter, setContestSlugFilter] = useState<string>(contestParam ?? '');
+  const [contestProblemKeyFilter, setContestProblemKeyFilter] = useState<string>('');
   const supabase = createClient();
 
   useEffect(() => {
@@ -569,11 +571,24 @@ export function AdminSubmissionsView() {
     let result = submissions;
     if (scopeFilter === 'regular') result = result.filter((s) => !s.contest_slug);
     else if (scopeFilter === 'contest') result = result.filter((s) => Boolean(s.contest_slug));
-    if (contestParam && scopeFilter === 'contest') {
-      result = result.filter((s) => s.contest_slug === contestParam);
+    if (contestSlugFilter) {
+      result = result.filter((s) => s.contest_slug === contestSlugFilter);
+    }
+    if (contestProblemKeyFilter) {
+      result = result.filter((s) => s.contest_problem_key === contestProblemKeyFilter);
+    }
+    // In contest view, sort by slug → problem key → newest first for easier sequential review.
+    if (scopeFilter === 'contest') {
+      result = [...result].sort((a, b) => {
+        const slugCmp = (a.contest_slug ?? '').localeCompare(b.contest_slug ?? '');
+        if (slugCmp !== 0) return slugCmp;
+        const keyCmp = (a.contest_problem_key ?? '').localeCompare(b.contest_problem_key ?? '');
+        if (keyCmp !== 0) return keyCmp;
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      });
     }
     return result;
-  }, [scopeFilter, submissions, contestParam]);
+  }, [scopeFilter, submissions, contestSlugFilter, contestProblemKeyFilter]);
 
   if (loading) {
     return (
@@ -624,7 +639,10 @@ export function AdminSubmissionsView() {
             <button
               key={value}
               type="button"
-              onClick={() => setScopeFilter(value as typeof scopeFilter)}
+              onClick={() => {
+                setScopeFilter(value as typeof scopeFilter);
+                if (value !== 'contest') { setContestSlugFilter(''); setContestProblemKeyFilter(''); }
+              }}
               className={`h-9 border px-3 text-xs font-bold transition ${
                 scopeFilter === value
                   ? 'border-cyan-400 bg-cyan-400 text-zinc-950'
@@ -634,6 +652,36 @@ export function AdminSubmissionsView() {
               {label}
             </button>
           ))}
+          {scopeFilter === 'contest' && (() => {
+            const slugs = [...new Set(submissions.filter((s) => s.contest_slug).map((s) => s.contest_slug as string))];
+            const keys = contestSlugFilter
+              ? [...new Set(submissions.filter((s) => s.contest_slug === contestSlugFilter && s.contest_problem_key).map((s) => s.contest_problem_key as string))]
+              : [];
+            return (
+              <>
+                <select
+                  value={contestSlugFilter}
+                  onChange={(e) => { setContestSlugFilter(e.target.value); setContestProblemKeyFilter(''); }}
+                  className="h-9 border border-white/10 bg-zinc-900 px-2 text-xs text-zinc-300 outline-none"
+                  title="筛选比赛"
+                >
+                  <option value="">全部比赛</option>
+                  {slugs.map((slug) => <option key={slug} value={slug}>{slug}</option>)}
+                </select>
+                {keys.length > 0 && (
+                  <select
+                    value={contestProblemKeyFilter}
+                    onChange={(e) => setContestProblemKeyFilter(e.target.value)}
+                    className="h-9 border border-white/10 bg-zinc-900 px-2 text-xs text-zinc-300 outline-none"
+                    title="筛选赛题"
+                  >
+                    <option value="">全部赛题</option>
+                    {keys.map((key) => <option key={key} value={key}>{key.slice(0, 12)}…</option>)}
+                  </select>
+                )}
+              </>
+            );
+          })()}
         </div>
 
         <div className="space-y-3">
@@ -641,11 +689,21 @@ export function AdminSubmissionsView() {
             <div key={sub.id} className="rounded border border-white/10 bg-white/[0.02] p-5 transition hover:bg-white/[0.04]">
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0 flex-1">
-                  <div className="mb-2 flex items-center gap-2">
+                  <div className="mb-2 flex flex-wrap items-center gap-2">
                     {getStatusBadge(sub.status)}
                     <span className={`rounded border px-2 py-1 text-xs font-bold ${sub.contest_slug ? 'border-amber-400/30 bg-amber-400/[0.06] text-amber-300' : 'border-white/10 text-zinc-500'}`}>
                       {getScopeLabel(sub)}
                     </span>
+                    {sub.contest_solution_type && (
+                      <span className="rounded border border-cyan-400/25 bg-cyan-400/[0.05] px-2 py-1 text-xs font-bold text-cyan-300">
+                        {contestSolutionTypeMeta[sub.contest_solution_type]?.label ?? sub.contest_solution_type}
+                      </span>
+                    )}
+                    {sub.draft_problem_id && !sub.problem_id && (
+                      <span className="rounded border border-violet-400/30 bg-violet-400/[0.06] px-2 py-1 text-xs font-bold text-violet-300">
+                        未公开题目
+                      </span>
+                    )}
                     {isForkPR(sub) && (
                       <span className="inline-flex items-center gap-1 rounded border border-violet-400/30 bg-violet-400/[0.06] px-2 py-1 text-xs font-bold text-violet-300">
                         <Route className="size-3" />

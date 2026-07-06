@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { AlertCircle, CheckCircle2, FileImage, FilePlus2, Lightbulb, LogIn, Send, X } from 'lucide-react';
+import { AlertCircle, CheckCircle2, FileImage, FilePlus2, Lightbulb, LogIn, RotateCcw, Send, X } from 'lucide-react';
 import type { User } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase-client';
 import { contestSolutionTypeMeta, contestSolutionTypeOptions } from '@/lib/contest-meta';
@@ -65,6 +65,45 @@ const initialSolutionForm = {
   observationWhy: '',
   transformationJustification: '',
 };
+
+// Draft auto-save key format: pa:cdraft:v1:{contestSlug}:{problemId}
+// problemId is the public problem_id or the draft_problem_id, whichever is relevant.
+// The special value "any" covers no-problem-selected state.
+function contestDraftKey(contestSlug: string, problemId: string) {
+  return `pa:cdraft:v1:${contestSlug}:${problemId || 'any'}`;
+}
+
+type ContestDraft = {
+  title: string;
+  contestSolutionType: ContestSolutionType;
+  approach: string;
+};
+
+function readContestDraft(key: string): ContestDraft | null {
+  try {
+    const raw = typeof window !== 'undefined' ? localStorage.getItem(key) : null;
+    if (!raw) return null;
+    return JSON.parse(raw) as ContestDraft;
+  } catch {
+    return null;
+  }
+}
+
+function writeContestDraft(key: string, draft: ContestDraft) {
+  try {
+    localStorage.setItem(key, JSON.stringify(draft));
+  } catch {
+    // storage quota exceeded — fail silently
+  }
+}
+
+function clearContestDraft(key: string) {
+  try {
+    localStorage.removeItem(key);
+  } catch {
+    // ignore
+  }
+}
 
 function getContestSubmissionState(contest?: Contest, contestProblem?: ContestProblem, now = Date.now()) {
   if (!contest) {
@@ -278,12 +317,16 @@ export function SubmitForm({
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState<SubmitMode | null>(null);
   const [error, setError] = useState('');
+  const [draftRestored, setDraftRestored] = useState(false);
+  const [hasDraftToRestore, setHasDraftToRestore] = useState(false);
+  const draftSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [problemForm, setProblemForm] = useState(initialProblemForm);
   const [solutionForm, setSolutionForm] = useState({
     ...initialSolutionForm,
     problemId: initialSelectedProblemId,
   });
   const [imageFiles, setImageFiles] = useState<File[]>([]);
+  const [uploadingCount, setUploadingCount] = useState(0);
   const [forkDismissed, setForkDismissed] = useState(false);
 
   // One-time fork prefill on mount.
@@ -365,6 +408,69 @@ export function SubmitForm({
     }
   }, [selectedProblem, solutionForm.challengeTargetSolutionId]);
 
+  // ── Contest mode draft auto-save ──────────────────────────────────────────
+  // Key: pa:cdraft:v1:{contestSlug}:{problemId or "any"}
+  // Saved fields: title, contestSolutionType, approach (no images).
+  // Debounce: 1500ms. Cleared on successful submit.
+  const activeDraftKey = isContestMode && contestContext
+    ? contestDraftKey(
+        contestContext.contest.slug,
+        solutionForm.problemId || 'any',
+      )
+    : null;
+
+  // On mount (and when problem changes), check if a saved draft exists.
+  useEffect(() => {
+    if (!activeDraftKey) return;
+    const saved = readContestDraft(activeDraftKey);
+    if (saved && (saved.approach || saved.title)) {
+      setHasDraftToRestore(true);
+    } else {
+      setHasDraftToRestore(false);
+    }
+    // Don't restore automatically — wait for user to click.
+  }, [activeDraftKey]);
+
+  // Debounce-save contest form fields.
+  const draftToSave = isContestMode
+    ? { title: solutionForm.title, contestSolutionType: solutionForm.contestSolutionType, approach: solutionForm.approach }
+    : null;
+  const draftToSaveStr = draftToSave ? JSON.stringify(draftToSave) : null;
+  useEffect(() => {
+    if (!activeDraftKey || !draftToSaveStr) return;
+    if (draftSaveTimer.current) clearTimeout(draftSaveTimer.current);
+    draftSaveTimer.current = setTimeout(() => {
+      const parsed = JSON.parse(draftToSaveStr) as ContestDraft;
+      if (parsed.approach || parsed.title) {
+        writeContestDraft(activeDraftKey, parsed);
+      }
+    }, 1500);
+    return () => {
+      if (draftSaveTimer.current) clearTimeout(draftSaveTimer.current);
+    };
+  }, [activeDraftKey, draftToSaveStr]);
+
+  const restoreDraft = useCallback(() => {
+    if (!activeDraftKey) return;
+    const saved = readContestDraft(activeDraftKey);
+    if (!saved) return;
+    setSolutionForm((current) => ({
+      ...current,
+      title: saved.title ?? current.title,
+      contestSolutionType: saved.contestSolutionType ?? current.contestSolutionType,
+      approach: saved.approach ?? current.approach,
+    }));
+    setDraftRestored(true);
+    setHasDraftToRestore(false);
+  }, [activeDraftKey]);
+
+  function discardDraft() {
+    if (activeDraftKey) clearContestDraft(activeDraftKey);
+    setHasDraftToRestore(false);
+    setDraftRestored(false);
+  }
+  // ─────────────────────────────────────────────────────────────────────────
+
   function updateImageFiles(files: FileList | null) {
     if (!files) return;
     const next = [...imageFiles, ...Array.from(files)]
@@ -378,24 +484,44 @@ export function SubmitForm({
     setError('');
   }
 
+  function handlePaste(event: React.ClipboardEvent) {
+    const imageItems = Array.from(event.clipboardData.items).filter((item) =>
+      item.kind === 'file' && item.type.startsWith('image/'),
+    );
+    if (imageItems.length === 0) return;
+    const pasted = imageItems
+      .map((item) => item.getAsFile())
+      .filter((f): f is File => f !== null)
+      .filter(isAllowedImage)
+      .slice(0, MAX_IMAGE_COUNT - imageFiles.length);
+    if (pasted.length > 0) {
+      setImageFiles((current) => [...current, ...pasted].slice(0, MAX_IMAGE_COUNT));
+    }
+  }
+
   async function uploadImages() {
     if (!imageFiles.length || !user) return [];
 
     const urls: string[] = [];
-    for (const file of imageFiles) {
-      if (!isAllowedImage(file)) throw new Error(`图片需为 JPG/PNG/WebP/GIF，且单张不超过 ${Math.round(MAX_IMAGE_BYTES / 1024 / 1024)}MB。`);
-      const ext = extensionForImageType(file.type);
-      const path = `${user.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-      const { error: uploadError } = await supabase.storage
-        .from('submission-images')
-        .upload(path, file, { cacheControl: '3600', contentType: file.type, upsert: false });
+    setUploadingCount(imageFiles.length);
+    try {
+      for (const file of imageFiles) {
+        if (!isAllowedImage(file)) throw new Error(`图片需为 JPG/PNG/WebP/GIF，且单张不超过 ${Math.round(MAX_IMAGE_BYTES / 1024 / 1024)}MB。`);
+        const ext = extensionForImageType(file.type);
+        const path = `${user.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+        const { error: uploadError } = await supabase.storage
+          .from('submission-images')
+          .upload(path, file, { cacheControl: '3600', contentType: file.type, upsert: false });
 
-      if (uploadError) throw new Error(uploadError.message || '图片上传失败');
+        if (uploadError) throw new Error(uploadError.message || '图片上传失败');
 
-      const { data } = supabase.storage.from('submission-images').getPublicUrl(path);
-      if (data.publicUrl) urls.push(data.publicUrl);
+        const { data } = supabase.storage.from('submission-images').getPublicUrl(path);
+        if (data.publicUrl) urls.push(data.publicUrl);
+        setUploadingCount((n) => Math.max(0, n - 1));
+      }
+    } finally {
+      setUploadingCount(0);
     }
-
     return urls;
   }
 
@@ -564,6 +690,7 @@ export function SubmitForm({
     }
 
     setDone(mode);
+    if (activeDraftKey) clearContestDraft(activeDraftKey);
     if (mode === 'problem') {
       setProblemForm(initialProblemForm);
     } else {
@@ -619,7 +746,7 @@ export function SubmitForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-5">
+    <form onSubmit={handleSubmit} onPaste={handlePaste} className="space-y-5">
       {/* Mode indicator */}
       <div className={`flex items-center gap-3 border px-4 py-3 ${
         isContestMode
@@ -638,6 +765,27 @@ export function SubmitForm({
           </p>
         </div>
       </div>
+
+      {/* Contest draft restore banner */}
+      {isContestMode && hasDraftToRestore && !draftRestored && (
+        <div className="flex items-center justify-between gap-3 border border-amber-400/30 bg-amber-400/[0.06] px-4 py-3">
+          <div className="flex items-center gap-2 text-sm">
+            <RotateCcw className="size-4 shrink-0 text-amber-400" />
+            <span className="text-zinc-300">发现上次未提交的草稿，是否恢复？</span>
+          </div>
+          <div className="flex gap-2">
+            <button type="button" onClick={restoreDraft} className="inline-flex h-8 items-center border border-amber-400/40 bg-amber-400/10 px-3 text-xs font-bold text-amber-300 hover:bg-amber-400/15">
+              恢复草稿
+            </button>
+            <button type="button" onClick={discardDraft} className="inline-flex h-8 items-center border border-white/10 px-3 text-xs text-zinc-500 hover:text-white">
+              忽略
+            </button>
+          </div>
+        </div>
+      )}
+      {isContestMode && draftRestored && (
+        <p className="text-xs text-zinc-600">已恢复上次草稿。提交成功后自动清除。</p>
+      )}
 
       {!isContestMode && (
         <div className="grid grid-cols-2 gap-2 rounded border border-white/10 bg-black/20 p-1">
@@ -797,6 +945,7 @@ export function SubmitForm({
                 files={imageFiles}
                 onAdd={updateImageFiles}
                 onRemove={(index) => setImageFiles((current) => current.filter((_, i) => i !== index))}
+                uploadingCount={uploadingCount}
               />
             </>
           ) : (
@@ -938,6 +1087,7 @@ export function SubmitForm({
               files={imageFiles}
               onAdd={updateImageFiles}
               onRemove={(index) => setImageFiles((current) => current.filter((_, i) => i !== index))}
+              uploadingCount={uploadingCount}
             />
             </>
           )}
@@ -958,6 +1108,7 @@ export function SubmitForm({
             files={imageFiles}
             onAdd={updateImageFiles}
             onRemove={(index) => setImageFiles((current) => current.filter((_, i) => i !== index))}
+            uploadingCount={uploadingCount}
           />
         </div>
       )}
@@ -1026,11 +1177,22 @@ function ImageUploadField({
   files,
   onAdd,
   onRemove,
+  uploadingCount = 0,
 }: {
   files: File[];
   onAdd: (files: FileList | null) => void;
   onRemove: (index: number) => void;
+  uploadingCount?: number;
 }) {
+  // Generate stable object URLs for previews (revoked when component unmounts
+  // or files change — kept simple, no compression).
+  const previews = useMemo(
+    () => files.map((file) => URL.createObjectURL(file)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [files.map((f) => f.name + f.size).join(',')],
+  );
+  useEffect(() => () => { previews.forEach((url) => URL.revokeObjectURL(url)); }, [previews]);
+
   return (
     <div className="rounded border border-white/10 bg-white/[0.03] p-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -1039,37 +1201,52 @@ function ImageUploadField({
           <div>
             <p className="text-sm font-bold text-white">图片</p>
             <p className="mt-1 text-xs leading-5 text-zinc-600">
-              最多 {MAX_IMAGE_COUNT} 张，支持 {ALLOWED_IMAGE_TYPES.map((type) => type.replace("image/", "").toUpperCase()).join(" / ")}，单张不超过 {Math.round(MAX_IMAGE_BYTES / 1024 / 1024)}MB。
+              最多 {MAX_IMAGE_COUNT} 张，支持 {ALLOWED_IMAGE_TYPES.map((type) => type.replace("image/", "").toUpperCase()).join(" / ")}，单张不超过 {Math.round(MAX_IMAGE_BYTES / 1024 / 1024)}MB。支持粘贴截图（Ctrl/Cmd+V）。
             </p>
           </div>
         </div>
-        <label className="inline-flex h-9 cursor-pointer items-center justify-center border border-cyan-400/30 px-3 text-xs font-bold text-cyan-300 transition hover:bg-cyan-400/10">
-          选择图片
-          <input
-            type="file"
-            accept="image/*"
-            multiple
-            onChange={(event) => {
-              onAdd(event.target.files);
-              event.currentTarget.value = '';
-            }}
-            className="sr-only"
-          />
-        </label>
+        <div className="flex items-center gap-2">
+          {uploadingCount > 0 && (
+            <span className="text-xs text-amber-300 animate-pulse">
+              上传中 {uploadingCount} 张…
+            </span>
+          )}
+          <label className="inline-flex h-9 cursor-pointer items-center justify-center border border-cyan-400/30 px-3 text-xs font-bold text-cyan-300 transition hover:bg-cyan-400/10">
+            选择图片
+            <input
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={(event) => {
+                onAdd(event.target.files);
+                event.currentTarget.value = '';
+              }}
+              className="sr-only"
+            />
+          </label>
+        </div>
       </div>
       {files.length > 0 && (
         <div className="mt-4 grid gap-2 sm:grid-cols-2">
           {files.map((file, index) => (
-            <div key={`${file.name}-${index}`} className="flex items-center justify-between gap-3 border border-white/10 bg-black/20 px-3 py-2">
-              <span className="min-w-0 truncate text-xs text-zinc-400">{file.name}</span>
-              <button
-                type="button"
-                onClick={() => onRemove(index)}
-                className="inline-flex size-7 shrink-0 items-center justify-center text-zinc-500 transition hover:text-white"
-                aria-label="移除图片"
-              >
-                <X className="size-3.5" />
-              </button>
+            <div key={`${file.name}-${index}`} className="group relative overflow-hidden border border-white/10 bg-black/30">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={previews[index]}
+                alt={file.name}
+                className="h-32 w-full object-contain"
+              />
+              <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-2 bg-black/70 px-2 py-1.5 opacity-0 transition-opacity group-hover:opacity-100">
+                <span className="min-w-0 truncate text-[11px] text-zinc-400">{file.name}</span>
+                <button
+                  type="button"
+                  onClick={() => onRemove(index)}
+                  className="inline-flex size-6 shrink-0 items-center justify-center text-zinc-400 transition hover:text-red-400"
+                  aria-label="移除图片"
+                >
+                  <X className="size-3.5" />
+                </button>
+              </div>
             </div>
           ))}
         </div>
