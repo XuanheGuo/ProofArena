@@ -8,6 +8,7 @@ import { createClient } from '@/lib/supabase-client';
 import { contestSolutionTypeMeta, contestSolutionTypeOptions } from '@/lib/contest-meta';
 import { ALLOWED_IMAGE_TYPES, MAX_CONTEST_THOUGHT_CHARS, MAX_GENERAL_TEXT_CHARS, MAX_IMAGE_BYTES, MAX_IMAGE_COUNT, MAX_TITLE_CHARS, clampText, extensionForImageType, isAllowedImage } from '@/lib/security';
 import { getEffectiveProblemStatus, type Contest, type ContestProblem, type ContestSolutionType } from '@/lib/types';
+import { MathPreviewTextArea } from '@/components/MathPreviewTextArea';
 import { CASVerifier } from '@/components/CASVerifier';
 import { MathBlock } from '@/components/MathBlock';
 import { stripMathDelimiters } from '@/lib/math-normalizer';
@@ -45,6 +46,20 @@ const initialProblemForm = {
   answer: '',
   tags: '',
   note: '',
+};
+
+const initialVaultForm = {
+  year: String(new Date().getFullYear()),
+  region: '',
+  paper: '',
+  number: '',
+  difficulty: '',
+  questionType: '',
+  title: '',
+  statement: '',
+  answer: '',
+  tags: '',
+  notes: '',
 };
 
 const initialSolutionForm = {
@@ -289,6 +304,7 @@ export function SubmitForm({
   initialProblemId,
   initialForkSolutionId,
   contestContext,
+  vaultMode = false,
 }: {
   problems: ProblemOption[];
   initialProblemId?: string;
@@ -297,6 +313,7 @@ export function SubmitForm({
     contest: Contest;
     contestProblem?: ContestProblem;
   };
+  vaultMode?: boolean;
 }) {
   const isContestMode = Boolean(contestContext);
   const contestProblemIds = useMemo(
@@ -313,7 +330,7 @@ export function SubmitForm({
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [now, setNow] = useState(() => Date.now());
-  const [mode, setMode] = useState<SubmitMode>('solution');
+  const [mode, setMode] = useState<SubmitMode>(vaultMode ? 'problem' : 'solution');
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState<SubmitMode | null>(null);
   const [error, setError] = useState('');
@@ -321,6 +338,7 @@ export function SubmitForm({
   const [hasDraftToRestore, setHasDraftToRestore] = useState(false);
   const draftSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [problemForm, setProblemForm] = useState(initialProblemForm);
+  const [vaultForm, setVaultForm] = useState(initialVaultForm);
   const [solutionForm, setSolutionForm] = useState({
     ...initialSolutionForm,
     problemId: initialSelectedProblemId,
@@ -548,6 +566,31 @@ export function SubmitForm({
     });
   }
 
+  function generateDraftId() {
+    return `draft-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
+  }
+
+  async function submitVault() {
+    const tags = toLines(vaultForm.tags);
+    const statement = vaultForm.statement.split(/\n+/).map((l) => l.trim()).filter(Boolean);
+    const { error: err } = await supabase.from('problem_drafts').insert({
+      id: generateDraftId(),
+      year: Number(vaultForm.year) || new Date().getFullYear(),
+      region: clampText(vaultForm.region, MAX_TITLE_CHARS),
+      paper: clampText(vaultForm.paper, MAX_TITLE_CHARS),
+      number: clampText(vaultForm.number, MAX_TITLE_CHARS),
+      difficulty: clampText(vaultForm.difficulty, MAX_TITLE_CHARS),
+      question_type: clampText(vaultForm.questionType, MAX_TITLE_CHARS),
+      tags,
+      title: clampText(vaultForm.title, MAX_TITLE_CHARS),
+      statement,
+      answer: clampText(vaultForm.answer, MAX_GENERAL_TEXT_CHARS),
+      notes: clampText(vaultForm.notes, MAX_GENERAL_TEXT_CHARS),
+      status: 'drafting',
+    });
+    return { error: err };
+  }
+
   async function submitSolution(imageUrls: string[]) {
     if (activeContestContext && !contestSubmissionState.canSubmit) {
       return { error: { message: contestSubmissionState.description } };
@@ -681,7 +724,11 @@ export function SubmitForm({
       return;
     }
 
-    const { error: submitError } = mode === 'problem' ? await submitProblem(imageUrls) : await submitSolution(imageUrls);
+    const { error: submitError } = vaultMode
+      ? await submitVault()
+      : mode === 'problem'
+        ? await submitProblem(imageUrls)
+        : await submitSolution(imageUrls);
 
     setSubmitting(false);
     if (submitError) {
@@ -691,7 +738,9 @@ export function SubmitForm({
 
     setDone(mode);
     if (activeDraftKey) clearContestDraft(activeDraftKey);
-    if (mode === 'problem') {
+    if (vaultMode) {
+      setVaultForm(initialVaultForm);
+    } else if (mode === 'problem') {
       setProblemForm(initialProblemForm);
     } else {
       setSolutionForm({
@@ -1092,15 +1141,35 @@ export function SubmitForm({
             </>
           )}
         </div>
+      ) : vaultMode ? (
+        <div className="space-y-5">
+          <div className="grid gap-3 sm:grid-cols-3">
+            <TextField required label="年份" value={vaultForm.year} onChange={(year) => setVaultForm({ ...vaultForm, year })} placeholder="2026" />
+            <TextField required label="地区" value={vaultForm.region} onChange={(region) => setVaultForm({ ...vaultForm, region })} placeholder="全国甲卷" />
+            <TextField label="卷别" value={vaultForm.paper} onChange={(paper) => setVaultForm({ ...vaultForm, paper })} placeholder="数学（理）" />
+          </div>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <TextField label="题号" value={vaultForm.number} onChange={(number) => setVaultForm({ ...vaultForm, number })} placeholder="第 20 题" />
+            <TextField label="难度" value={vaultForm.difficulty} onChange={(difficulty) => setVaultForm({ ...vaultForm, difficulty })} placeholder="困难" />
+            <TextField label="题型" value={vaultForm.questionType} onChange={(questionType) => setVaultForm({ ...vaultForm, questionType })} placeholder="填空题" />
+          </div>
+          <TextField required label="题目标题" value={vaultForm.title} onChange={(title) => setVaultForm({ ...vaultForm, title })} placeholder="用一句话概括题目主题，可含 LaTeX，如：关于 $x^2$ 的不等式" />
+          <MathPreviewTextArea required label="完整题干" value={vaultForm.statement} onChange={(statement) => setVaultForm({ ...vaultForm, statement })} rows={8} placeholder="在此输入题目，$x^2 + y^2 = r^2$，支持行内公式 $...$ 和块公式 $$...$$" />
+          <MathPreviewTextArea label="标准答案" value={vaultForm.answer} onChange={(answer) => setVaultForm({ ...vaultForm, answer })} rows={3} placeholder="答案，支持 LaTeX" />
+          <div className="grid gap-4 xl:grid-cols-2">
+            <TextArea label="标签" value={vaultForm.tags} onChange={(tags) => setVaultForm({ ...vaultForm, tags })} rows={3} placeholder="导数、圆锥曲线、数列" />
+            <TextArea label="备注" value={vaultForm.notes} onChange={(notes) => setVaultForm({ ...vaultForm, notes })} rows={3} placeholder="命题背景、出处链接、审核提示" />
+          </div>
+        </div>
       ) : (
         <div className="space-y-5">
           <div className="grid gap-4 xl:grid-cols-2">
             <TextField required label="题目来源" value={problemForm.source} onChange={(source) => setProblemForm({ ...problemForm, source })} placeholder="例如：2026 天津卷第 20 题" />
             <TextField required label="题目标题" value={problemForm.title} onChange={(title) => setProblemForm({ ...problemForm, title })} placeholder="用一句话概括题目主题" />
           </div>
-          <TextArea required label="完整题干" value={problemForm.statement} onChange={(statement) => setProblemForm({ ...problemForm, statement })} rows={8} placeholder="支持 Markdown / LaTeX" />
+          <MathPreviewTextArea required label="完整题干" value={problemForm.statement} onChange={(statement) => setProblemForm({ ...problemForm, statement })} rows={8} placeholder="支持 LaTeX：$\frac{1}{2}$、$$\sum_{i=1}^n$$" />
           <div className="grid gap-4 xl:grid-cols-2">
-            <TextArea label="标准答案" value={problemForm.answer} onChange={(answer) => setProblemForm({ ...problemForm, answer })} rows={4} />
+            <MathPreviewTextArea label="标准答案" value={problemForm.answer} onChange={(answer) => setProblemForm({ ...problemForm, answer })} rows={4} placeholder="答案，支持 LaTeX" />
             <TextArea label="标签" value={problemForm.tags} onChange={(tags) => setProblemForm({ ...problemForm, tags })} rows={4} placeholder="导数、圆锥曲线、数列" />
           </div>
           <TextArea label="补充说明" value={problemForm.note} onChange={(note) => setProblemForm({ ...problemForm, note })} rows={3} placeholder="来源链接、图片说明、你希望补充的审核信息" />
@@ -1127,19 +1196,23 @@ export function SubmitForm({
         >
           <Send className="size-4" />
           {submitting
-            ? '提交中...'
-            : mode === 'problem'
-              ? '提交题目'
-              : contestContext
-                ? contestSubmissionState.isPostContest ? '提交赛后补充' : '提交参赛解法'
-                : '提交解法'}
+            ? '保存中...'
+            : vaultMode
+              ? '存入草稿箱'
+              : mode === 'problem'
+                ? '提交题目'
+                : contestContext
+                  ? contestSubmissionState.isPostContest ? '提交赛后补充' : '提交参赛解法'
+                  : '提交解法'}
         </button>
         <p className="text-xs leading-5 text-zinc-600">
-          {mode === 'problem'
-            ? '题目审核通过后会进入题库，再继续收集多种解法。'
-            : contestContext
-              ? contestSubmissionState.description
-              : '解法会绑定到所选题目，审核通过后进入对比视图。'}
+          {vaultMode
+            ? '保存为草稿，可随时在草稿箱中编辑或发布到公开题库。'
+            : mode === 'problem'
+              ? '题目审核通过后会进入题库，再继续收集多种解法。'
+              : contestContext
+                ? contestSubmissionState.description
+                : '解法会绑定到所选题目，审核通过后进入对比视图。'}
         </p>
       </div>
     </form>
