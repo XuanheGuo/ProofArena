@@ -21,6 +21,7 @@ import { MathBlock } from "@/components/MathBlock";
 import { contestStatusMeta, contestSolutionTypeMeta } from "@/lib/contest-meta";
 import { ContestThoughtArena } from "@/components/ContestThoughtArena";
 import { ContestMyPanel } from "@/components/ContestMyPanel";
+import { ContestCountdown } from "@/components/ContestCountdown";
 import { getContest, getContestLeaderboard, getContestSubmissionStats, getContests, getContestThoughts, getContestUserRankings } from "@/lib/contests";
 import { getProblems, getSolutionAverage } from "@/lib/db";
 import { getProblemDraftTitles } from "@/lib/problem-drafts";
@@ -466,6 +467,8 @@ export default async function ContestDetailPage({ params }: PageProps) {
         </div>
 
         <aside className="space-y-4 lg:sticky lg:top-24 lg:self-start">
+          <ContestCountdown contest={contest} />
+
           <section className="border border-cyan-400/25 bg-cyan-400/[0.04] p-4">
             <div className="flex items-center gap-2 text-sm font-bold text-white">
               <Swords className="size-4 text-cyan-300" />
