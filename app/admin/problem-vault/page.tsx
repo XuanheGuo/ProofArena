@@ -1,15 +1,14 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
-import { AdminContestsView } from "@/components/AdminContestsView";
 import { createClient } from "@/lib/supabase-server";
-import { getProblems } from "@/lib/db";
+import { ProblemVaultView } from "@/components/ProblemVaultView";
+import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 
-function canManageContests(role?: string | null) {
+function canAccessAdmin(role?: string | null) {
   return role === "admin" || role === "moderator";
 }
 
-export default async function AdminContestsPage() {
+export default async function ProblemVaultPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
@@ -21,7 +20,7 @@ export default async function AdminContestsPage() {
     .eq("id", user.id)
     .single();
 
-  if (!canManageContests(profile?.role)) {
+  if (!canAccessAdmin(profile?.role)) {
     return (
       <main className="min-h-screen bg-zinc-950 px-4 py-16">
         <div className="mx-auto max-w-2xl text-center">
@@ -32,21 +31,19 @@ export default async function AdminContestsPage() {
     );
   }
 
-  const problems = await getProblems();
-  const problemOptions = problems.map((problem) => ({
-    id: problem.id,
-    title: problem.title,
-    source: `${problem.year} ${problem.region} · ${problem.paper}${problem.number ? ` · ${problem.number}` : ""}`,
-  }));
-
   return (
     <main className="min-h-screen bg-zinc-950 px-4 py-10 md:px-6">
-      <div className="mx-auto max-w-7xl">
-        <Link href="/admin" className="inline-flex items-center gap-2 text-sm text-zinc-500 transition hover:text-white">
+      <div className="mx-auto max-w-4xl">
+        <Link
+          href="/admin"
+          className="inline-flex items-center gap-2 text-sm text-zinc-500 transition hover:text-white"
+        >
           <ArrowLeft className="size-4" />
           返回管理面板
         </Link>
-        <AdminContestsView problems={problemOptions} />
+        <div className="mt-6">
+          <ProblemVaultView />
+        </div>
       </div>
     </main>
   );

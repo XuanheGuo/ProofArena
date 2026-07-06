@@ -49,11 +49,11 @@ export default async function AdminProofGraphPage() {
     <main className="min-h-screen bg-zinc-950 px-4 py-10 md:px-6">
       <div className="mx-auto max-w-7xl">
         <Link
-          href="/admin/submissions"
+          href="/admin"
           className="inline-flex items-center gap-2 text-sm text-zinc-500 transition hover:text-white"
         >
           <ArrowLeft className="size-4" />
-          返回投稿审核
+          返回管理面板
         </Link>
         <div className="mt-6">
           <h1 className="text-2xl font-black text-white">推理图谱编辑器</h1>
