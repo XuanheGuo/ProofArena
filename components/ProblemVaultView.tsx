@@ -83,7 +83,7 @@ export function ProblemVaultView() {
           </p>
         </div>
         <Link
-          href="/admin/contests"
+          href="/admin/problem-vault/new"
           className="inline-flex items-center gap-2 border border-violet-500/30 bg-violet-500/10 px-4 py-2 text-sm font-bold text-violet-200 transition hover:border-violet-400/50 hover:bg-violet-500/20"
         >
           <Plus className="size-4" />
@@ -166,10 +166,11 @@ export function ProblemVaultView() {
       )}
 
       <p className="mt-4 text-xs text-zinc-600">
-        创建和编辑草稿题目请前往{" "}
+        比赛题目排期请前往{" "}
         <Link href="/admin/contests" className="text-violet-400 hover:underline">
-          比赛管理 → 未公开题库
+          比赛管理
         </Link>
+        {" "}中的「未公开题库」区域进行配置
       </p>
     </div>
   );
