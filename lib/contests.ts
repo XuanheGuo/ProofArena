@@ -478,23 +478,53 @@ export async function getContestThoughts(contestSlug: string, contest?: Contest 
 export type ContestUserRankEntry = {
   userId: string;
   author: string;
+  /** Total solutions submitted (including post-contest). */
   solutionCount: number;
+  /** Solutions with at least MIN_RATERS ratings (official period only). */
   ratedSolutionCount: number;
+  /** Weighted score: sum over each problem of (bestAvg × weight), official only. */
+  weightedScore: number;
+  /** Legacy alias kept for the existing UI that renders this field. */
   bestAvgTotal: number;
   totalScore: number;
   awardPoints: number;
   grandTotal: number;
 };
 
+/** Minimum number of raters before a solution's score counts toward the ranking. */
+const MIN_RATERS = 3;
+
 export async function getContestUserRankings(contestSlug: string, awards: import("@/lib/types").ContestAward[]): Promise<ContestUserRankEntry[]> {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) return [];
 
   const supabase = createPublicClient();
 
-  const { data: solutions } = await supabase
-    .from("solutions")
-    .select("id, author, author_id, problem_id")
-    .eq("contest_slug", contestSlug);
+  // Resolve contest id first (needed to fetch contest_problems weights).
+  const { data: contestRow } = await supabase
+    .from("contests")
+    .select("id")
+    .eq("slug", contestSlug)
+    .maybeSingle();
+
+  // Fetch solutions and contest_problems (for weight) in parallel.
+  const [{ data: solutions }, { data: cpRows }] = await Promise.all([
+    supabase
+      .from("solutions")
+      .select("id, author, author_id, problem_id, contest_problem_id, is_post_contest")
+      .eq("contest_slug", contestSlug),
+    contestRow?.id
+      ? supabase
+          .from("contest_problems")
+          .select("id, weight")
+          .eq("contest_id", contestRow.id)
+      : Promise.resolve({ data: [] as Array<{ id: string; weight: number }> }),
+  ]);
+
+  // Weight lookup: contest_problem_id → weight (default 1).
+  const weightMap = new Map<string, number>();
+  for (const cp of cpRows ?? []) {
+    weightMap.set(cp.id as string, Number(cp.weight) || 1);
+  }
 
   if (!solutions || solutions.length === 0) return [];
 
@@ -519,34 +549,43 @@ export async function getContestUserRankings(contestSlug: string, awards: import
     });
   }
 
-  const userMap = new Map<string, ContestUserRankEntry>();
+  // Per user, per contest_problem: track the best qualifying score.
+  // Only official (is_post_contest=false) solutions with >= MIN_RATERS count.
+  type UserEntry = {
+    userId: string;
+    author: string;
+    solutionCount: number;
+    ratedSolutionCount: number;
+    // contestProblemId → best avg total for that problem (official, >= MIN_RATERS)
+    bestPerProblem: Map<string, number>;
+    awardPoints: number;
+  };
+
+  const userMap = new Map<string, UserEntry>();
 
   for (const s of solutions) {
     const authorId = (s.author_id as string | null) ?? `anon-${s.author}`;
     const author = (s.author as string) || "匿名";
     const sRatings = ratingMap.get(s.id as string) ?? [];
-    const count = sRatings.length;
-    const avgTotal = count > 0
-      ? sRatings.reduce((sum, r) => sum + r.correctness + r.clarity + r.elegance + r.insight + r.exam_usability, 0) / count
+    const raterCount = sRatings.length;
+    const avgTotal = raterCount > 0
+      ? sRatings.reduce((sum, r) => sum + r.correctness + r.clarity + r.elegance + r.insight + r.exam_usability, 0) / raterCount
       : 0;
 
     if (!userMap.has(authorId)) {
-      userMap.set(authorId, {
-        userId: authorId,
-        author,
-        solutionCount: 0,
-        ratedSolutionCount: 0,
-        bestAvgTotal: 0,
-        totalScore: 0,
-        awardPoints: 0,
-        grandTotal: 0,
-      });
+      userMap.set(authorId, { userId: authorId, author, solutionCount: 0, ratedSolutionCount: 0, bestPerProblem: new Map(), awardPoints: 0 });
     }
     const entry = userMap.get(authorId)!;
     entry.solutionCount++;
-    if (count > 0) {
+
+    const isPostContest = Boolean(s.is_post_contest);
+    const cpId = s.contest_problem_id as string | null;
+
+    // Only official, sufficiently-rated solutions contribute to the score.
+    if (!isPostContest && raterCount >= MIN_RATERS && cpId) {
       entry.ratedSolutionCount++;
-      if (avgTotal > entry.bestAvgTotal) entry.bestAvgTotal = avgTotal;
+      const prev = entry.bestPerProblem.get(cpId) ?? 0;
+      if (avgTotal > prev) entry.bestPerProblem.set(cpId, avgTotal);
     }
   }
 
@@ -556,11 +595,27 @@ export async function getContestUserRankings(contestSlug: string, awards: import
     if (entry) entry.awardPoints += award.points;
   }
 
-  const rankings = [...userMap.values()].map((entry) => ({
-    ...entry,
-    totalScore: entry.bestAvgTotal,
-    grandTotal: entry.bestAvgTotal + entry.awardPoints,
-  }));
+  const rankings = [...userMap.values()].map((entry): ContestUserRankEntry => {
+    let weightedScore = 0;
+    let bestAvgTotal = 0;
+    for (const [cpId, score] of entry.bestPerProblem) {
+      const w = weightMap.get(cpId) ?? 1;
+      weightedScore += score * w;
+      if (score > bestAvgTotal) bestAvgTotal = score;
+    }
+    const grandTotal = weightedScore + entry.awardPoints;
+    return {
+      userId: entry.userId,
+      author: entry.author,
+      solutionCount: entry.solutionCount,
+      ratedSolutionCount: entry.ratedSolutionCount,
+      weightedScore,
+      bestAvgTotal,
+      totalScore: weightedScore,
+      awardPoints: entry.awardPoints,
+      grandTotal,
+    };
+  });
 
   rankings.sort((a, b) => b.grandTotal - a.grandTotal || b.ratedSolutionCount - a.ratedSolutionCount);
   return rankings;

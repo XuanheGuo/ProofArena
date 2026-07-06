@@ -20,6 +20,7 @@ import {
 import { MathBlock } from "@/components/MathBlock";
 import { contestStatusMeta, contestSolutionTypeMeta } from "@/lib/contest-meta";
 import { ContestThoughtArena } from "@/components/ContestThoughtArena";
+import { ContestMyPanel } from "@/components/ContestMyPanel";
 import { getContest, getContestLeaderboard, getContestSubmissionStats, getContests, getContestThoughts, getContestUserRankings } from "@/lib/contests";
 import { getProblems, getSolutionAverage } from "@/lib/db";
 import { getProblemDraftTitles } from "@/lib/problem-drafts";
@@ -330,6 +331,11 @@ export default async function ContestDetailPage({ params }: PageProps) {
           <ContestThoughtArena
             contest={contest}
             thoughts={contestThoughts}
+            problemTitles={problemTitles}
+          />
+
+          <ContestMyPanel
+            contest={contest}
             problemTitles={problemTitles}
           />
 

@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { AlertCircle, CheckCircle2, FileImage, FilePlus2, Lightbulb, LogIn, Send, X } from 'lucide-react';
+import { AlertCircle, CheckCircle2, FileImage, FilePlus2, Lightbulb, LogIn, RotateCcw, Send, X } from 'lucide-react';
 import type { User } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase-client';
 import { contestSolutionTypeMeta, contestSolutionTypeOptions } from '@/lib/contest-meta';
@@ -65,6 +65,45 @@ const initialSolutionForm = {
   observationWhy: '',
   transformationJustification: '',
 };
+
+// Draft auto-save key format: pa:cdraft:v1:{contestSlug}:{problemId}
+// problemId is the public problem_id or the draft_problem_id, whichever is relevant.
+// The special value "any" covers no-problem-selected state.
+function contestDraftKey(contestSlug: string, problemId: string) {
+  return `pa:cdraft:v1:${contestSlug}:${problemId || 'any'}`;
+}
+
+type ContestDraft = {
+  title: string;
+  contestSolutionType: ContestSolutionType;
+  approach: string;
+};
+
+function readContestDraft(key: string): ContestDraft | null {
+  try {
+    const raw = typeof window !== 'undefined' ? localStorage.getItem(key) : null;
+    if (!raw) return null;
+    return JSON.parse(raw) as ContestDraft;
+  } catch {
+    return null;
+  }
+}
+
+function writeContestDraft(key: string, draft: ContestDraft) {
+  try {
+    localStorage.setItem(key, JSON.stringify(draft));
+  } catch {
+    // storage quota exceeded — fail silently
+  }
+}
+
+function clearContestDraft(key: string) {
+  try {
+    localStorage.removeItem(key);
+  } catch {
+    // ignore
+  }
+}
 
 function getContestSubmissionState(contest?: Contest, contestProblem?: ContestProblem, now = Date.now()) {
   if (!contest) {
@@ -278,6 +317,9 @@ export function SubmitForm({
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState<SubmitMode | null>(null);
   const [error, setError] = useState('');
+  const [draftRestored, setDraftRestored] = useState(false);
+  const [hasDraftToRestore, setHasDraftToRestore] = useState(false);
+  const draftSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [problemForm, setProblemForm] = useState(initialProblemForm);
   const [solutionForm, setSolutionForm] = useState({
     ...initialSolutionForm,
@@ -364,6 +406,69 @@ export function SubmitForm({
       }));
     }
   }, [selectedProblem, solutionForm.challengeTargetSolutionId]);
+
+  // ── Contest mode draft auto-save ──────────────────────────────────────────
+  // Key: pa:cdraft:v1:{contestSlug}:{problemId or "any"}
+  // Saved fields: title, contestSolutionType, approach (no images).
+  // Debounce: 1500ms. Cleared on successful submit.
+  const activeDraftKey = isContestMode && contestContext
+    ? contestDraftKey(
+        contestContext.contest.slug,
+        solutionForm.problemId || 'any',
+      )
+    : null;
+
+  // On mount (and when problem changes), check if a saved draft exists.
+  useEffect(() => {
+    if (!activeDraftKey) return;
+    const saved = readContestDraft(activeDraftKey);
+    if (saved && (saved.approach || saved.title)) {
+      setHasDraftToRestore(true);
+    } else {
+      setHasDraftToRestore(false);
+    }
+    // Don't restore automatically — wait for user to click.
+  }, [activeDraftKey]);
+
+  // Debounce-save contest form fields.
+  const draftToSave = isContestMode
+    ? { title: solutionForm.title, contestSolutionType: solutionForm.contestSolutionType, approach: solutionForm.approach }
+    : null;
+  const draftToSaveStr = draftToSave ? JSON.stringify(draftToSave) : null;
+  useEffect(() => {
+    if (!activeDraftKey || !draftToSaveStr) return;
+    if (draftSaveTimer.current) clearTimeout(draftSaveTimer.current);
+    draftSaveTimer.current = setTimeout(() => {
+      const parsed = JSON.parse(draftToSaveStr) as ContestDraft;
+      if (parsed.approach || parsed.title) {
+        writeContestDraft(activeDraftKey, parsed);
+      }
+    }, 1500);
+    return () => {
+      if (draftSaveTimer.current) clearTimeout(draftSaveTimer.current);
+    };
+  }, [activeDraftKey, draftToSaveStr]);
+
+  const restoreDraft = useCallback(() => {
+    if (!activeDraftKey) return;
+    const saved = readContestDraft(activeDraftKey);
+    if (!saved) return;
+    setSolutionForm((current) => ({
+      ...current,
+      title: saved.title ?? current.title,
+      contestSolutionType: saved.contestSolutionType ?? current.contestSolutionType,
+      approach: saved.approach ?? current.approach,
+    }));
+    setDraftRestored(true);
+    setHasDraftToRestore(false);
+  }, [activeDraftKey]);
+
+  function discardDraft() {
+    if (activeDraftKey) clearContestDraft(activeDraftKey);
+    setHasDraftToRestore(false);
+    setDraftRestored(false);
+  }
+  // ─────────────────────────────────────────────────────────────────────────
 
   function updateImageFiles(files: FileList | null) {
     if (!files) return;
@@ -564,6 +669,7 @@ export function SubmitForm({
     }
 
     setDone(mode);
+    if (activeDraftKey) clearContestDraft(activeDraftKey);
     if (mode === 'problem') {
       setProblemForm(initialProblemForm);
     } else {
@@ -638,6 +744,27 @@ export function SubmitForm({
           </p>
         </div>
       </div>
+
+      {/* Contest draft restore banner */}
+      {isContestMode && hasDraftToRestore && !draftRestored && (
+        <div className="flex items-center justify-between gap-3 border border-amber-400/30 bg-amber-400/[0.06] px-4 py-3">
+          <div className="flex items-center gap-2 text-sm">
+            <RotateCcw className="size-4 shrink-0 text-amber-400" />
+            <span className="text-zinc-300">发现上次未提交的草稿，是否恢复？</span>
+          </div>
+          <div className="flex gap-2">
+            <button type="button" onClick={restoreDraft} className="inline-flex h-8 items-center border border-amber-400/40 bg-amber-400/10 px-3 text-xs font-bold text-amber-300 hover:bg-amber-400/15">
+              恢复草稿
+            </button>
+            <button type="button" onClick={discardDraft} className="inline-flex h-8 items-center border border-white/10 px-3 text-xs text-zinc-500 hover:text-white">
+              忽略
+            </button>
+          </div>
+        </div>
+      )}
+      {isContestMode && draftRestored && (
+        <p className="text-xs text-zinc-600">已恢复上次草稿。提交成功后自动清除。</p>
+      )}
 
       {!isContestMode && (
         <div className="grid grid-cols-2 gap-2 rounded border border-white/10 bg-black/20 p-1">
