@@ -50,11 +50,11 @@ const initialProblemForm = {
 
 const initialVaultForm = {
   year: String(new Date().getFullYear()),
-  region: '',
+  region: '原创题',
   paper: '',
   number: '',
-  difficulty: '',
-  questionType: '',
+  difficulty: '中档',
+  questionType: '解答',
   title: '',
   statement: '',
   answer: '',
@@ -93,6 +93,10 @@ type ContestDraft = {
   contestSolutionType: ContestSolutionType;
   approach: string;
 };
+
+const VAULT_SOURCE_TYPES = ['原创题', '改编题', '其他来源', '天津卷', '天津模考题', '北京卷', '新高考 I 卷', '新高考 II 卷', '清华强基', '北大强基'];
+const VAULT_DIFFICULTIES = ['基础', '中档', '压轴'];
+const VAULT_QUESTION_TYPES = ['单选', '多选', '填空', '解答'];
 
 function readContestDraft(key: string): ContestDraft | null {
   try {
@@ -584,11 +588,11 @@ export function SubmitForm({
     const { error: err } = await supabase.from('problem_drafts').insert({
       id: generateDraftId(),
       year: Number(vaultForm.year) || new Date().getFullYear(),
-      region: clampText(vaultForm.region, MAX_TITLE_CHARS),
+      region: clampText(vaultForm.region, MAX_TITLE_CHARS) || '原创题',
       paper: clampText(vaultForm.paper, MAX_TITLE_CHARS),
       number: clampText(vaultForm.number, MAX_TITLE_CHARS),
-      difficulty: clampText(vaultForm.difficulty, MAX_TITLE_CHARS),
-      question_type: clampText(vaultForm.questionType, MAX_TITLE_CHARS),
+      difficulty: clampText(vaultForm.difficulty, MAX_TITLE_CHARS) || '中档',
+      question_type: clampText(vaultForm.questionType, MAX_TITLE_CHARS) || '解答',
       tags,
       title: clampText(vaultForm.title, MAX_TITLE_CHARS),
       statement,
@@ -1152,21 +1156,37 @@ export function SubmitForm({
       ) : vaultMode ? (
         <div className="space-y-5">
           <div className="grid gap-3 sm:grid-cols-3">
-            <TextField required label="年份" value={vaultForm.year} onChange={(year) => setVaultForm({ ...vaultForm, year })} placeholder="2026" />
-            <TextField required label="地区" value={vaultForm.region} onChange={(region) => setVaultForm({ ...vaultForm, region })} placeholder="全国甲卷" />
-            <TextField label="卷别" value={vaultForm.paper} onChange={(paper) => setVaultForm({ ...vaultForm, paper })} placeholder="数学（理）" />
+            <TextField label="年份/赛季" value={vaultForm.year} onChange={(year) => setVaultForm({ ...vaultForm, year })} placeholder="2026" />
+            <SelectField
+              required
+              label="来源类型"
+              value={vaultForm.region}
+              onChange={(region) => setVaultForm({ ...vaultForm, region })}
+              options={VAULT_SOURCE_TYPES}
+            />
+            <TextField label="来源说明" value={vaultForm.paper} onChange={(paper) => setVaultForm({ ...vaultForm, paper })} placeholder="原创命题 / 改编自某题 / 灵感来源" />
           </div>
           <div className="grid gap-3 sm:grid-cols-3">
-            <TextField label="题号" value={vaultForm.number} onChange={(number) => setVaultForm({ ...vaultForm, number })} placeholder="第 20 题" />
-            <TextField label="难度" value={vaultForm.difficulty} onChange={(difficulty) => setVaultForm({ ...vaultForm, difficulty })} placeholder="困难" />
-            <TextField label="题型" value={vaultForm.questionType} onChange={(questionType) => setVaultForm({ ...vaultForm, questionType })} placeholder="填空题" />
+            <TextField label="编号/槽位" value={vaultForm.number} onChange={(number) => setVaultForm({ ...vaultForm, number })} placeholder="Weekly01 D1-A / 第 1 题" />
+            <SelectField
+              label="难度"
+              value={vaultForm.difficulty}
+              onChange={(difficulty) => setVaultForm({ ...vaultForm, difficulty })}
+              options={VAULT_DIFFICULTIES}
+            />
+            <SelectField
+              label="题型"
+              value={vaultForm.questionType}
+              onChange={(questionType) => setVaultForm({ ...vaultForm, questionType })}
+              options={VAULT_QUESTION_TYPES}
+            />
           </div>
           <TextField required label="题目标题" value={vaultForm.title} onChange={(title) => setVaultForm({ ...vaultForm, title })} placeholder="用一句话概括题目主题，可含 LaTeX，如：关于 $x^2$ 的不等式" />
           <MathPreviewTextArea required label="完整题干" value={vaultForm.statement} onChange={(statement) => setVaultForm({ ...vaultForm, statement })} rows={8} placeholder="在此输入题目，$x^2 + y^2 = r^2$，支持行内公式 $...$ 和块公式 $$...$$" />
           <MathPreviewTextArea label="标准答案" value={vaultForm.answer} onChange={(answer) => setVaultForm({ ...vaultForm, answer })} rows={3} placeholder="答案，支持 LaTeX" />
           <div className="grid gap-4 xl:grid-cols-2">
             <TextArea label="标签" value={vaultForm.tags} onChange={(tags) => setVaultForm({ ...vaultForm, tags })} rows={3} placeholder="导数、圆锥曲线、数列" />
-            <TextArea label="备注" value={vaultForm.notes} onChange={(notes) => setVaultForm({ ...vaultForm, notes })} rows={3} placeholder="命题背景、出处链接、审核提示" />
+            <TextArea label="备注" value={vaultForm.notes} onChange={(notes) => setVaultForm({ ...vaultForm, notes })} rows={3} placeholder="命题意图、改编幅度、审核提示；没有严格出处也可以留空" />
           </div>
         </div>
       ) : (
@@ -1250,6 +1270,36 @@ function TextField({
         placeholder={placeholder}
         className="h-11 w-full min-w-0 rounded border border-white/10 bg-white/5 px-4 text-sm text-white outline-none transition placeholder:text-zinc-600 focus:border-cyan-400/50"
       />
+    </label>
+  );
+}
+
+function SelectField({
+  label,
+  value,
+  onChange,
+  options,
+  required,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  options: string[];
+  required?: boolean;
+}) {
+  return (
+    <label className="grid min-w-0 gap-2 text-sm">
+      <span className="font-bold text-white">{label} {required && <span className="text-red-400">*</span>}</span>
+      <select
+        required={required}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="h-11 w-full min-w-0 rounded border border-white/10 bg-white/5 px-4 text-sm text-white outline-none transition focus:border-cyan-400/50"
+      >
+        {options.map((option) => (
+          <option key={option} value={option}>{option}</option>
+        ))}
+      </select>
     </label>
   );
 }

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { AlertTriangle, Award, BookMarked, CalendarDays, CheckCircle2, Clock, Database, Lock, LockOpen, Play, Plus, RefreshCw, Save, Trash2, Trophy, UploadCloud } from "lucide-react";
 import { contests as seededContests } from "@/data/contests";
+import { weekly01DraftProblems, weekly01SprintAnswerKeys } from "@/data/weekly01-drafts";
 import { contestAwardMeta, contestProblemPhaseMeta, contestSolutionTypeMeta, contestStatusMeta } from "@/lib/contest-meta";
 import { AdminContestScoringView } from "@/components/AdminContestScoringView";
 import { AdminSprintAnswerKeyEditor } from "@/components/AdminSprintAnswerKeyEditor";
@@ -12,7 +13,7 @@ import { createClient } from "@/lib/supabase-client";
 import { formatContestDateTime } from "@/lib/format-contest-time";
 import { promoteProblemDraft } from "@/lib/promote-problem-draft";
 
-const EXAM_REGIONS: ExamRegion[] = ["天津卷", "北京卷", "新高考 I 卷", "新高考 II 卷", "清华强基", "北大强基"];
+const EXAM_REGIONS: ExamRegion[] = ["天津卷", "天津模考题", "北京卷", "新高考 I 卷", "新高考 II 卷", "清华强基", "北大强基", "原创题", "改编题", "其他来源"];
 const DIFFICULTIES: Difficulty[] = ["基础", "中档", "压轴"];
 const QUESTION_TYPES: QuestionType[] = ["单选", "多选", "填空", "解答"];
 
@@ -83,6 +84,15 @@ type DbProblemDraft = {
   promoted_problem_id: string | null;
   created_at: string;
 };
+
+function draftSourceLabel(draft: Pick<DbProblemDraft, "year" | "region" | "paper" | "number">) {
+  return [
+    draft.region,
+    draft.paper,
+    draft.number,
+    draft.year ? String(draft.year) : "",
+  ].filter(Boolean).join(" · ");
+}
 
 type DbAward = {
   id: string;
@@ -280,6 +290,37 @@ export function AdminContestsView({ problems }: { problems: ProblemOption[] }) {
     setError("");
     setMessage("");
 
+    if (seed.slug === "weekly-arena-01") {
+      const draftRows = weekly01DraftProblems.map((draft) => ({
+        id: draft.id,
+        year: draft.year,
+        region: draft.region,
+        paper: draft.paper,
+        number: draft.number,
+        difficulty: draft.difficulty,
+        question_type: draft.questionType,
+        tags: draft.tags,
+        title: draft.title,
+        statement: draft.statement,
+        answer: draft.answer,
+        source_pdf: draft.sourcePdf,
+        source_page: draft.sourcePage,
+        answer_pdf: null,
+        learning_guide: draft.learningGuide,
+        solution_tree: null,
+        proof_graph: null,
+        notes: draft.notes,
+        status: "drafting",
+      }));
+
+      const { error: draftError } = await supabase.from("problem_drafts").upsert(draftRows, { onConflict: "id" });
+      if (draftError) {
+        setSaving(false);
+        setError(`同步 Weekly 01 草稿题失败：${draftError.message}`);
+        return;
+      }
+    }
+
     const { data: existing } = await supabase
       .from("contests")
       .select("id")
@@ -335,6 +376,8 @@ export function AdminContestsView({ problems }: { problems: ProblemOption[] }) {
 
     let insertedCount = 0;
     let updatedCount = 0;
+    let answerKeyCount = 0;
+    const sprintAnswerKeyByDraftId = new Map(weekly01SprintAnswerKeys.map((answerKey) => [answerKey.draftProblemId, answerKey]));
 
     for (const contestProblem of seed.problems) {
       const patch = {
@@ -379,22 +422,49 @@ export function AdminContestsView({ problems }: { problems: ProblemOption[] }) {
         }
         updatedCount += 1;
       } else {
-        const { error: insertError } = await supabase.from("contest_problems").insert(patch);
-        if (insertError) {
+        const { data: insertedProblem, error: insertError } = await supabase.from("contest_problems").insert(patch).select("id").single();
+        if (insertError || !insertedProblem) {
           setSaving(false);
           setError(
-            `同步「${contestProblem.title}」（Day ${contestProblem.dayIndex}）失败：${insertError.message}。已新增 ${insertedCount} 个、更新 ${updatedCount} 个赛题，其余未同步，请修复后重试。`,
+            `同步「${contestProblem.title}」（Day ${contestProblem.dayIndex}）失败：${insertError?.message ?? "未返回新赛题 ID"}。已新增 ${insertedCount} 个、更新 ${updatedCount} 个赛题，其余未同步，请修复后重试。`,
           );
           await loadContests();
           return;
         }
+        existingIdByKey.set(
+          rowKey({ day_index: contestProblem.dayIndex, problem_phase: contestProblem.problemPhase, title: contestProblem.title }),
+          insertedProblem.id as string,
+        );
         insertedCount += 1;
+      }
+
+      const contestProblemId = matchedId ?? existingIdByKey.get(
+        rowKey({ day_index: contestProblem.dayIndex, problem_phase: contestProblem.problemPhase, title: contestProblem.title }),
+      );
+      const sprintAnswerKey = contestProblem.draftProblemId ? sprintAnswerKeyByDraftId.get(contestProblem.draftProblemId) : undefined;
+      if (contestProblemId && sprintAnswerKey) {
+        const { error: answerKeyError } = await supabase.from("contest_problem_answer_keys").upsert(
+          {
+            contest_problem_id: contestProblemId,
+            answer_type: sprintAnswerKey.answerType,
+            answer_key: sprintAnswerKey.answerKey,
+            format_note: sprintAnswerKey.formatNote,
+          },
+          { onConflict: "contest_problem_id" },
+        );
+        if (answerKeyError) {
+          setSaving(false);
+          setError(`同步「${contestProblem.title}」答案 key 失败：${answerKeyError.message}`);
+          await loadContests();
+          return;
+        }
+        answerKeyCount += 1;
       }
     }
 
     setSaving(false);
-    setMessage(`已同步「${seed.title}」：新增 ${insertedCount} 个赛题，更新 ${updatedCount} 个赛题。`);
-    await loadContests();
+    setMessage(`已同步「${seed.title}」：新增 ${insertedCount} 个赛题，更新 ${updatedCount} 个赛题，写入 ${answerKeyCount} 个计时题答案 key。`);
+    await Promise.all([loadContests(), loadDraftProblems()]);
     setSelectedId(contestId);
   }
 
@@ -946,7 +1016,7 @@ export function AdminContestsView({ problems }: { problems: ProblemOption[] }) {
                 <div className="min-w-0">
                   <p className="truncate font-bold text-white">{draft.title}</p>
                   <p className="mt-0.5 text-xs text-zinc-500">
-                    {draft.year} {draft.region}{draft.paper ? ` · ${draft.paper}` : ""}{draft.number ? ` · ${draft.number}` : ""}
+                    {draftSourceLabel(draft)}
                   </p>
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
@@ -1225,7 +1295,7 @@ export function AdminContestsView({ problems }: { problems: ProblemOption[] }) {
                     >
                       <option value="">暂不关联</option>
                       {draftProblems.filter((draft) => draft.status === "drafting").map((draft) => (
-                        <option key={draft.id} value={draft.id}>{draft.year} {draft.region} · {draft.title}</option>
+                        <option key={draft.id} value={draft.id}>{draftSourceLabel(draft)} · {draft.title}</option>
                       ))}
                     </select>
                     {draftProblems.filter((draft) => draft.status === "drafting").length === 0 && (

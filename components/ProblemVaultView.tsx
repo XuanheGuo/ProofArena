@@ -21,6 +21,15 @@ interface ProblemDraft {
   created_at: string;
 }
 
+function draftSourceLabel(draft: Pick<ProblemDraft, "year" | "region" | "paper" | "number">) {
+  return [
+    draft.region,
+    draft.paper,
+    draft.number,
+    draft.year ? String(draft.year) : "",
+  ].filter(Boolean).join(" · ");
+}
+
 export function ProblemVaultView() {
   const [drafts, setDrafts] = useState<ProblemDraft[]>([]);
   const [loading, setLoading] = useState(true);
@@ -125,9 +134,7 @@ export function ProblemVaultView() {
               <div className="min-w-0 flex-1">
                 <p className="truncate font-bold text-white">{draft.title || <span className="text-zinc-500">（无标题）</span>}</p>
                 <p className="mt-0.5 text-xs text-zinc-500">
-                  {draft.year} {draft.region}
-                  {draft.paper ? ` · ${draft.paper}` : ""}
-                  {draft.number ? ` · ${draft.number}` : ""}
+                  {draftSourceLabel(draft)}
                   {draft.difficulty ? ` · ${draft.difficulty}` : ""}
                   <span className="ml-2 font-mono text-zinc-600">{draft.id}</span>
                 </p>

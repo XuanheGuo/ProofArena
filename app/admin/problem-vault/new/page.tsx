@@ -52,7 +52,7 @@ export default async function NewProblemDraftPage() {
           </Link>
           <h1 className="mt-6 text-3xl font-black text-white">新建草稿题目</h1>
           <p className="mt-2 text-sm text-zinc-400">
-            填写题目信息并存入草稿箱。草稿不对外公开，可随时在草稿箱中查看或发布到公开题库。
+            填写题目信息并存入草稿箱。支持原创、改编或无严格出处的比赛题；草稿不对外公开。
           </p>
         </div>
       </section>

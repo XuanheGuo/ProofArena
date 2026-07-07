@@ -1,4 +1,5 @@
 import type { Contest, ContestProblem } from "@/lib/types";
+import { weekly01SprintAnswerKeys } from "@/data/weekly01-drafts";
 
 const dayMs = 24 * 60 * 60 * 1000;
 const start = Date.UTC(2026, 6, 12, 12, 0, 0);
@@ -17,7 +18,7 @@ function iso(dayOffset: number, hour = 12, minute = 0) {
 // windows ("10:00 开放 17:00 截止" 北京时间) and how formatContestDateTime
 // (lib/format-contest-time.ts) always displays them — so the literals below
 // read the same way the format doc describes them.
-const weeklyStart = Date.UTC(2026, 8, 1, 0, 0, 0); // 2026-09-01 — placeholder launch date; admin adjusts in /admin/contests before going live.
+const weeklyStart = Date.UTC(2026, 6, 9, 0, 0, 0); // 2026-07-09 — Weekly 01 launch date, interpreted as Beijing calendar day.
 
 function weeklyIso(dayOffset: number, beijingHour = 10, minute = 0) {
   const date = new Date(weeklyStart + dayOffset * dayMs);
@@ -41,14 +42,10 @@ const dailyPhaseDefaults = {
 };
 
 // weekly-arena-01: template for docs/WEEKLY_CONTEST_FORMAT.md's recommended
-// 8-day format (§15). Every problem slot here is intentionally unbound
-// (problemId/draftProblemId both null) — there usually aren't enough real
-// problems ready when this template gets synced, so it seeds empty slots an
-// admin fills in from /admin/contests afterward (see AdminContestsView's
-// "创建/同步 Weekly 01" button) rather than hardcoding placeholder problem
-// ids that don't exist in the catalog. The public contest page and admin
-// panel both already render "题目待关联"/"未关联题目" for a null-bound
-// contest problem, so this renders fine before any binding happens.
+// 8-day format (§15). Weekly 01 is backed by unpublished Problem Vault
+// drafts, not public `problems`, so the contest can run with hidden problems
+// while keeping the public题库 clean. AdminContestsView's "创建/同步 Weekly 01"
+// button upserts those drafts before it binds these slots.
 const weeklyDailyDefaults = {
   problemPhase: "daily" as const,
   scoreMax: 100,
@@ -69,9 +66,9 @@ const weeklySprintDefaults = {
   timedModeEnabled: true,
   timeLimitSeconds: 120,
   maxAttempts: 1,
-  // Left unset until a real problem (and its answer key in
-  // contest_problem_answer_keys, via AdminSprintAnswerKeyEditor) is bound —
-  // the admin picks single_choice/multiple_choice/fill_blank per problem.
+  // Default is null for generic weekly templates; Weekly 01 overrides this
+  // per slot from data/weekly01-drafts.ts and writes the private answer keys
+  // into contest_problem_answer_keys during admin seed sync.
   answerType: null,
   answerFormatNote: "",
 };
@@ -102,8 +99,7 @@ const weeklyMajorDefaults = {
 
 const weeklyDailySlotMeta = [
   { title: "热身题", theme: "难度中低，保证每天都有稳定拿分的机会" },
-  { title: "主线题", theme: "难度中等，构成当日主要区分" },
-  { title: "拔高题", theme: "难度中高，给强选手留出区分空间" },
+  { title: "主线题", theme: "难度中等到中高，构成当日主要区分" },
 ];
 
 const weeklySprintTheme = "选择题或填空题，手动解锁后限时 120 秒，答错或超时不计分，不吃挑战倍率";
@@ -112,17 +108,54 @@ const weeklyMajorTheme = "给参赛者 2-3 天自由作答，允许 partial cred
 
 let weeklyChallengeCounter = 0;
 
+const weeklyDailyDraftIds = [
+  "pa-weekly01-d01",
+  "pa-weekly01-d02",
+  "pa-weekly01-d03",
+  "pa-weekly01-d04",
+  "pa-weekly01-d05",
+  "pa-weekly01-d06",
+  "pa-weekly01-d07",
+  "pa-weekly01-d08",
+  "pa-weekly01-d09",
+  "pa-weekly01-d10",
+];
+
+const weeklySprintDraftIds = [
+  "pa-weekly01-s01",
+  "pa-weekly01-s02",
+  "pa-weekly01-s03",
+  "pa-weekly01-s04",
+  "pa-weekly01-s05",
+  "pa-weekly01-s06",
+  "pa-weekly01-s07",
+  "pa-weekly01-s08",
+  "pa-weekly01-s09",
+  "pa-weekly01-s10",
+  "pa-weekly01-s11",
+  "pa-weekly01-s12",
+  "pa-weekly01-s13",
+  "pa-weekly01-s14",
+  "pa-weekly01-s15",
+];
+
+const weeklyChallengeDraftIds = ["pa-weekly01-c01", "pa-weekly01-c02"];
+const weeklyMajorDraftId = "pa-weekly01-m01";
+const weeklySprintKeyByDraftId = new Map(weekly01SprintAnswerKeys.map((key) => [key.draftProblemId, key]));
+
 // Built day-by-day (not phase-by-phase) so the array is already in dayIndex
 // order for the static-fallback path too (lib/contests.ts's Supabase-backed
 // toContest() re-sorts by dayIndex regardless, but data/contests.ts's own
 // getContest has no such step).
 const weeklyArenaProblems: ContestProblem[] = [1, 2, 3, 4, 5].flatMap((day) => {
   const dayProblems: ContestProblem[] = [
-    ...weeklyDailySlotMeta.map((slot, index) => ({
+    ...weeklyDailySlotMeta.map((slot, index) => {
+      const draftProblemId = weeklyDailyDraftIds[(day - 1) * weeklyDailySlotMeta.length + index] ?? null;
+      return {
       id: `weekly-arena-01-daily-d${day}-${index + 1}`,
       contestId: "contest-weekly-arena-01",
       problemId: null,
-      draftProblemId: null,
+      draftProblemId,
       dayIndex: day,
       title: slot.title,
       theme: slot.theme,
@@ -132,12 +165,16 @@ const weeklyArenaProblems: ContestProblem[] = [1, 2, 3, 4, 5].flatMap((day) => {
       status: "locked" as const,
       unlockMode: "auto_time" as const,
       ...weeklyDailyDefaults,
-    })),
-    ...[1, 2, 3].map((slot) => ({
+      };
+    }),
+    ...[1, 2, 3].map((slot) => {
+      const draftProblemId = weeklySprintDraftIds[(day - 1) * 3 + (slot - 1)] ?? null;
+      const key = draftProblemId ? weeklySprintKeyByDraftId.get(draftProblemId) : undefined;
+      return {
       id: `weekly-arena-01-sprint-d${day}-${slot}`,
       contestId: "contest-weekly-arena-01",
       problemId: null,
-      draftProblemId: null,
+      draftProblemId,
       dayIndex: day,
       title: `计时题 ${slot}`,
       theme: weeklySprintTheme,
@@ -147,11 +184,15 @@ const weeklyArenaProblems: ContestProblem[] = [1, 2, 3, 4, 5].flatMap((day) => {
       status: "locked" as const,
       unlockMode: "auto_time" as const,
       ...weeklySprintDefaults,
-    })),
+      answerType: key?.answerType ?? weeklySprintDefaults.answerType,
+      answerFormatNote: key?.formatNote ?? weeklySprintDefaults.answerFormatNote,
+      };
+    }),
   ];
 
-  // Challenge: Day 1-2, window spans both days — locked after Day 2 closes.
-  if (day <= 2) {
+  // Challenge: two total slots, both open across Day 1-2 — enough for a
+  // multiplier decision without creating too much manual grading for Weekly 01.
+  if (day === 1) {
     dayProblems.push(
       ...[1, 2].map(() => {
         weeklyChallengeCounter += 1;
@@ -159,7 +200,7 @@ const weeklyArenaProblems: ContestProblem[] = [1, 2, 3, 4, 5].flatMap((day) => {
           id: `weekly-arena-01-challenge-d${day}-${weeklyChallengeCounter}`,
           contestId: "contest-weekly-arena-01",
           problemId: null,
-          draftProblemId: null,
+          draftProblemId: weeklyChallengeDraftIds[weeklyChallengeCounter - 1] ?? null,
           dayIndex: day,
           title: `挑战题 ${weeklyChallengeCounter}`,
           theme: weeklyChallengeTheme,
@@ -181,7 +222,7 @@ const weeklyArenaProblems: ContestProblem[] = [1, 2, 3, 4, 5].flatMap((day) => {
       id: "weekly-arena-01-major-1",
       contestId: "contest-weekly-arena-01",
       problemId: null,
-      draftProblemId: null,
+      draftProblemId: weeklyMajorDraftId,
       dayIndex: day,
       title: "大题",
       theme: weeklyMajorTheme,
@@ -296,7 +337,7 @@ export const contests: Contest[] = [
     slug: "weekly-arena-01",
     title: "ProofArena Weekly 01",
     tagline: "一周赛制：普通题稳定作答、挑战题前期博弈、计时题速答对决、大题深度较量。",
-    description: "8 天 / 普通题 + 挑战题 + 计时题 + 大题 / 挑战倍率结算 / 计时阶梯计分 / 赛后讨论与申诉",
+    description: "8 天 / 每天 2 道普通题 + 3 道计时题 / 2 道挑战题 / 1 道大题 / 赛后讨论与申诉",
     startAt: weeklyIso(0, 10, 0),
     endAt: weeklyIso(5, 17, 0),
     discussionStartAt: weeklyIso(5, 17, 0),
@@ -304,8 +345,8 @@ export const contests: Contest[] = [
     status: "draft",
     rules: [
       "总分 = 普通题原始分 × 挑战倍率 + 计时题分 + 大题分 + 可选奖励分 − 违规扣分。",
-      "普通题 Day 1-5 每天开放（10:00-17:00，北京时间），计时题同步开放，手动解锁后限时 120 秒，答错或超时不计分，不吃挑战倍率。",
-      "挑战题 Day 1-2 开放，只评一个普通题结算倍率（1.00x-1.20x），只作用于普通题，Day 2 结束后锁定提交。",
+      "普通题 Day 1-5 每天 2 道开放（10:00-17:00，北京时间）；计时题每天 3 道同步开放，手动解锁后限时 120 秒，答错或超时不计分，不吃挑战倍率。",
+      "挑战题共 2 道，Day 1-2 开放，只评一个普通题结算倍率（1.00x-1.20x），只作用于普通题，Day 2 结束后锁定提交。",
       "大题 Day 3 公布，Day 5 或 Day 6 截止，允许 partial credit，不吃挑战倍率。",
       "Day 6-7 为讨论与申诉期：可解释原提交、指出误判、补充细节，但不得提交全新核心思路要求重新按完整解法评分。",
       "完整规则、评分细则和公平性条款见 docs/WEEKLY_CONTEST_FORMAT.md。",

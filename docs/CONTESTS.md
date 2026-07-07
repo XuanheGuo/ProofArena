@@ -104,6 +104,11 @@ Contest」一节）。
 "viewable by everyone" 策略），公开题库查询（`getProblems`、`getProblem`、
 `getProblemSummaries`、相关题推荐）一律不读它。
 
+草稿题目的来源不要求一定对应公开试卷。`region` 在草稿箱里按"来源类型"使用，
+可选公开卷别，也可填 `原创题`、`改编题` 或 `其他来源`；`paper`/`number`
+用于记录来源说明、灵感来源、内部编号或比赛槽位。发布到公开题库后这些来源
+字段会原样保留。
+
 `contest_problems` 新增 `draft_problem_id` 字段，和 `problem_id` 互斥（DB
 check constraint 保证同一行只能二选一）：
 
@@ -206,8 +211,8 @@ Proof Graph 依然只在 `active` 期间隐藏。
 ### Weekly 01 模板
 
 `/admin/contests` 的「创建/同步 Weekly 01」按钮会从 `data/contests.ts` 的
-`weekly-arena-01` 种子创建/更新一场 8 天赛程模板：Day 1-5 每天 3 道普通题 + 3
-道计时题，Day 1-2 挑战题，Day 3 公布、Day 6 截止的大题，Day 6-7 为讨论期。
+`weekly-arena-01` 种子创建/更新一场 8 天赛程模板：Day 1-5 每天 2 道普通题 + 3
+道计时题，Day 1-2 共 2 道挑战题，Day 3 公布、Day 6 截止的大题，Day 6-7 为讨论期。
 每个赛题槽位的 `problemId`/`draftProblemId` 都是 `null`（题目待关联），前台
 和后台已经能正确显示"未关联题目"状态。
 
@@ -221,7 +226,7 @@ Proof Graph 依然只在 `active` 期间隐藏。
 1. 把每个赛题槽位绑定到公开题库或 Problem Vault 草稿。
 2. 给每道计时题配置标准答案（`AdminSprintAnswerKeyEditor`）。
 3. 确认已执行 `013_weekly_contest_scoring.sql`。
-4. 根据实际排期调整 `weekly-arena-01` 的时间（种子数据里是占位日期）。
+4. 确认 `weekly-arena-01` 的时间线符合本次实际排期（当前种子从 2026-07-09 北京时间开始）。
 5. 把比赛状态从 `draft` 切换为 `active` 前，检查所有赛题时间和内容是否就绪。
 
 ## 投稿流程

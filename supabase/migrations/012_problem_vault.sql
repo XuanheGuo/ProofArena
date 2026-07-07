@@ -18,7 +18,7 @@
 CREATE TABLE IF NOT EXISTS problem_drafts (
   id TEXT PRIMARY KEY,
   year INTEGER NOT NULL,
-  region TEXT NOT NULL CHECK (region IN ('天津卷', '北京卷', '新高考 I 卷', '新高考 II 卷', '清华强基', '北大强基')),
+  region TEXT NOT NULL CHECK (region IN ('天津卷', '天津模考题', '北京卷', '新高考 I 卷', '新高考 II 卷', '清华强基', '北大强基', '原创题', '改编题', '其他来源')),
   paper TEXT NOT NULL DEFAULT '',
   number TEXT NOT NULL DEFAULT '',
   difficulty TEXT NOT NULL DEFAULT '中档' CHECK (difficulty IN ('基础', '中档', '压轴')),

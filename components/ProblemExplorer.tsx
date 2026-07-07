@@ -7,7 +7,18 @@ import type { Difficulty, ExamRegion, ProblemSummary, QuestionType } from "@/lib
 import { ProblemCard } from "@/components/ProblemCard";
 import { ProblemScrollbar } from "@/components/ProblemScrollbar";
 
-const regions: Array<"全部卷别" | ExamRegion> = ["全部卷别", "天津卷", "新高考 I 卷", "新高考 II 卷", "清华强基", "北大强基"];
+const regions: Array<"全部卷别" | ExamRegion> = [
+  "全部卷别",
+  "天津卷",
+  "北京卷",
+  "新高考 I 卷",
+  "新高考 II 卷",
+  "清华强基",
+  "北大强基",
+  "原创题",
+  "改编题",
+  "其他来源",
+];
 const types: Array<"全部题型" | QuestionType> = ["全部题型", "单选", "多选", "填空", "解答"];
 const difficulties: Array<"全部难度" | Difficulty> = ["全部难度", "基础", "中档", "压轴"];
 
