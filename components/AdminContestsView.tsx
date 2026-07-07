@@ -4,8 +4,9 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { AlertTriangle, Award, BookMarked, CalendarDays, CheckCircle2, Clock, Database, Lock, LockOpen, Play, Plus, RefreshCw, Save, Trash2, Trophy, UploadCloud } from "lucide-react";
 import { contests as seededContests } from "@/data/contests";
-import { contestAwardMeta, contestSolutionTypeMeta, contestStatusMeta } from "@/lib/contest-meta";
-import type { ContestAwardType, ContestStatus, Difficulty, ExamRegion, QuestionType } from "@/lib/types";
+import { contestAwardMeta, contestProblemPhaseMeta, contestSolutionTypeMeta, contestStatusMeta } from "@/lib/contest-meta";
+import { AdminContestScoringView } from "@/components/AdminContestScoringView";
+import type { ContestAnswerType, ContestAwardType, ContestProblemPhase, ContestScorePolicy, ContestStatus, Difficulty, ExamRegion, QuestionType } from "@/lib/types";
 import { createClient } from "@/lib/supabase-client";
 import { formatContestDateTime } from "@/lib/format-contest-time";
 import { promoteProblemDraft } from "@/lib/promote-problem-draft";
@@ -49,6 +50,15 @@ type DbContestProblem = {
   weight: number;
   status: "locked" | "open" | "reviewing" | "closed";
   unlock_mode: "manual" | "auto_time";
+  problem_phase: ContestProblemPhase;
+  score_max: number;
+  score_policy: ContestScorePolicy;
+  multiplier_eligible: boolean;
+  timed_mode_enabled: boolean;
+  time_limit_seconds: number | null;
+  max_attempts: number;
+  answer_type: ContestAnswerType | null;
+  answer_format_note: string;
 };
 
 // A Problem Vault entry — see lib/problem-drafts.ts. Fetched directly from
@@ -110,6 +120,15 @@ const emptyProblem = {
   weight: 1,
   status: "locked" as DbContestProblem["status"],
   unlockMode: "manual" as DbContestProblem["unlock_mode"],
+  problemPhase: "daily" as ContestProblemPhase,
+  scoreMax: 100,
+  scorePolicy: "manual" as ContestScorePolicy,
+  multiplierEligible: true,
+  timedModeEnabled: false,
+  timeLimitSeconds: "" as string,
+  maxAttempts: 1,
+  answerType: "" as ContestAnswerType | "",
+  answerFormatNote: "",
 };
 
 
@@ -359,6 +378,15 @@ export function AdminContestsView({ problems }: { problems: ProblemOption[] }) {
       weight: Number(problemForm.weight),
       status: problemForm.status,
       unlock_mode: problemForm.unlockMode,
+      problem_phase: problemForm.problemPhase,
+      score_max: Number(problemForm.scoreMax),
+      score_policy: problemForm.scorePolicy,
+      multiplier_eligible: problemForm.multiplierEligible,
+      timed_mode_enabled: problemForm.timedModeEnabled,
+      time_limit_seconds: problemForm.timeLimitSeconds ? Number(problemForm.timeLimitSeconds) : null,
+      max_attempts: Number(problemForm.maxAttempts),
+      answer_type: problemForm.answerType || null,
+      answer_format_note: problemForm.answerFormatNote.trim(),
     });
 
     setSaving(false);
@@ -814,6 +842,9 @@ export function AdminContestsView({ problems }: { problems: ProblemOption[] }) {
                       <span className="mt-0.5 shrink-0 border border-cyan-400/30 bg-cyan-400/10 px-2 py-0.5 font-mono text-xs font-bold text-cyan-300">
                         Day {item.day_index}
                       </span>
+                      <span className={`mt-0.5 shrink-0 border px-2 py-0.5 text-xs font-bold ${contestProblemPhaseMeta[item.problem_phase ?? "daily"].className}`}>
+                        {contestProblemPhaseMeta[item.problem_phase ?? "daily"].label}
+                      </span>
                       <div className="min-w-0 flex-1">
                         <p className="font-bold text-white">{item.title}</p>
                         <p className="mt-0.5 text-xs text-zinc-400">{item.theme}</p>
@@ -903,6 +934,84 @@ export function AdminContestsView({ problems }: { problems: ProblemOption[] }) {
                         <Trash2 className="size-3.5" />
                       </button>
                     </div>
+                    <div className="flex flex-wrap items-center gap-2 border-t border-white/[0.07] px-4 py-2.5">
+                      <select
+                        value={item.problem_phase ?? "daily"}
+                        onChange={(event) => updateContestProblem(item, { problem_phase: event.target.value as ContestProblemPhase })}
+                        className="h-8 border border-white/15 bg-zinc-950 px-2 text-xs text-zinc-300 outline-none"
+                        title="赛题阶段"
+                      >
+                        {Object.entries(contestProblemPhaseMeta).map(([value, meta]) => (
+                          <option key={value} value={value}>{meta.label}</option>
+                        ))}
+                      </select>
+                      <input
+                        type="number"
+                        value={item.score_max ?? 100}
+                        onChange={(event) => updateContestProblem(item, { score_max: Number(event.target.value) })}
+                        className="h-8 w-20 border border-white/15 bg-zinc-950 px-2 text-xs text-zinc-300 outline-none"
+                        title="满分"
+                      />
+                      <select
+                        value={item.score_policy ?? "manual"}
+                        onChange={(event) => updateContestProblem(item, { score_policy: event.target.value as ContestScorePolicy })}
+                        className="h-8 border border-white/15 bg-zinc-950 px-2 text-xs text-zinc-300 outline-none"
+                        title="评分方式"
+                      >
+                        <option value="manual">人工评分</option>
+                        <option value="sprint_step">计时阶梯计分</option>
+                        <option value="none">不计分</option>
+                      </select>
+                      <label className="inline-flex h-8 items-center gap-1.5 border border-white/15 px-2 text-xs text-zinc-300">
+                        <input
+                          type="checkbox"
+                          checked={item.multiplier_eligible ?? true}
+                          onChange={(event) => updateContestProblem(item, { multiplier_eligible: event.target.checked })}
+                        />
+                        吃挑战倍率
+                      </label>
+                      <label className="inline-flex h-8 items-center gap-1.5 border border-white/15 px-2 text-xs text-zinc-300">
+                        <input
+                          type="checkbox"
+                          checked={item.timed_mode_enabled ?? false}
+                          onChange={(event) => updateContestProblem(item, { timed_mode_enabled: event.target.checked })}
+                        />
+                        计时模式
+                      </label>
+                      {(item.problem_phase === "sprint" || item.timed_mode_enabled) && (
+                        <>
+                          <input
+                            type="number"
+                            value={item.time_limit_seconds ?? ""}
+                            onChange={(event) => updateContestProblem(item, { time_limit_seconds: event.target.value ? Number(event.target.value) : null })}
+                            placeholder="限时（秒）"
+                            className="h-8 w-24 border border-amber-400/30 bg-zinc-950 px-2 text-xs text-amber-200 outline-none placeholder:text-zinc-600"
+                            title="限时（秒）"
+                          />
+                          <input
+                            type="number"
+                            value={item.max_attempts ?? 1}
+                            onChange={(event) => updateContestProblem(item, { max_attempts: Number(event.target.value) })}
+                            className="h-8 w-16 border border-amber-400/30 bg-zinc-950 px-2 text-xs text-amber-200 outline-none"
+                            title="提交次数上限"
+                          />
+                          <select
+                            value={item.answer_type ?? ""}
+                            onChange={(event) => updateContestProblem(item, { answer_type: (event.target.value || null) as ContestAnswerType | null })}
+                            className="h-8 border border-amber-400/30 bg-zinc-950 px-2 text-xs text-amber-200 outline-none"
+                            title="答案类型"
+                          >
+                            <option value="">选择答案类型</option>
+                            <option value="single_choice">单选</option>
+                            <option value="multiple_choice">多选</option>
+                            <option value="fill_blank">填空</option>
+                          </select>
+                          <span className="text-[11px] text-amber-400/70" title="计时题答案由 contest_problem_answer_keys 单独管理，不会出现在公开查询里">
+                            ⚠ 标准答案请在数据库 contest_problem_answer_keys 中配置，不在此页面暴露
+                          </span>
+                        </>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -976,6 +1085,70 @@ export function AdminContestsView({ problems }: { problems: ProblemOption[] }) {
                     <option value="auto_time">到时自动解锁（按开放/截止时间）</option>
                   </select>
                 </label>
+                <label className="grid gap-2 text-sm">
+                  <span className="font-bold text-white">赛题阶段</span>
+                  <select
+                    value={problemForm.problemPhase}
+                    onChange={(event) => setProblemForm({ ...problemForm, problemPhase: event.target.value as ContestProblemPhase })}
+                    className="h-11 border border-white/10 bg-black/20 px-3 text-sm text-white"
+                  >
+                    {Object.entries(contestProblemPhaseMeta).map(([value, meta]) => (
+                      <option key={value} value={value}>{meta.label}</option>
+                    ))}
+                  </select>
+                </label>
+                <TextField label="满分" type="number" value={String(problemForm.scoreMax)} onChange={(scoreMax) => setProblemForm({ ...problemForm, scoreMax: Number(scoreMax) })} />
+                <label className="grid gap-2 text-sm">
+                  <span className="font-bold text-white">评分方式</span>
+                  <select
+                    value={problemForm.scorePolicy}
+                    onChange={(event) => setProblemForm({ ...problemForm, scorePolicy: event.target.value as ContestScorePolicy })}
+                    className="h-11 border border-white/10 bg-black/20 px-3 text-sm text-white"
+                  >
+                    <option value="manual">人工评分</option>
+                    <option value="sprint_step">计时阶梯计分</option>
+                    <option value="none">不计分</option>
+                  </select>
+                </label>
+                <label className="flex items-center gap-2 text-sm text-white">
+                  <input
+                    type="checkbox"
+                    checked={problemForm.multiplierEligible}
+                    onChange={(event) => setProblemForm({ ...problemForm, multiplierEligible: event.target.checked })}
+                  />
+                  吃挑战倍率（仅普通题应勾选）
+                </label>
+                <label className="flex items-center gap-2 text-sm text-white">
+                  <input
+                    type="checkbox"
+                    checked={problemForm.timedModeEnabled}
+                    onChange={(event) => setProblemForm({ ...problemForm, timedModeEnabled: event.target.checked })}
+                  />
+                  计时模式（计时题）
+                </label>
+                {(problemForm.problemPhase === "sprint" || problemForm.timedModeEnabled) && (
+                  <>
+                    <TextField label="限时（秒）" type="number" value={problemForm.timeLimitSeconds} onChange={(timeLimitSeconds) => setProblemForm({ ...problemForm, timeLimitSeconds })} />
+                    <TextField label="提交次数上限" type="number" value={String(problemForm.maxAttempts)} onChange={(maxAttempts) => setProblemForm({ ...problemForm, maxAttempts: Number(maxAttempts) })} />
+                    <label className="grid gap-2 text-sm">
+                      <span className="font-bold text-white">答案类型</span>
+                      <select
+                        value={problemForm.answerType}
+                        onChange={(event) => setProblemForm({ ...problemForm, answerType: event.target.value as ContestAnswerType | "" })}
+                        className="h-11 border border-white/10 bg-black/20 px-3 text-sm text-white"
+                      >
+                        <option value="">选择答案类型</option>
+                        <option value="single_choice">单选</option>
+                        <option value="multiple_choice">多选</option>
+                        <option value="fill_blank">填空</option>
+                      </select>
+                    </label>
+                    <TextField label="答案格式说明（可选）" value={problemForm.answerFormatNote} onChange={(answerFormatNote) => setProblemForm({ ...problemForm, answerFormatNote })} />
+                    <p className="text-xs leading-5 text-amber-400/80 md:col-span-2">
+                      ⚠ 标准答案需要在数据库 contest_problem_answer_keys 表中单独配置，不会出现在此表单或任何公开查询里。
+                    </p>
+                  </>
+                )}
                 <p className="text-xs leading-5 text-zinc-500 md:col-span-2">
                   开放/截止时间按你当前设备的本地时区读写；请确保设备时区为北京时间（UTC+8）。
                 </p>
@@ -990,6 +1163,12 @@ export function AdminContestsView({ problems }: { problems: ProblemOption[] }) {
                 添加赛题
               </button>
             </section>
+
+            <AdminContestScoringView
+              contestId={selectedContest.id}
+              contestSlug={selectedContest.slug}
+              contestProblems={selectedContest.contest_problems ?? []}
+            />
 
             <section className="border border-white/10 bg-zinc-950 p-5">
               <div className="mb-5 flex items-center gap-2 text-sm font-bold text-white">

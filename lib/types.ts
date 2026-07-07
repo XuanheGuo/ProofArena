@@ -193,6 +193,12 @@ export interface Solution extends PedagogicalAnnotations {
 export type ContestProblemStatus = "locked" | "open" | "reviewing" | "closed";
 export type ContestProblemUnlockMode = "manual" | "auto_time";
 
+// See docs/WEEKLY_CONTEST_FORMAT.md §13.1 and
+// docs/WEEKLY_CONTEST_IMPLEMENTATION_BRIEF.md Phase 1.
+export type ContestProblemPhase = "daily" | "challenge" | "sprint" | "major" | "discussion";
+export type ContestScorePolicy = "manual" | "sprint_step" | "none";
+export type ContestAnswerType = "single_choice" | "multiple_choice" | "fill_blank";
+
 export interface ContestProblem {
   id: string;
   contestId: string;
@@ -210,6 +216,15 @@ export interface ContestProblem {
   weight: number;
   status: ContestProblemStatus;
   unlockMode: ContestProblemUnlockMode;
+  problemPhase: ContestProblemPhase;
+  scoreMax: number;
+  scorePolicy: ContestScorePolicy;
+  multiplierEligible: boolean;
+  timedModeEnabled: boolean;
+  timeLimitSeconds: number | null;
+  maxAttempts: number;
+  answerType: ContestAnswerType | null;
+  answerFormatNote: string;
 }
 
 /** Compute the effective display status based on unlock mode and current time. */

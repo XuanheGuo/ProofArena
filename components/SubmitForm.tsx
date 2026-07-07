@@ -317,7 +317,15 @@ export function SubmitForm({
 }) {
   const isContestMode = Boolean(contestContext);
   const contestProblemIds = useMemo(
-    () => new Set((contestContext?.contest.problems ?? []).map((problem) => problem.problemId).filter(Boolean)),
+    () => new Set(
+      (contestContext?.contest.problems ?? [])
+        // Sprint problems are answered through ContestSprintPanel (timed
+        // choice/fill-blank, server-scored), never through this general
+        // solution submission form.
+        .filter((problem) => problem.problemPhase !== "sprint")
+        .map((problem) => problem.problemId)
+        .filter(Boolean),
+    ),
     [contestContext],
   );
   const availableProblems = useMemo(
