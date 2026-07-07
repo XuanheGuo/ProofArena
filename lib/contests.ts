@@ -148,7 +148,19 @@ export async function getContest(slug: string): Promise<Contest | undefined> {
     return getStaticContest(slug);
   }
 
-  return data ? toContest(data as ContestRow) : getStaticContest(slug);
+  if (data) return toContest(data as ContestRow);
+
+  // No row for this specific slug — only preview the static seed when the
+  // whole `contests` table is empty (matches getContests()'s own "no
+  // Supabase data yet" fallback and the documented "数据库为空时" behavior
+  // in docs/CONTESTS.md). If other contests exist, this slug genuinely
+  // doesn't exist — e.g. it was deleted via /admin/contests — and must not
+  // be silently resurrected from data/contests.ts's permanent template.
+  // Previously this always fell back per-slug, which meant deleting
+  // `first-arena` from the DB had no visible effect: every page kept
+  // rendering the hardcoded seed contest anyway.
+  const { count } = await supabase.from("contests").select("id", { count: "exact", head: true });
+  return count === 0 ? getStaticContest(slug) : undefined;
 }
 
 // Always called with an explicit slug — used only by the dedicated
