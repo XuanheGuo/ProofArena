@@ -184,6 +184,7 @@ export function AdminContestsView({ problems }: { problems: ProblemOption[] }) {
     label: string;
     impact: string;
   } | null>(null);
+  const [pendingDeleteContest, setPendingDeleteContest] = useState(false);
 
   const selectedContest = useMemo(
     () => contests.find((contest) => contest.id === selectedId) ?? null,
@@ -201,6 +202,11 @@ export function AdminContestsView({ problems }: { problems: ProblemOption[] }) {
   }, []);
 
   useEffect(() => {
+    // Switching which contest is selected must never leave a stale delete
+    // confirmation open pointed at whatever contest happens to be selected
+    // next — always require a fresh, deliberate click on "删除比赛" per
+    // contest.
+    setPendingDeleteContest(false);
     if (!selectedContest) return;
     setContestForm({
       slug: selectedContest.slug,
@@ -541,6 +547,36 @@ export function AdminContestsView({ problems }: { problems: ProblemOption[] }) {
     await loadContests();
   }
 
+  // Deleting a contest cascades (see migrations 004/013): contest_problems,
+  // awards, contest_participant_profiles, contest_submission_scores,
+  // contest_sprint_attempts, and contest_problem_answer_keys all get
+  // deleted with it. submissions/solutions are NOT deleted — their
+  // contest_id/contest_problem_id FKs are ON DELETE SET NULL — but they
+  // keep the denormalized contest_slug/contest_problem_key text columns,
+  // so they end up orphaned (pointing at a slug that no longer resolves)
+  // rather than cleanly detached. That's unavoidable without a dedicated
+  // cleanup step this button doesn't attempt, so the confirmation copy
+  // below calls it out instead of silently hiding it.
+  async function deleteContest() {
+    if (!selectedContest) return;
+    setSaving(true);
+    setError("");
+    setMessage("");
+    setPendingDeleteContest(false);
+
+    const { error: deleteError } = await supabase.from("contests").delete().eq("id", selectedContest.id);
+
+    setSaving(false);
+    if (deleteError) {
+      setError(deleteError.message || "删除比赛失败。");
+      return;
+    }
+    setMessage(`「${selectedContest.title}」已删除。`);
+    setSelectedId("");
+    setContestForm(emptyContest);
+    await loadContests();
+  }
+
   async function deleteAward(awardId: string) {
     setSaving(true);
     setError("");
@@ -796,6 +832,52 @@ export function AdminContestsView({ problems }: { problems: ProblemOption[] }) {
                   <span className="inline-flex h-9 items-center text-sm text-zinc-500">比赛已结束，无可切换状态。</span>
                 )}
               </div>
+            )}
+          </section>
+        )}
+
+        {selectedContest && (
+          <section className="border border-red-500/30 bg-red-500/[0.03] p-5">
+            <div className="mb-3 flex items-center gap-2 text-sm font-bold text-red-300">
+              <Trash2 className="size-4" />
+              危险操作
+            </div>
+            {pendingDeleteContest ? (
+              <div className="border border-red-500/40 bg-red-500/[0.08] p-4">
+                <p className="text-sm font-bold text-red-200">确认删除「{selectedContest.title}」？</p>
+                <p className="mt-1 text-sm leading-6 text-zinc-400">
+                  此操作不可撤销：赛题安排、奖项、参赛者档案（挑战倍率/扣分）、人工评分和计时题记录都会被永久删除。
+                  已发布的投稿/解法本身不会被删除，但会失去与本场比赛的关联。
+                </p>
+                <div className="mt-3 flex gap-2">
+                  <button
+                    type="button"
+                    onClick={deleteContest}
+                    disabled={saving}
+                    className="inline-flex h-9 items-center gap-2 bg-red-500 px-4 text-xs font-bold text-white disabled:opacity-50"
+                  >
+                    <Trash2 className="size-3.5" />
+                    确认删除
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPendingDeleteContest(false)}
+                    className="inline-flex h-9 items-center border border-white/15 px-4 text-xs text-zinc-400 hover:text-white"
+                  >
+                    取消
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setPendingDeleteContest(true)}
+                disabled={saving}
+                className="inline-flex h-9 items-center gap-2 border border-red-500/40 px-4 text-xs font-bold text-red-300 transition hover:bg-red-500/10 disabled:opacity-50"
+              >
+                <Trash2 className="size-3.5" />
+                删除比赛
+              </button>
             )}
           </section>
         )}
