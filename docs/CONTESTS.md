@@ -17,6 +17,10 @@
 **题干本身不保密。** 赛题取自已经公开的题库（`data/problems.ts` / 数据库 `problems` 表），同一道题随时能在 `/problems` 里搜到，标题、题干、专题标签本来就是公开信息。比赛真正要保护的是「已有解法」「参考答案」「比较/图谱工具」——这些内容如果提前可见，会替参赛者把路线定死。`/contests/[slug]/problems/[id]` 在赛题锁定（`unlockMode: auto_time` 且未到 `openAt`，或比赛还是 `draft`）时会展示"未解锁"占位页，**这只是为了不提前公布比赛节奏（第几天考哪道题），不是为了给题干本身保密**——同一题干仍可能通过 `/problems/[id]` 正常访问到。如果未来某场比赛需要使用从未公开过的新题，题干保密才需要额外的按天/按状态门控，目前的架构不提供这种门控。
 
 第一场具体运营方案见 [ProofArena Invitational 01 启动方案](./FIRST_CONTEST_PLAN.md)。
+后续一周制比赛、挑战倍率、大题讨论和计时题的完整规划见
+[ProofArena 一周赛制规划](./WEEKLY_CONTEST_FORMAT.md)。
+面向实现的功能拆解和 PR 顺序见
+[一周赛制实现 Brief](./WEEKLY_CONTEST_IMPLEMENTATION_BRIEF.md)。
 
 ## 核心类型
 

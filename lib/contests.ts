@@ -1,6 +1,7 @@
 import { contests as staticContests, getContest as getStaticContest } from "@/data/contests";
 import { isPublicSubmissionImageUrl } from "@/lib/security";
 import { createPublicClient } from "@/lib/supabase-public";
+import { createServiceClient } from "@/lib/supabase-server";
 import type { Contest, ContestAward, ContestProblem } from "@/lib/types";
 import { getEffectiveProblemStatus } from "@/lib/types";
 
@@ -33,6 +34,15 @@ type ContestProblemRow = {
   weight: number;
   status: ContestProblem["status"];
   unlock_mode: ContestProblem["unlockMode"];
+  problem_phase: ContestProblem["problemPhase"];
+  score_max: number;
+  score_policy: ContestProblem["scorePolicy"];
+  multiplier_eligible: boolean;
+  timed_mode_enabled: boolean;
+  time_limit_seconds: number | null;
+  max_attempts: number;
+  answer_type: ContestProblem["answerType"];
+  answer_format_note: string;
 };
 
 type AwardRow = {
@@ -75,6 +85,15 @@ function toContest(row: ContestRow): Contest {
         weight: problem.weight,
         status: problem.status,
         unlockMode: problem.unlock_mode ?? "manual",
+        problemPhase: problem.problem_phase ?? "daily",
+        scoreMax: problem.score_max ?? 100,
+        scorePolicy: problem.score_policy ?? "manual",
+        multiplierEligible: problem.multiplier_eligible ?? true,
+        timedModeEnabled: problem.timed_mode_enabled ?? false,
+        timeLimitSeconds: problem.time_limit_seconds ?? null,
+        maxAttempts: problem.max_attempts ?? 1,
+        answerType: problem.answer_type ?? null,
+        answerFormatNote: problem.answer_format_note ?? "",
       }))
       .sort((a, b) => a.dayIndex - b.dayIndex),
     awards: (row.awards ?? []).map((award): ContestAward => ({
@@ -179,6 +198,64 @@ export async function getActiveContestLockForProblem(problemId: string): Promise
   };
   const contest = Array.isArray(row.contests) ? row.contests[0] : row.contests;
   return contest ? { slug: contest.slug } : null;
+}
+
+export type ActiveSprintLock = {
+  slug: string;
+  contestProblemId: string;
+  dayIndex: number;
+  openAt: string;
+  closeAt: string;
+  isSprint: true;
+};
+
+// Sprint problems require a PERSONAL unlock (see components/ContestSprintPanel.tsx
+// and lib/contest-sprint.ts) before their statement is readable at all — that
+// rule must hold even if an admin mistakenly binds a sprint contest problem
+// to a public `problems.id` instead of a Problem Vault draft, because the
+// canonical /problems/[id] page would otherwise happily show the statement
+// to anyone, timer or no timer. This is the dedicated, defense-in-depth
+// check that page uses: unlike getActiveContestLockForProblem (which only
+// hides existing solutions/answer/proof graph — the statement itself stays
+// public there, by design, for every non-sprint contest), a hit here means
+// the canonical page must not render the statement, solutions, answer, or
+// proof graph at all, and must not call getProblem() in the first place.
+export async function getActiveSprintLockForProblem(problemId: string): Promise<ActiveSprintLock | null> {
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    return null;
+  }
+
+  const supabase = createPublicClient();
+  const { data, error } = await supabase
+    .from("contest_problems")
+    .select("id, day_index, open_at, close_at, contests!inner(slug, status)")
+    .eq("problem_id", problemId)
+    .eq("problem_phase", "sprint")
+    .eq("timed_mode_enabled", true)
+    .eq("contests.status", "active")
+    .limit(1)
+    .maybeSingle();
+
+  if (error || !data) return null;
+
+  const row = data as unknown as {
+    id: string;
+    day_index: number;
+    open_at: string;
+    close_at: string;
+    contests: { slug: string; status: string } | { slug: string; status: string }[] | null;
+  };
+  const contest = Array.isArray(row.contests) ? row.contests[0] : row.contests;
+  if (!contest) return null;
+
+  return {
+    slug: contest.slug,
+    contestProblemId: row.id,
+    dayIndex: row.day_index,
+    openAt: row.open_at,
+    closeAt: row.close_at,
+    isSprint: true,
+  };
 }
 
 export async function getFeaturedContest() {
@@ -714,4 +791,174 @@ export async function getContestLeaderboard(contestSlug: string): Promise<Contes
   entries.sort((a, b) => b.avgTotal - a.avgTotal || b.ratingCount - a.ratingCount);
 
   return { solutions: entries };
+}
+
+// Weekly contest format scoreboard (docs/WEEKLY_CONTEST_FORMAT.md §3, §11).
+// Unlike getContestLeaderboard (which ranks published solutions by community
+// rating), this sums the official judge scores in contest_submission_scores /
+// contest_participant_profiles / contest_sprint_attempts per the weekly
+// scoring formula:
+//   dailyFinalScore = dailyRawScore * challengeMultiplier
+//   totalScore = dailyFinalScore + sprintScore + majorScore + awardPoints - penaltyPoints
+// This is the Phase 1 data-layer version: it reads real rows once judges
+// start scoring, and returns [] before any scoring exists — either way it
+// never breaks the contest detail page, since callers must handle an empty
+// scoreboard.
+// contest_sprint_attempts has no "viewable by everyone" RLS policy — it
+// stores raw_answer/normalized_answer, which must stay hidden from other
+// participants before the official reveal (migration 013). That means the
+// anon/public client used everywhere else in this file can only ever see
+// the calling browser's own row (and createPublicClient never even carries
+// a user session — see lib/supabase-public.ts), so it cannot compute a
+// cross-participant sprint total.
+//
+// This helper is the one privileged read in the scoreboard: it uses the
+// service role key to bypass RLS, but selects ONLY user_id + score — never
+// unlock_at, submitted_at, answer_raw, answer_normalized, or is_correct.
+// That keeps the "safe public score summary" property from leaking to
+// getContestScoreboard's return value, which the contest detail page (a
+// Server Component) renders for every visitor.
+//
+// Like getProblemDraftForContestDisplay in lib/problem-drafts.ts, this must
+// stay a server-only helper: never import it into a "use client" component
+// or expose it via a public API route. lib/contests.ts is safe today
+// because the one client component that touches this module
+// (components/ContestThoughtArena.tsx) only does `import type`, which is
+// erased at compile time and never bundles this function's code.
+async function getContestSprintScoreSummary(contestId: string): Promise<Array<{ user_id: string; score: number }>> {
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) return [];
+
+  const { data, error } = await createServiceClient()
+    .from("contest_sprint_attempts")
+    .select("user_id, score")
+    .eq("contest_id", contestId);
+
+  if (error || !data) return [];
+  return data as Array<{ user_id: string; score: number }>;
+}
+
+export type ContestScoreboardRow = {
+  userId: string;
+  displayName: string;
+  dailyRawScore: number;
+  challengeScore: number;
+  challengeMultiplier: number;
+  dailyFinalScore: number;
+  sprintScore: number;
+  majorScore: number;
+  awardPoints: number;
+  penaltyPoints: number;
+  totalScore: number;
+};
+
+export async function getContestScoreboard(slug: string): Promise<ContestScoreboardRow[]> {
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    return [];
+  }
+
+  const supabase = createPublicClient();
+
+  const { data: contestRow } = await supabase
+    .from("contests")
+    .select("id")
+    .eq("slug", slug)
+    .maybeSingle();
+
+  if (!contestRow?.id) return [];
+  const contestId = contestRow.id as string;
+
+  const [{ data: scoreRows }, { data: profileRows }, { data: awardRows }] = await Promise.all([
+    supabase
+      .from("contest_submission_scores")
+      .select("user_id, problem_phase, raw_score")
+      .eq("contest_id", contestId),
+    supabase
+      .from("contest_participant_profiles")
+      .select("user_id, challenge_score, challenge_multiplier, penalty_points")
+      .eq("contest_id", contestId),
+    supabase
+      .from("awards")
+      .select("user_id, points")
+      .eq("contest_id", contestId),
+  ]);
+
+  const sprintRows = await getContestSprintScoreSummary(contestId);
+
+  type Entry = {
+    dailyRawScore: number;
+    majorScore: number;
+    sprintScore: number;
+    challengeScore: number;
+    challengeMultiplier: number;
+    penaltyPoints: number;
+    awardPoints: number;
+  };
+  const byUser = new Map<string, Entry>();
+  const ensure = (userId: string): Entry => {
+    let entry = byUser.get(userId);
+    if (!entry) {
+      entry = { dailyRawScore: 0, majorScore: 0, sprintScore: 0, challengeScore: 0, challengeMultiplier: 1, penaltyPoints: 0, awardPoints: 0 };
+      byUser.set(userId, entry);
+    }
+    return entry;
+  };
+
+  for (const row of scoreRows ?? []) {
+    if (!row.user_id) continue;
+    const entry = ensure(row.user_id as string);
+    const rawScore = Number(row.raw_score) || 0;
+    if (row.problem_phase === "daily") entry.dailyRawScore += rawScore;
+    else if (row.problem_phase === "major") entry.majorScore += rawScore;
+  }
+
+  for (const row of profileRows ?? []) {
+    if (!row.user_id) continue;
+    const entry = ensure(row.user_id as string);
+    entry.challengeScore = Number(row.challenge_score) || 0;
+    entry.challengeMultiplier = Number(row.challenge_multiplier) || 1;
+    entry.penaltyPoints = Number(row.penalty_points) || 0;
+  }
+
+  for (const row of sprintRows ?? []) {
+    if (!row.user_id) continue;
+    ensure(row.user_id as string).sprintScore += Number(row.score) || 0;
+  }
+
+  for (const row of awardRows ?? []) {
+    if (!row.user_id) continue;
+    ensure(row.user_id as string).awardPoints += Number(row.points) || 0;
+  }
+
+  if (byUser.size === 0) return [];
+
+  const { data: userProfiles } = await supabase
+    .from("user_profiles")
+    .select("id, display_name, username")
+    .in("id", [...byUser.keys()]);
+
+  const nameMap = new Map<string, string>();
+  for (const profile of userProfiles ?? []) {
+    nameMap.set(profile.id as string, (profile.display_name as string) || (profile.username as string) || "匿名用户");
+  }
+
+  const rows: ContestScoreboardRow[] = [...byUser.entries()].map(([userId, entry]) => {
+    const dailyFinalScore = entry.dailyRawScore * entry.challengeMultiplier;
+    const totalScore = dailyFinalScore + entry.sprintScore + entry.majorScore + entry.awardPoints - entry.penaltyPoints;
+    return {
+      userId,
+      displayName: nameMap.get(userId) ?? "匿名用户",
+      dailyRawScore: entry.dailyRawScore,
+      challengeScore: entry.challengeScore,
+      challengeMultiplier: entry.challengeMultiplier,
+      dailyFinalScore,
+      sprintScore: entry.sprintScore,
+      majorScore: entry.majorScore,
+      awardPoints: entry.awardPoints,
+      penaltyPoints: entry.penaltyPoints,
+      totalScore,
+    };
+  });
+
+  rows.sort((a, b) => b.totalScore - a.totalScore);
+  return rows;
 }

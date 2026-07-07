@@ -1,4 +1,4 @@
-import type { ContestAwardType, ContestSolutionType, ContestStatus } from "@/lib/types";
+import type { ContestAwardType, ContestProblemPhase, ContestSolutionType, ContestStatus } from "@/lib/types";
 
 export const contestStatusMeta: Record<ContestStatus, { label: string; className: string }> = {
   draft: {
@@ -16,6 +16,30 @@ export const contestStatusMeta: Record<ContestStatus, { label: string; className
   finished: {
     label: "已结束",
     className: "border-sky-500/40 bg-sky-500/10 text-sky-300",
+  },
+};
+
+// See docs/WEEKLY_CONTEST_FORMAT.md §1 for what each phase means.
+export const contestProblemPhaseMeta: Record<ContestProblemPhase, { label: string; className: string }> = {
+  daily: {
+    label: "普通题",
+    className: "border-cyan-400/30 bg-cyan-400/10 text-cyan-300",
+  },
+  challenge: {
+    label: "挑战题",
+    className: "border-red-400/30 bg-red-400/10 text-red-300",
+  },
+  sprint: {
+    label: "计时题",
+    className: "border-amber-400/30 bg-amber-400/10 text-amber-300",
+  },
+  major: {
+    label: "大题",
+    className: "border-violet-400/30 bg-violet-400/10 text-violet-300",
+  },
+  discussion: {
+    label: "讨论题",
+    className: "border-zinc-500/30 bg-zinc-500/10 text-zinc-300",
   },
 };
 

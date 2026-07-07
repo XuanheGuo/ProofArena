@@ -18,11 +18,11 @@ import {
   Trophy,
 } from "lucide-react";
 import { MathBlock } from "@/components/MathBlock";
-import { contestStatusMeta, contestSolutionTypeMeta } from "@/lib/contest-meta";
+import { contestStatusMeta, contestSolutionTypeMeta, contestProblemPhaseMeta } from "@/lib/contest-meta";
 import { ContestThoughtArena } from "@/components/ContestThoughtArena";
 import { ContestMyPanel } from "@/components/ContestMyPanel";
 import { ContestCountdown } from "@/components/ContestCountdown";
-import { getContest, getContestLeaderboard, getContestSubmissionStats, getContests, getContestThoughts, getContestUserRankings } from "@/lib/contests";
+import { getContest, getContestLeaderboard, getContestScoreboard, getContestSubmissionStats, getContests, getContestThoughts, getContestUserRankings } from "@/lib/contests";
 import { getProblems, getSolutionAverage } from "@/lib/db";
 import { getProblemDraftTitles } from "@/lib/problem-drafts";
 import { difficultyBadgeClass } from "@/lib/problem-presentation";
@@ -66,11 +66,12 @@ export default async function ContestDetailPage({ params }: PageProps) {
   const contest = await getContest(slug);
   if (!contest) notFound();
 
-  const [problems, leaderboard, contestStats, userRankings] = await Promise.all([
+  const [problems, leaderboard, contestStats, userRankings, scoreboard] = await Promise.all([
     getProblems(),
     getContestLeaderboard(slug),
     getContestSubmissionStats(slug),
     getContestUserRankings(slug, contest.awards),
+    getContestScoreboard(slug),
   ]);
   const contestThoughts = await getContestThoughts(slug, contest);
   const problemMap = new Map(problems.map((problem) => [problem.id, problem]));
@@ -253,6 +254,9 @@ export default async function ContestDetailPage({ params }: PageProps) {
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-1.5 text-xs">
                           <span className="bg-cyan-400 px-2 py-0.5 font-bold text-zinc-950">Day {contestProblem.dayIndex}</span>
+                          <span className={`border px-2 py-0.5 font-bold ${contestProblemPhaseMeta[contestProblem.problemPhase ?? "daily"].className}`}>
+                            {contestProblemPhaseMeta[contestProblem.problemPhase ?? "daily"].label}
+                          </span>
                           <span className="border border-white/15 px-2 py-0.5 text-zinc-400">{contestProblem.title}</span>
                           {problem && !isLocked && <span className={`border px-2 py-0.5 ${difficultyBadgeClass[problem.difficulty]}`}>{problem.difficulty}</span>}
                           {!isLocked && !problem && draftTitle && (
@@ -310,7 +314,9 @@ export default async function ContestDetailPage({ params }: PageProps) {
                             进入题目
                             <ArrowUpRight className="size-3.5" />
                           </Link>
-                          {(contest.status === "active" || contest.status === "judging") && (
+                          {/* Sprint problems go through ContestSprintPanel on their own
+                              page instead of the general solution SubmitForm. */}
+                          {contestProblem.problemPhase !== "sprint" && (contest.status === "active" || contest.status === "judging") && (
                             <Link
                               href={`/submit?contest=${contest.slug}&problem=${routeId}`}
                               className="inline-flex h-8 items-center gap-1.5 border border-amber-400/40 bg-amber-400/10 px-3 text-xs font-bold text-amber-300 transition hover:bg-amber-400/15"
@@ -341,6 +347,71 @@ export default async function ContestDetailPage({ params }: PageProps) {
           />
 
           <section id="leaderboard" className="scroll-mt-24 border border-white/10 bg-zinc-950 p-5 md:p-6">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2 text-sm font-bold text-white">
+                <Trophy className="size-4 text-amber-300" />
+                实时积分榜
+              </div>
+              {scoreboard.length > 0 && (
+                <span className="text-xs text-zinc-500">{scoreboard.length} 位参赛者 · 比赛总分</span>
+              )}
+            </div>
+            <p className="mt-1 text-xs leading-5 text-zinc-500">
+              普通题原始分 × 挑战倍率 + 计时题分 + 大题分 + 奖励分 − 扣分。比赛进行中实时公开，不做延迟隐藏。
+            </p>
+
+            {scoreboard.length === 0 ? (
+              <div className="mt-5 border border-white/10 bg-black/20 p-8 text-center">
+                <Trophy className="mx-auto size-6 text-zinc-600" />
+                <p className="mt-3 text-sm text-zinc-500">暂无评分数据。</p>
+              </div>
+            ) : (
+              <div className="mt-4 overflow-x-auto">
+                <table className="w-full min-w-[46rem] border-collapse text-sm">
+                  <thead>
+                    <tr className="border-b border-white/10 text-left text-[11px] uppercase tracking-wide text-zinc-500">
+                      <th className="py-2 pr-2 font-bold">排名</th>
+                      <th className="py-2 pr-2 font-bold">用户</th>
+                      <th className="py-2 pr-2 text-right font-bold">普通题原始分</th>
+                      <th className="py-2 pr-2 text-right font-bold">挑战倍率</th>
+                      <th className="py-2 pr-2 text-right font-bold">普通题结算分</th>
+                      <th className="py-2 pr-2 text-right font-bold">计时题分</th>
+                      <th className="py-2 pr-2 text-right font-bold">大题分</th>
+                      <th className="py-2 pr-2 text-right font-bold">奖励分</th>
+                      <th className="py-2 pr-2 text-right font-bold">扣分</th>
+                      <th className="py-2 pr-0 text-right font-bold">总分</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/[0.05]">
+                    {scoreboard.map((row, index) => (
+                      <tr key={row.userId} className={index < 3 ? "bg-amber-400/[0.03]" : undefined}>
+                        <td className={`py-2 pr-2 font-mono font-bold ${index === 0 ? "text-amber-300" : index === 1 ? "text-zinc-300" : index === 2 ? "text-amber-700" : "text-zinc-600"}`}>
+                          {index + 1}
+                        </td>
+                        <td className="py-2 pr-2 font-bold text-white">{row.displayName}</td>
+                        <td className="py-2 pr-2 text-right tabular-nums text-zinc-300">{row.dailyRawScore.toFixed(1)}</td>
+                        <td className="py-2 pr-2 text-right tabular-nums text-cyan-300">{row.challengeMultiplier.toFixed(2)}x</td>
+                        <td className="py-2 pr-2 text-right tabular-nums font-bold text-white">{row.dailyFinalScore.toFixed(1)}</td>
+                        <td className="py-2 pr-2 text-right tabular-nums text-zinc-300">{row.sprintScore.toFixed(1)}</td>
+                        <td className="py-2 pr-2 text-right tabular-nums text-zinc-300">{row.majorScore.toFixed(1)}</td>
+                        <td className="py-2 pr-2 text-right tabular-nums text-emerald-300">
+                          {row.awardPoints > 0 ? `+${row.awardPoints.toFixed(1)}` : "0"}
+                        </td>
+                        <td className="py-2 pr-2 text-right tabular-nums text-red-300">
+                          {row.penaltyPoints > 0 ? `-${row.penaltyPoints.toFixed(1)}` : "0"}
+                        </td>
+                        <td className="py-2 pr-0 text-right font-mono text-base font-bold tabular-nums text-amber-300">
+                          {row.totalScore.toFixed(1)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+
+          <section className="border border-white/10 bg-zinc-950 p-5 md:p-6">
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-2 text-sm font-bold text-white">
                 <Trophy className="size-4 text-amber-300" />

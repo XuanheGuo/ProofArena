@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Lock } from "lucide-react";
+import { ArrowLeft, Lock } from "lucide-react";
 import { ProblemDetailExperience } from "@/components/ProblemDetailExperience";
+import { ContestSprintPanel } from "@/components/ContestSprintPanel";
 import { getProblem, getProblemSummaries } from "@/lib/db";
 import { getContestForProblem, getContests } from "@/lib/contests";
 import { getKnowledgeNodesForProblem, getRelatedProblemSummaries, redactLockedProblem } from "@/lib/problem-detail-helpers";
@@ -62,6 +63,19 @@ export async function generateMetadata({
     };
   }
 
+  // Sprint problems require a personal unlock (a contest_sprint_attempts
+  // row for this specific user) before the statement is readable at all —
+  // metadata generation has no per-user session concept worth trusting here
+  // (it's also what crawlers/link previews see), so it must stay fully
+  // generic regardless of the contest-level window being open. Never call
+  // resolveContestProblem for a sprint problem.
+  if (contestContext.contestProblem.problemPhase === "sprint") {
+    return {
+      title: `Day ${contestContext.contestProblem.dayIndex} · ${contestContext.contest.title} | ProofArena`,
+      description: "这是一道计时题，解锁后显示题面并开始计时。",
+    };
+  }
+
   const problem = await resolveContestProblem(contestContext.contestProblem, id);
   if (!problem) return {};
 
@@ -112,6 +126,61 @@ function LockedContestProblem({
   );
 }
 
+// Deliberately does NOT take a `problem` prop and never resolves one — the
+// whole point of this component is that the sprint problem's statement must
+// not exist anywhere in this page's server-rendered output or JS payload
+// until the viewer has personally unlocked it (a contest_sprint_attempts
+// row for their own user id). Only contest/day/phase metadata, which is
+// already public elsewhere on the site (the contest detail page's problem
+// list), is shown here. ContestSprintPanel fetches the actual title/
+// statement itself, from the API, only once an attempt exists — see that
+// component's and lib/contest-sprint.ts's doc comments.
+function SprintContestProblem({
+  contest,
+  contestProblem,
+}: {
+  contest: Contest;
+  contestProblem: ContestProblem;
+}) {
+  return (
+    <main className="grid-surface min-h-screen">
+      <div className="mx-auto max-w-3xl px-4 py-8 md:px-6 md:py-12">
+        <Link
+          href={`/contests/${contest.slug}`}
+          className="inline-flex items-center gap-2 text-sm text-zinc-500 transition hover:text-white"
+        >
+          <ArrowLeft className="size-4" />
+          返回比赛主页
+        </Link>
+
+        <div className="mt-5 flex flex-wrap items-center gap-2 text-xs">
+          <span className="border border-amber-400/30 bg-amber-400/10 px-2 py-0.5 font-bold text-amber-300">
+            计时题
+          </span>
+          <span className="bg-cyan-400 px-2 py-0.5 font-bold text-zinc-950">Day {contestProblem.dayIndex}</span>
+          <span className="border border-white/15 px-2 py-0.5 text-zinc-400">{contestProblem.title}</span>
+        </div>
+
+        <h1 className="mt-4 text-2xl font-black text-white">{contestProblem.theme}</h1>
+        <p className="mt-2 text-sm leading-6 text-zinc-500">
+          题面在解锁后显示，解锁即开始计时，请确认准备好再解锁。
+        </p>
+
+        <div className="mt-5">
+          <ContestSprintPanel
+            contestSlug={contest.slug}
+            contestProblemId={contestProblem.id}
+            scoreMax={contestProblem.scoreMax}
+            timeLimitSeconds={contestProblem.timeLimitSeconds}
+            answerType={contestProblem.answerType}
+            answerFormatNote={contestProblem.answerFormatNote}
+          />
+        </div>
+      </div>
+    </main>
+  );
+}
+
 export default async function ContestProblemDetailPage({
   params,
 }: {
@@ -128,6 +197,18 @@ export default async function ContestProblemDetailPage({
   // schedule yet at all.
   if (isContestProblemLocked(contestContext.contest, contestContext.contestProblem)) {
     return <LockedContestProblem contest={contestContext.contest} contestProblem={contestContext.contestProblem} />;
+  }
+
+  // Sprint problems are a quick choice/fill-blank check against a timer, not
+  // a proof to write up — they skip ProblemDetailExperience entirely (no
+  // solutions, proof graph, or SubmitForm CTA make sense here) in favor of a
+  // small dedicated view built around ContestSprintPanel. Checked BEFORE
+  // resolveContestProblem runs: that call reads the actual statement, which
+  // for a sprint problem must never be fetched at the page layer at all
+  // (personal unlock happens client-side, through the sprint API routes) —
+  // see SprintContestProblem's own doc comment.
+  if (contestContext.contestProblem.problemPhase === "sprint") {
+    return <SprintContestProblem contest={contestContext.contest} contestProblem={contestContext.contestProblem} />;
   }
 
   const isDraftProblem = Boolean(contestContext.contestProblem.draftProblemId);

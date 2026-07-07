@@ -9,6 +9,21 @@ function iso(dayOffset: number, hour = 12, minute = 0) {
   return date.toISOString();
 }
 
+// Shared defaults for the existing `first-arena` seed, which predates the
+// weekly contest format's phase/scoring fields — every problem here is a
+// plain, manually-scored daily problem with no timed/sprint behavior.
+const dailyPhaseDefaults = {
+  problemPhase: "daily" as const,
+  scoreMax: 100,
+  scorePolicy: "manual" as const,
+  multiplierEligible: true,
+  timedModeEnabled: false,
+  timeLimitSeconds: null,
+  maxAttempts: 1,
+  answerType: null,
+  answerFormatNote: "",
+};
+
 export const contests: Contest[] = [
   {
     id: "contest-first-arena",
@@ -40,6 +55,7 @@ export const contests: Contest[] = [
         weight: 1,
         status: "locked",
         unlockMode: "auto_time",
+        ...dailyPhaseDefaults,
       },
       {
         id: "first-arena-day-2",
@@ -53,6 +69,7 @@ export const contests: Contest[] = [
         weight: 1.25,
         status: "locked",
         unlockMode: "auto_time",
+        ...dailyPhaseDefaults,
       },
       {
         id: "first-arena-day-3",
@@ -66,6 +83,7 @@ export const contests: Contest[] = [
         weight: 1.5,
         status: "locked",
         unlockMode: "auto_time",
+        ...dailyPhaseDefaults,
       },
       {
         id: "first-arena-day-4",
@@ -79,6 +97,7 @@ export const contests: Contest[] = [
         weight: 1.75,
         status: "locked",
         unlockMode: "auto_time",
+        ...dailyPhaseDefaults,
       },
       {
         id: "first-arena-day-5",
@@ -92,6 +111,9 @@ export const contests: Contest[] = [
         weight: 0.5,
         status: "locked",
         unlockMode: "auto_time",
+        ...dailyPhaseDefaults,
+        problemPhase: "discussion",
+        multiplierEligible: false,
       },
     ],
     awards: [],
