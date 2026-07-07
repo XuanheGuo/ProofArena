@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase-server";
-import { ProblemVaultView } from "@/components/ProblemVaultView";
+import { createClient, createServiceClient } from "@/lib/supabase-server";
+import { ProblemVaultView, type ProblemDraft } from "@/components/ProblemVaultView";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 
@@ -31,6 +31,12 @@ export default async function ProblemVaultPage() {
     );
   }
 
+  const serviceSupabase = createServiceClient();
+  const { data: drafts, error: draftsError } = await serviceSupabase
+    .from("problem_drafts")
+    .select("id, title, year, region, paper, number, difficulty, status, promoted_problem_id, created_at")
+    .order("created_at", { ascending: false });
+
   return (
     <main className="min-h-screen bg-zinc-950 px-4 py-10 md:px-6">
       <div className="mx-auto max-w-4xl">
@@ -41,8 +47,13 @@ export default async function ProblemVaultPage() {
           <ArrowLeft className="size-4" />
           返回管理面板
         </Link>
+        {draftsError && (
+          <div className="mt-6 border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-300">
+            读取草稿箱失败：{draftsError.message}
+          </div>
+        )}
         <div className="mt-6">
-          <ProblemVaultView />
+          <ProblemVaultView initialDrafts={(drafts ?? []) as ProblemDraft[]} />
         </div>
       </div>
     </main>

@@ -176,7 +176,7 @@ function splitRules(value: string) {
   return value.split(/\n+/).map((item) => item.trim()).filter(Boolean);
 }
 
-export function AdminContestsView({ problems }: { problems: ProblemOption[] }) {
+export function AdminContestsView({ problems, initialDraftProblems = [] }: { problems: ProblemOption[]; initialDraftProblems?: DbProblemDraft[] }) {
   const supabase = createClient();
   const [contests, setContests] = useState<DbContest[]>([]);
   const [selectedId, setSelectedId] = useState<string>("");
@@ -184,7 +184,7 @@ export function AdminContestsView({ problems }: { problems: ProblemOption[] }) {
   const [problemForm, setProblemForm] = useState(emptyProblem);
   const [problemSourceMode, setProblemSourceMode] = useState<"public" | "draft">("public");
   const [awardForm, setAwardForm] = useState(emptyAward);
-  const [draftProblems, setDraftProblems] = useState<DbProblemDraft[]>([]);
+  const [draftProblems, setDraftProblems] = useState<DbProblemDraft[]>(initialDraftProblems);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
@@ -261,7 +261,6 @@ export function AdminContestsView({ problems }: { problems: ProblemOption[] }) {
     // yet migrated to 012_problem_vault.sql just shows an empty vault
     // instead of breaking the rest of the admin page.
     if (loadError) {
-      setDraftProblems([]);
       return;
     }
     setDraftProblems((data ?? []) as DbProblemDraft[]);
@@ -323,7 +322,7 @@ export function AdminContestsView({ problems }: { problems: ProblemOption[] }) {
 
     const { data: existing } = await supabase
       .from("contests")
-      .select("id")
+      .select("id, status")
       .eq("slug", seed.slug)
       .maybeSingle();
 
@@ -333,7 +332,7 @@ export function AdminContestsView({ problems }: { problems: ProblemOption[] }) {
       description: seed.description,
       tagline: seed.tagline,
       rules: seed.rules,
-      status: seed.status,
+      status: existing?.status ?? seed.status,
       start_at: seed.startAt,
       end_at: seed.endAt,
       discussion_start_at: seed.discussionStartAt ?? null,
@@ -377,6 +376,7 @@ export function AdminContestsView({ problems }: { problems: ProblemOption[] }) {
     let insertedCount = 0;
     let updatedCount = 0;
     let answerKeyCount = 0;
+    let staleEmptyDeletedCount = 0;
     const sprintAnswerKeyByDraftId = new Map(weekly01SprintAnswerKeys.map((answerKey) => [answerKey.draftProblemId, answerKey]));
 
     for (const contestProblem of seed.problems) {
@@ -462,8 +462,25 @@ export function AdminContestsView({ problems }: { problems: ProblemOption[] }) {
       }
     }
 
+    if (seed.slug === "weekly-arena-01") {
+      const { count: staleCount, error: staleDeleteError } = await supabase
+        .from("contest_problems")
+        .delete({ count: "exact" })
+        .eq("contest_id", contestId)
+        .is("problem_id", null)
+        .is("draft_problem_id", null);
+
+      if (staleDeleteError) {
+        setSaving(false);
+        setError(`清理 Weekly 01 旧空槽位失败：${staleDeleteError.message}`);
+        await loadContests();
+        return;
+      }
+      staleEmptyDeletedCount = staleCount ?? 0;
+    }
+
     setSaving(false);
-    setMessage(`已同步「${seed.title}」：新增 ${insertedCount} 个赛题，更新 ${updatedCount} 个赛题，写入 ${answerKeyCount} 个计时题答案 key。`);
+    setMessage(`已同步「${seed.title}」：新增 ${insertedCount} 个赛题，更新 ${updatedCount} 个赛题，写入 ${answerKeyCount} 个计时题答案 key，清理 ${staleEmptyDeletedCount} 个旧空槽位。`);
     await Promise.all([loadContests(), loadDraftProblems()]);
     setSelectedId(contestId);
   }

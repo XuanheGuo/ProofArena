@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { AdminContestsView } from "@/components/AdminContestsView";
-import { createClient } from "@/lib/supabase-server";
+import { createClient, createServiceClient } from "@/lib/supabase-server";
 import { getProblems } from "@/lib/db";
 
 function canManageContests(role?: string | null) {
@@ -32,7 +32,14 @@ export default async function AdminContestsPage() {
     );
   }
 
-  const problems = await getProblems();
+  const serviceSupabase = createServiceClient();
+  const [problems, { data: draftProblems }] = await Promise.all([
+    getProblems(),
+    serviceSupabase
+      .from("problem_drafts")
+      .select("id, year, region, paper, number, difficulty, question_type, tags, title, statement, answer, notes, status, promoted_problem_id, created_at")
+      .order("created_at", { ascending: false }),
+  ]);
   const problemOptions = problems.map((problem) => ({
     id: problem.id,
     title: problem.title,
@@ -46,7 +53,7 @@ export default async function AdminContestsPage() {
           <ArrowLeft className="size-4" />
           返回管理面板
         </Link>
-        <AdminContestsView problems={problemOptions} />
+        <AdminContestsView problems={problemOptions} initialDraftProblems={draftProblems ?? []} />
       </div>
     </main>
   );

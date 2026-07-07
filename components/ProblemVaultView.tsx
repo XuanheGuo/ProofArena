@@ -1,14 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { Archive, ExternalLink, ArrowUpRight, Plus } from "lucide-react";
-import { createClient } from "@/lib/supabase-client";
 import { promoteProblemDraft } from "@/lib/promote-problem-draft";
 
 type DraftStatus = "drafting" | "promoted";
 
-interface ProblemDraft {
+export interface ProblemDraft {
   id: string;
   title: string;
   year: number;
@@ -30,33 +29,11 @@ function draftSourceLabel(draft: Pick<ProblemDraft, "year" | "region" | "paper" 
   ].filter(Boolean).join(" · ");
 }
 
-export function ProblemVaultView() {
-  const [drafts, setDrafts] = useState<ProblemDraft[]>([]);
-  const [loading, setLoading] = useState(true);
+export function ProblemVaultView({ initialDrafts }: { initialDrafts: ProblemDraft[] }) {
+  const [drafts, setDrafts] = useState<ProblemDraft[]>(initialDrafts);
+  const [loading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [promoting, setPromoting] = useState<string | null>(null);
-
-  const supabase = createClient();
-
-  async function load() {
-    setLoading(true);
-    setError(null);
-    const { data, error: err } = await supabase
-      .from("problem_drafts")
-      .select("id, title, year, region, paper, number, difficulty, status, promoted_problem_id, created_at")
-      .order("created_at", { ascending: false });
-    if (err) {
-      setError(err.message);
-    } else {
-      setDrafts((data ?? []) as ProblemDraft[]);
-    }
-    setLoading(false);
-  }
-
-  useEffect(() => {
-    void load();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   async function handlePromote(id: string) {
     if (!confirm("确认将此草稿发布到公开题库？此操作不可逆。")) return;
@@ -66,7 +43,13 @@ export function ProblemVaultView() {
       if (result.error) {
         setError(result.error);
       } else {
-        await load();
+        setDrafts((current) =>
+          current.map((draft) =>
+            draft.id === id
+              ? { ...draft, status: "promoted", promoted_problem_id: result.problemId ?? draft.promoted_problem_id }
+              : draft,
+          ),
+        );
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "发布失败");
