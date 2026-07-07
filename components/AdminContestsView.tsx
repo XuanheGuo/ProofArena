@@ -309,17 +309,26 @@ export function AdminContestsView({ problems }: { problems: ProblemOption[] }) {
     // instead of a DB conflict target on (contest_id, day_index) — the
     // weekly template has several problems sharing the same day_index (3
     // daily + 3 sprint per day, plus challenge/major some days), which that
-    // key can't disambiguate. Update the matching row if one exists, insert
-    // a new one otherwise, so re-running sync stays idempotent without
-    // needing a new DB-level unique constraint.
-    const { data: existingProblems } = await supabase
+    // key can't disambiguate (and which the DB no longer even enforces as
+    // unique — see migration 014). Update the matching row if one exists,
+    // insert a new one otherwise, so re-running sync stays idempotent.
+    const { data: existingProblems, error: existingProblemsError } = await supabase
       .from("contest_problems")
       .select("id, title, day_index, problem_phase")
       .eq("contest_id", contestId);
 
+    if (existingProblemsError) {
+      setSaving(false);
+      setError(existingProblemsError.message || "读取现有赛题失败，未同步任何赛题。");
+      return;
+    }
+
     const rowKey = (row: { day_index: number; problem_phase: string; title: string }) =>
       `${row.day_index}::${row.problem_phase}::${row.title}`;
     const existingIdByKey = new Map((existingProblems ?? []).map((row) => [rowKey(row), row.id as string]));
+
+    let insertedCount = 0;
+    let updatedCount = 0;
 
     for (const contestProblem of seed.problems) {
       const patch = {
@@ -349,15 +358,36 @@ export function AdminContestsView({ problems }: { problems: ProblemOption[] }) {
         rowKey({ day_index: contestProblem.dayIndex, problem_phase: contestProblem.problemPhase, title: contestProblem.title }),
       );
 
+      // Stop at the first failure instead of silently skipping it — a
+      // partial sync must never be reported as a success, since the admin
+      // would have no way to tell which problems actually made it in.
       if (matchedId) {
-        await supabase.from("contest_problems").update(patch).eq("id", matchedId);
+        const { error: updateError } = await supabase.from("contest_problems").update(patch).eq("id", matchedId);
+        if (updateError) {
+          setSaving(false);
+          setError(
+            `同步「${contestProblem.title}」（Day ${contestProblem.dayIndex}）失败：${updateError.message}。已新增 ${insertedCount} 个、更新 ${updatedCount} 个赛题，其余未同步，请修复后重试。`,
+          );
+          await loadContests();
+          return;
+        }
+        updatedCount += 1;
       } else {
-        await supabase.from("contest_problems").insert(patch);
+        const { error: insertError } = await supabase.from("contest_problems").insert(patch);
+        if (insertError) {
+          setSaving(false);
+          setError(
+            `同步「${contestProblem.title}」（Day ${contestProblem.dayIndex}）失败：${insertError.message}。已新增 ${insertedCount} 个、更新 ${updatedCount} 个赛题，其余未同步，请修复后重试。`,
+          );
+          await loadContests();
+          return;
+        }
+        insertedCount += 1;
       }
     }
 
     setSaving(false);
-    setMessage(`已同步「${seed.title}」和题目安排。`);
+    setMessage(`已同步「${seed.title}」：新增 ${insertedCount} 个赛题，更新 ${updatedCount} 个赛题。`);
     await loadContests();
     setSelectedId(contestId);
   }
