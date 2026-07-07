@@ -6,6 +6,7 @@ import { AlertTriangle, Award, BookMarked, CalendarDays, CheckCircle2, Clock, Da
 import { contests as seededContests } from "@/data/contests";
 import { contestAwardMeta, contestProblemPhaseMeta, contestSolutionTypeMeta, contestStatusMeta } from "@/lib/contest-meta";
 import { AdminContestScoringView } from "@/components/AdminContestScoringView";
+import { AdminSprintAnswerKeyEditor } from "@/components/AdminSprintAnswerKeyEditor";
 import type { ContestAnswerType, ContestAwardType, ContestProblemPhase, ContestScorePolicy, ContestStatus, Difficulty, ExamRegion, QuestionType } from "@/lib/types";
 import { createClient } from "@/lib/supabase-client";
 import { formatContestDateTime } from "@/lib/format-contest-time";
@@ -266,8 +267,8 @@ export function AdminContestsView({ problems }: { problems: ProblemOption[] }) {
     await Promise.all([loadContests(), loadDraftProblems()]);
   }
 
-  async function syncSeedContest() {
-    const seed = seededContests[0];
+  async function syncSeedContest(seedSlug: string) {
+    const seed = seededContests.find((contest) => contest.slug === seedSlug);
     if (!seed) return;
     setSaving(true);
     setError("");
@@ -303,10 +304,28 @@ export function AdminContestsView({ problems }: { problems: ProblemOption[] }) {
     }
 
     const contestId = result.data.id as string;
+
+    // Match existing contest_problems by (day_index, problem_phase, title)
+    // instead of a DB conflict target on (contest_id, day_index) — the
+    // weekly template has several problems sharing the same day_index (3
+    // daily + 3 sprint per day, plus challenge/major some days), which that
+    // key can't disambiguate. Update the matching row if one exists, insert
+    // a new one otherwise, so re-running sync stays idempotent without
+    // needing a new DB-level unique constraint.
+    const { data: existingProblems } = await supabase
+      .from("contest_problems")
+      .select("id, title, day_index, problem_phase")
+      .eq("contest_id", contestId);
+
+    const rowKey = (row: { day_index: number; problem_phase: string; title: string }) =>
+      `${row.day_index}::${row.problem_phase}::${row.title}`;
+    const existingIdByKey = new Map((existingProblems ?? []).map((row) => [rowKey(row), row.id as string]));
+
     for (const contestProblem of seed.problems) {
       const patch = {
         contest_id: contestId,
         problem_id: contestProblem.problemId,
+        draft_problem_id: contestProblem.draftProblemId ?? null,
         day_index: contestProblem.dayIndex,
         title: contestProblem.title,
         theme: contestProblem.theme,
@@ -315,14 +334,30 @@ export function AdminContestsView({ problems }: { problems: ProblemOption[] }) {
         weight: contestProblem.weight,
         status: contestProblem.status,
         unlock_mode: contestProblem.unlockMode ?? "manual",
+        problem_phase: contestProblem.problemPhase,
+        score_max: contestProblem.scoreMax,
+        score_policy: contestProblem.scorePolicy,
+        multiplier_eligible: contestProblem.multiplierEligible,
+        timed_mode_enabled: contestProblem.timedModeEnabled,
+        time_limit_seconds: contestProblem.timeLimitSeconds,
+        max_attempts: contestProblem.maxAttempts,
+        answer_type: contestProblem.answerType,
+        answer_format_note: contestProblem.answerFormatNote,
       };
-      await supabase
-        .from("contest_problems")
-        .upsert(patch, { onConflict: "contest_id,day_index" });
+
+      const matchedId = existingIdByKey.get(
+        rowKey({ day_index: contestProblem.dayIndex, problem_phase: contestProblem.problemPhase, title: contestProblem.title }),
+      );
+
+      if (matchedId) {
+        await supabase.from("contest_problems").update(patch).eq("id", matchedId);
+      } else {
+        await supabase.from("contest_problems").insert(patch);
+      }
     }
 
     setSaving(false);
-    setMessage("已同步默认比赛和题目安排。");
+    setMessage(`已同步「${seed.title}」和题目安排。`);
     await loadContests();
     setSelectedId(contestId);
   }
@@ -503,15 +538,29 @@ export function AdminContestsView({ problems }: { problems: ProblemOption[] }) {
         {/* Quick actions */}
         <section className="border border-white/10 bg-zinc-950 p-4">
           <p className="mb-3 text-[11px] uppercase tracking-wide text-zinc-500">快捷操作</p>
-          <button
-            type="button"
-            onClick={syncSeedContest}
-            disabled={saving}
-            className="inline-flex h-9 w-full items-center justify-center gap-2 bg-cyan-400 px-3 text-xs font-bold text-zinc-950 transition hover:bg-cyan-300 disabled:opacity-50"
-          >
-            <Database className="size-3.5" />
-            同步默认比赛数据
-          </button>
+          <div className="space-y-2">
+            <button
+              type="button"
+              onClick={() => syncSeedContest("first-arena")}
+              disabled={saving}
+              className="inline-flex h-9 w-full items-center justify-center gap-2 bg-cyan-400 px-3 text-xs font-bold text-zinc-950 transition hover:bg-cyan-300 disabled:opacity-50"
+            >
+              <Database className="size-3.5" />
+              同步 Invitational 01
+            </button>
+            <button
+              type="button"
+              onClick={() => syncSeedContest("weekly-arena-01")}
+              disabled={saving}
+              className="inline-flex h-9 w-full items-center justify-center gap-2 border border-violet-400/40 bg-violet-400/10 px-3 text-xs font-bold text-violet-300 transition hover:bg-violet-400/15 disabled:opacity-50"
+            >
+              <CalendarDays className="size-3.5" />
+              创建/同步 Weekly 01
+            </button>
+          </div>
+          <p className="mt-2 text-[11px] leading-4 text-zinc-600">
+            Weekly 01 是空题目槽位模板，同步后需要在下方「赛题安排」逐个绑定真实题目、配置计时题答案 key。
+          </p>
         </section>
 
         {/* Contest list */}
@@ -543,7 +592,7 @@ export function AdminContestsView({ problems }: { problems: ProblemOption[] }) {
               );
             })}
             {contests.length === 0 && (
-              <p className="px-4 py-6 text-sm text-zinc-500">还没有比赛。点击"同步默认比赛"开始。</p>
+              <p className="px-4 py-6 text-sm text-zinc-500">还没有比赛。点击上方"同步 Invitational 01"或"创建/同步 Weekly 01"开始。</p>
             )}
           </div>
         </section>
@@ -1006,12 +1055,14 @@ export function AdminContestsView({ problems }: { problems: ProblemOption[] }) {
                             <option value="multiple_choice">多选</option>
                             <option value="fill_blank">填空</option>
                           </select>
-                          <span className="text-[11px] text-amber-400/70" title="计时题答案由 contest_problem_answer_keys 单独管理，不会出现在公开查询里">
-                            ⚠ 标准答案请在数据库 contest_problem_answer_keys 中配置，不在此页面暴露
-                          </span>
                         </>
                       )}
                     </div>
+                    {(item.problem_phase === "sprint" || item.timed_mode_enabled) && (
+                      <div className="border-t border-white/[0.07] px-4 py-2.5">
+                        <AdminSprintAnswerKeyEditor contestProblemId={item.id} defaultAnswerType={item.answer_type} />
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

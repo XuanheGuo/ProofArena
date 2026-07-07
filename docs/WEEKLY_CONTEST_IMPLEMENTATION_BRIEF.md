@@ -150,6 +150,17 @@ Update TypeScript types in `lib/types.ts`:
 
 ### Phase 2: Admin Contest Setup
 
+> **Status update:** the phase/score fields, the admin scoring panel
+> (`components/AdminContestScoringView.tsx`), and the sprint answer key
+> editor (`components/AdminSprintAnswerKeyEditor.tsx`, embedded in
+> `AdminContestsView`'s schedule row for any sprint/timed problem) are all
+> implemented — answer keys are edited straight into
+> `contest_problem_answer_keys` from the admin UI now, not by hand in
+> Supabase. See docs/CONTESTS.md's "一周赛制 Weekly Contest" section for the
+> current operational summary. Manual override for sprint attempts (last
+> bullet below) was intentionally left out — read-only review only, to avoid
+> silently changing an auto-computed score.
+
 Update `components/AdminContestsView.tsx`.
 
 For each contest problem, allow admin to configure:
@@ -324,6 +335,19 @@ For sprint problems:
 The submission window trigger currently only matches `contest_problem_row.problem_id = NEW.problem_id`. If draft-backed contest submissions are required before promotion, update the trigger to also match `draft_problem_id`. There is already a known limitation documented in `docs/CONTESTS.md`.
 
 ### Phase 7: Seed Data
+
+> **Status update:** implemented. `data/contests.ts` has the `weekly-arena-01`
+> seed described below, and `/admin/contests` has a "创建/同步 Weekly 01"
+> quick-action button (`syncSeedContest(seedSlug)`, parameterized so it can
+> sync either template). Every problem slot is unbound
+> (`problemId`/`draftProblemId` both `null`) rather than pointing at
+> placeholder public problem ids that don't exist — an admin binds real
+> problems (or Problem Vault drafts) afterward from the schedule list. Since
+> the weekly template has several problems sharing a `day_index` (unlike
+> first-arena's one-per-day schedule), the sync logic matches existing
+> `contest_problems` rows by `(day_index, problem_phase, title)` instead of
+> a `(contest_id, day_index)` conflict target, so re-running sync updates in
+> place instead of erroring or duplicating rows.
 
 Update `data/contests.ts` to include a new seed contest for the weekly format, for example:
 
