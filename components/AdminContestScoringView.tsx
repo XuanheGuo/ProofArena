@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { CheckCircle2, ClipboardList, Save, Timer } from "lucide-react";
+import { CheckCircle2, ClipboardList, HelpCircle, Save, Timer, XCircle } from "lucide-react";
 import { contestProblemPhaseMeta } from "@/lib/contest-meta";
+import { computeSprintStepScore } from "@/lib/contest-sprint-score";
 import { createClient } from "@/lib/supabase-client";
 import { formatContestDateTime } from "@/lib/format-contest-time";
 import type { ContestProblemPhase } from "@/lib/types";
@@ -14,12 +15,15 @@ import type { ContestProblemPhase } from "@/lib/types";
 // (per-participant scoring) with its own data model.
 //
 // Writes go straight through the browser Supabase client, same as every
-// other write in AdminContestsView — RLS on contest_submission_scores and
-// contest_participant_profiles ("Moderators can manage ...", migration 013)
-// is what actually enforces the admin/moderator requirement here, not this
-// component. contest_sprint_attempts is read-only in this view (its own RLS
-// grants moderators full SELECT, but there is deliberately no edit UI for it
-// — see the per-problem sprint block below).
+// other write in AdminContestsView — RLS on contest_submission_scores,
+// contest_participant_profiles and contest_sprint_attempts ("Moderators can
+// manage ...", migration 013) is what actually enforces the admin/moderator
+// requirement here, not this component. Sprint attempts are auto-scored by
+// the submit route; the only manual write this view does against them is the
+// adjudication below (judgeSprintAttempt) — a fill_blank answer that didn't
+// match any answer-key variant is stored with is_correct = null ("待人工评判",
+// see the submit route's isFillBlankPending comment) and waits here for a
+// moderator to rule it correct or wrong.
 
 export type ScoringContestProblem = {
   id: string;
@@ -27,6 +31,7 @@ export type ScoringContestProblem = {
   title: string;
   problem_phase: ContestProblemPhase;
   score_max: number;
+  time_limit_seconds: number | null;
   problem_id: string | null;
   draft_problem_id: string | null;
 };
@@ -72,6 +77,8 @@ type SprintAttemptRow = {
   unlock_at: string;
   submitted_at: string | null;
   elapsed_ms: number | null;
+  answer_raw: string | null;
+  answer_normalized: string | null;
   is_correct: boolean | null;
   score: number;
 };
@@ -171,7 +178,7 @@ export function AdminContestScoringView({
         .eq("contest_id", contestId),
       supabase
         .from("contest_sprint_attempts")
-        .select("id, contest_problem_id, user_id, unlock_at, submitted_at, elapsed_ms, is_correct, score")
+        .select("id, contest_problem_id, user_id, unlock_at, submitted_at, elapsed_ms, answer_raw, answer_normalized, is_correct, score")
         .eq("contest_id", contestId),
     ]);
 
@@ -224,6 +231,13 @@ export function AdminContestScoringView({
     for (const a of sprintAttempts) ids.add(a.user_id);
     return [...ids].sort((a, b) => (userNames.get(a) ?? a).localeCompare(userNames.get(b) ?? b));
   }, [submissions, scores, profiles, sprintAttempts, userNames]);
+
+  // Submitted sprint attempts whose answer matched no answer-key variant —
+  // the submit route parks them with is_correct = null for a human to rule on.
+  const pendingSprintCount = useMemo(
+    () => sprintAttempts.filter((a) => a.submitted_at && a.is_correct === null).length,
+    [sprintAttempts],
+  );
 
   async function currentAdminId(): Promise<string | null> {
     const { data } = await supabase.auth.getUser();
@@ -323,6 +337,47 @@ export function AdminContestScoringView({
     await loadScoringData();
   }
 
+  // Manual verdict on a sprint attempt — primarily for is_correct = null
+  // rows ("待人工评判"), but also usable to overturn an auto-判错 whose answer
+  // turned out to be a correct-but-unlisted form. 判为正确 recomputes the score
+  // with the exact same step table the submit route uses, from the
+  // server-recorded elapsed_ms — an overtime attempt therefore still scores 0
+  // even when ruled correct, matching the auto-grader's overtime rule.
+  async function judgeSprintAttempt(attempt: SprintAttemptRow, judgedCorrect: boolean) {
+    const cp = contestProblems.find((c) => c.id === attempt.contest_problem_id);
+    if (!cp) {
+      setError("找不到该计时题的配置，无法评判。");
+      return;
+    }
+
+    const key = `sprint:${attempt.id}`;
+    setSaving(key);
+    setError("");
+    setMessage("");
+
+    // Same fallback as the submit route's DEFAULT_TIME_LIMIT_SECONDS.
+    const timeLimitSeconds = Number(cp.time_limit_seconds) || 120;
+    const score =
+      judgedCorrect && attempt.elapsed_ms != null
+        ? computeSprintStepScore(Number(cp.score_max), timeLimitSeconds, attempt.elapsed_ms)
+        : 0;
+
+    const { error: updateError } = await supabase
+      .from("contest_sprint_attempts")
+      .update({ is_correct: judgedCorrect, score })
+      .eq("id", attempt.id);
+
+    setSaving(null);
+    if (updateError) {
+      setError(updateError.message || "保存计时题评判失败。");
+      return;
+    }
+    setMessage(
+      `已将 ${userNames.get(attempt.user_id) ?? attempt.user_id} · ${cp.title} 判为${judgedCorrect ? `正确（${score} 分）` : "错误（0 分）"}。`,
+    );
+    await loadScoringData();
+  }
+
   if (loading) {
     return (
       <section className="border border-white/10 bg-zinc-950 p-5">
@@ -344,8 +399,17 @@ export function AdminContestScoringView({
         评分台
       </div>
       <p className="mb-4 text-xs leading-5 text-zinc-500">
-        参赛者列表根据投稿和已有评分自动生成。普通题/挑战题/解答题在此打分；挑战倍率和扣分写入参赛者档案；计时题分数由系统自动计算，此处只读。
+        参赛者列表根据投稿和已有评分自动生成。普通题/挑战题/解答题在此打分；挑战倍率和扣分写入参赛者档案；计时题由系统自动判分，未匹配到标准答案的填空题会标记为「待人工评判」，在下方判定对错后自动按用时计分。
       </p>
+
+      {pendingSprintCount > 0 && (
+        <div className="mb-3 flex items-center gap-2 border border-sky-500/40 bg-sky-500/[0.08] px-3 py-2">
+          <HelpCircle className="size-3.5 shrink-0 text-sky-400" />
+          <p className="text-xs text-sky-300">
+            有 <span className="font-bold">{pendingSprintCount}</span> 条计时题答案待人工评判，请在对应参赛者的计时题列表中判定。
+          </p>
+        </div>
+      )}
 
       {message && (
         <div className="mb-3 flex items-center gap-2 border border-emerald-500/40 bg-emerald-500/[0.08] px-3 py-2">
@@ -537,31 +601,71 @@ export function AdminContestScoringView({
                   <div className="border-t border-white/10 bg-black/10 px-3 py-2.5">
                     <p className="mb-1.5 flex items-center gap-1 text-[11px] font-bold uppercase tracking-wide text-zinc-500">
                       <Timer className="size-3" />
-                      计时题（只读）
+                      计时题
                     </p>
-                    <div className="space-y-1">
+                    <div className="space-y-1.5">
                       {userSprintAttempts.map((attempt) => {
                         const cp = contestProblems.find((c) => c.id === attempt.contest_problem_id);
+                        const isPending = attempt.submitted_at !== null && attempt.is_correct === null;
+                        const isJudging = saving === `sprint:${attempt.id}`;
                         return (
-                          <div key={attempt.id} className="flex flex-wrap items-center gap-2 text-[11px] text-zinc-400">
+                          <div
+                            key={attempt.id}
+                            className={`flex flex-wrap items-center gap-2 text-[11px] text-zinc-400 ${
+                              isPending ? "border border-sky-500/30 bg-sky-500/[0.05] px-2 py-1.5" : ""
+                            }`}
+                          >
                             <span className="shrink-0 font-bold text-white">
                               {cp ? `Day ${cp.day_index} · ${cp.title}` : attempt.contest_problem_id}
                             </span>
                             <span>解锁 {formatContestDateTime(attempt.unlock_at)}</span>
                             <span>{attempt.submitted_at ? `提交 ${formatContestDateTime(attempt.submitted_at)}` : "未提交"}</span>
                             {attempt.elapsed_ms != null && <span>用时 {(attempt.elapsed_ms / 1000).toFixed(1)}s</span>}
-                            <span
-                              className={
-                                attempt.is_correct === true
-                                  ? "text-emerald-400"
-                                  : attempt.is_correct === false
-                                    ? "text-red-400"
-                                    : "text-zinc-500"
-                              }
-                            >
-                              {attempt.is_correct === null ? "—" : attempt.is_correct ? "正确" : "错误"}
-                            </span>
+                            {attempt.submitted_at && attempt.answer_raw !== null && (
+                              <span className="max-w-[14rem] truncate" title={attempt.answer_raw}>
+                                答案 <span className="font-mono text-zinc-200">{attempt.answer_raw || "（空）"}</span>
+                              </span>
+                            )}
+                            {isPending ? (
+                              <span className="shrink-0 border border-sky-400/40 bg-sky-400/[0.08] px-1.5 py-0.5 font-bold text-sky-300">
+                                待人工评判
+                              </span>
+                            ) : (
+                              <span
+                                className={
+                                  attempt.is_correct === true
+                                    ? "text-emerald-400"
+                                    : attempt.is_correct === false
+                                      ? "text-red-400"
+                                      : "text-zinc-500"
+                                }
+                              >
+                                {attempt.is_correct === null ? "—" : attempt.is_correct ? "正确" : "错误"}
+                              </span>
+                            )}
                             <span className="font-bold text-amber-300">{attempt.score} 分</span>
+                            {attempt.submitted_at && attempt.is_correct !== true && (
+                              <button
+                                type="button"
+                                onClick={() => judgeSprintAttempt(attempt, true)}
+                                disabled={isJudging}
+                                className="inline-flex h-6 shrink-0 items-center gap-1 border border-emerald-500/40 px-1.5 font-bold text-emerald-300 transition hover:bg-emerald-500/10 disabled:opacity-50"
+                              >
+                                <CheckCircle2 className="size-3" />
+                                {isJudging ? "…" : isPending ? "判为正确" : "改判正确"}
+                              </button>
+                            )}
+                            {attempt.submitted_at && attempt.is_correct !== false && (
+                              <button
+                                type="button"
+                                onClick={() => judgeSprintAttempt(attempt, false)}
+                                disabled={isJudging}
+                                className="inline-flex h-6 shrink-0 items-center gap-1 border border-red-500/40 px-1.5 font-bold text-red-300 transition hover:bg-red-500/10 disabled:opacity-50"
+                              >
+                                <XCircle className="size-3" />
+                                {isJudging ? "…" : isPending ? "判为错误" : "改判错误"}
+                              </button>
+                            )}
                           </div>
                         );
                       })}
