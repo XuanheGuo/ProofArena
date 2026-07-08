@@ -33,11 +33,10 @@ type PageProps = {
   params: Promise<{ slug: string }>;
 };
 
-// 60s (not 300s): contest problems unlock on exact Beijing-time boundaries
-// (10:00 open / 17:00 close), and ContestCountdown only triggers a
-// router.refresh() at those moments — a 5-minute ISR window would keep
-// serving the stale locked/draft page right when everyone is waiting.
-export const revalidate = 60;
+// This page decides locked-vs-open server-side. Keep it dynamic so scheduled
+// unlocks and manual admin unlocks are visible on the next refresh instead
+// of waiting for an ISR window to expire.
+export const dynamic = "force-dynamic";
 
 export async function generateStaticParams() {
   const contests = await getContests();

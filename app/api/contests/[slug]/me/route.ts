@@ -89,6 +89,13 @@ export async function GET(_req: Request, context: RouteContext) {
   const submissions = submissionsRes.data;
   const scores = scoresRes.data;
   const profile = profileRes.data;
+  const participantProfile = {
+    challengeScore: Number(profile?.challenge_score ?? 0),
+    challengeMultiplier: Number(profile?.challenge_multiplier ?? 1) || 1,
+    multiplierReason: (profile?.multiplier_reason as string | undefined) ?? "",
+    penaltyPoints: Number(profile?.penalty_points ?? 0),
+    penaltyReason: (profile?.penalty_reason as string | undefined) ?? "",
+  };
   const sprintAttempts = sprintAttemptsRes.data;
   const awards = awardsRes.data;
 
@@ -112,15 +119,7 @@ export async function GET(_req: Request, context: RouteContext) {
       judgeNote: (s.judge_note as string) ?? "",
       scoredAt: s.scored_at as string | null,
     })),
-    participantProfile: profile
-      ? {
-          challengeScore: Number(profile.challenge_score),
-          challengeMultiplier: Number(profile.challenge_multiplier),
-          multiplierReason: (profile.multiplier_reason as string) ?? "",
-          penaltyPoints: Number(profile.penalty_points),
-          penaltyReason: (profile.penalty_reason as string) ?? "",
-        }
-      : null,
+    participantProfile,
     sprintAttempts: (sprintAttempts ?? []).map((a) => ({
       contestProblemId: a.contest_problem_id as string,
       unlockAt: a.unlock_at as string,
