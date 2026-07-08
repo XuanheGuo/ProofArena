@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { AlertTriangle, Award, BookMarked, CalendarDays, CheckCircle2, Clock, Database, Lock, LockOpen, Play, Plus, RefreshCw, Save, Trash2, Trophy, UploadCloud } from "lucide-react";
 import { contests as seededContests } from "@/data/contests";
 import { weekly01DraftProblems, weekly01SprintAnswerKeys } from "@/data/weekly01-drafts";
@@ -107,6 +108,21 @@ type DbAward = {
   created_at: string;
 };
 
+type AwardParticipantOption = {
+  userId: string;
+  label: string;
+  submissionCount: number;
+};
+
+type AwardSolutionOption = {
+  id: string;
+  title: string;
+  author: string;
+  authorId: string | null;
+  problemId: string | null;
+  contestProblemKey: string | null;
+};
+
 const emptyContest = {
   slug: "",
   title: "",
@@ -178,12 +194,17 @@ function splitRules(value: string) {
 
 export function AdminContestsView({ problems, initialDraftProblems = [] }: { problems: ProblemOption[]; initialDraftProblems?: DbProblemDraft[] }) {
   const supabase = createClient();
+  const searchParams = useSearchParams();
+  const contestParam = searchParams.get("contest");
   const [contests, setContests] = useState<DbContest[]>([]);
   const [selectedId, setSelectedId] = useState<string>("");
   const [contestForm, setContestForm] = useState(emptyContest);
   const [problemForm, setProblemForm] = useState(emptyProblem);
   const [problemSourceMode, setProblemSourceMode] = useState<"public" | "draft">("public");
   const [awardForm, setAwardForm] = useState(emptyAward);
+  const [awardParticipants, setAwardParticipants] = useState<AwardParticipantOption[]>([]);
+  const [awardSolutions, setAwardSolutions] = useState<AwardSolutionOption[]>([]);
+  const [awardOptionsLoading, setAwardOptionsLoading] = useState(false);
   const [draftProblems, setDraftProblems] = useState<DbProblemDraft[]>(initialDraftProblems);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -204,6 +225,36 @@ export function AdminContestsView({ problems, initialDraftProblems = [] }: { pro
   const draftProblemMap = useMemo(
     () => new Map(draftProblems.map((draft) => [draft.id, draft])),
     [draftProblems],
+  );
+
+  const contestAwardProblemOptions = useMemo(
+    () =>
+      (selectedContest?.contest_problems ?? [])
+        .filter((contestProblem) => Boolean(contestProblem.problem_id))
+        .sort((a, b) => a.day_index - b.day_index)
+        .map((contestProblem) => ({
+          id: contestProblem.problem_id as string,
+          label: `Day ${contestProblem.day_index} · ${contestProblem.title}`,
+        })),
+    [selectedContest],
+  );
+
+  const filteredAwardSolutions = useMemo(
+    () =>
+      awardForm.problemId
+        ? awardSolutions.filter((solution) => solution.problemId === awardForm.problemId)
+        : awardSolutions,
+    [awardForm.problemId, awardSolutions],
+  );
+
+  const awardParticipantMap = useMemo(
+    () => new Map(awardParticipants.map((participant) => [participant.userId, participant])),
+    [awardParticipants],
+  );
+
+  const awardSolutionMap = useMemo(
+    () => new Map(awardSolutions.map((solution) => [solution.id, solution])),
+    [awardSolutions],
   );
 
   useEffect(() => {
@@ -232,6 +283,82 @@ export function AdminContestsView({ problems, initialDraftProblems = [] }: { pro
     });
   }, [selectedContest]);
 
+  useEffect(() => {
+    setAwardParticipants([]);
+    setAwardSolutions([]);
+    setAwardForm(emptyAward);
+    if (!selectedContest) return;
+    const contestForOptions = selectedContest;
+
+    let cancelled = false;
+    async function loadAwardOptions() {
+      setAwardOptionsLoading(true);
+      const [submissionsRes, solutionsRes] = await Promise.all([
+        supabase
+          .from("submissions")
+          .select("user_id")
+          .eq("contest_slug", contestForOptions.slug)
+          .eq("submission_type", "solution")
+          .neq("status", "rejected"),
+        supabase
+          .from("solutions")
+          .select("id, title, author, author_id, problem_id, contest_problem_key")
+          .eq("contest_slug", contestForOptions.slug)
+          .order("created_at", { ascending: false }),
+      ]);
+      if (cancelled) return;
+
+      const participantCounts = new Map<string, number>();
+      for (const row of submissionsRes.data ?? []) {
+        const userId = row.user_id as string | null;
+        if (!userId) continue;
+        participantCounts.set(userId, (participantCounts.get(userId) ?? 0) + 1);
+      }
+
+      const participantIds = [...participantCounts.keys()];
+      const profileNames = new Map<string, string>();
+      if (participantIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from("user_profiles")
+          .select("id, display_name, username")
+          .in("id", participantIds);
+        if (!cancelled) {
+          for (const profile of profiles ?? []) {
+            const id = profile.id as string;
+            profileNames.set(id, (profile.display_name as string) || (profile.username as string) || `用户 ${id.slice(0, 8)}`);
+          }
+        }
+      }
+      if (cancelled) return;
+
+      setAwardParticipants(
+        participantIds
+          .map((userId) => ({
+            userId,
+            label: profileNames.get(userId) ?? `用户 ${userId.slice(0, 8)}`,
+            submissionCount: participantCounts.get(userId) ?? 0,
+          }))
+          .sort((a, b) => a.label.localeCompare(b.label)),
+      );
+      setAwardSolutions(
+        (solutionsRes.data ?? []).map((solution) => ({
+          id: solution.id as string,
+          title: solution.title as string,
+          author: solution.author as string,
+          authorId: (solution.author_id as string | null) ?? null,
+          problemId: (solution.problem_id as string | null) ?? null,
+          contestProblemKey: (solution.contest_problem_key as string | null) ?? null,
+        })),
+      );
+      setAwardOptionsLoading(false);
+    }
+
+    void loadAwardOptions();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedContest]);
+
   async function loadContests() {
     setLoading(true);
     setError("");
@@ -248,7 +375,10 @@ export function AdminContestsView({ problems, initialDraftProblems = [] }: { pro
 
     const rows = (data ?? []) as DbContest[];
     setContests(rows);
-    if (!selectedId && rows[0]) setSelectedId(rows[0].id);
+    if (!selectedId) {
+      const requestedContest = contestParam ? rows.find((contest) => contest.slug === contestParam) : null;
+      if (requestedContest ?? rows[0]) setSelectedId((requestedContest ?? rows[0]).id);
+    }
   }
 
   async function loadDraftProblems() {
@@ -594,6 +724,17 @@ export function AdminContestsView({ problems, initialDraftProblems = [] }: { pro
     await loadContests();
   }
 
+  function updateAwardSolution(solutionId: string) {
+    const solution = awardSolutions.find((item) => item.id === solutionId);
+    setAwardForm({
+      ...awardForm,
+      solutionId,
+      userId: solution?.authorId ?? awardForm.userId,
+      problemId: solution?.problemId ?? awardForm.problemId,
+      title: awardForm.title || solution?.title || "",
+    });
+  }
+
   async function addAward() {
     if (!selectedContest) return;
     setSaving(true);
@@ -791,7 +932,7 @@ export function AdminContestsView({ problems, initialDraftProblems = [] }: { pro
                   href={`/admin/submissions?contest=${selectedContest.slug}`}
                   className="inline-flex h-7 items-center border border-amber-400/40 bg-amber-400/10 px-3 font-bold text-amber-300 transition hover:bg-amber-400/15"
                 >
-                  查看比赛投稿
+                  投稿审核 / 评分台
                 </Link>
               </>
             )}
@@ -1024,63 +1165,32 @@ export function AdminContestsView({ problems, initialDraftProblems = [] }: { pro
         </section>
 
         <section className="border border-white/10 bg-zinc-950 p-5">
-          <div className="mb-2 flex items-center gap-2 text-sm font-bold text-white">
-            <BookMarked className="size-4 text-violet-300" />
-            未公开题库 Problem Vault
-          </div>
-          <p className="mb-4 text-xs leading-5 text-zinc-500">
-            比赛新题、Proof Graph 建设中题目、官方题解未发布题目放在这里，默认只有管理员/协管员能读写，不会出现在 /problems 或题目列表里。发布后才会进入公开题库，同时任何关联的赛题会自动切换为正式题目。
-          </p>
-
-          <div className="space-y-2">
-            {draftProblems.length === 0 && (
-              <p className="text-sm text-zinc-500">还没有未公开题目。</p>
-            )}
-            {draftProblems.map((draft) => (
-              <div key={draft.id} className="flex flex-col gap-2 border border-white/10 bg-black/20 p-3 sm:flex-row sm:items-center sm:justify-between">
-                <div className="min-w-0">
-                  <p className="truncate font-bold text-white">{draft.title}</p>
-                  <p className="mt-0.5 text-xs text-zinc-500">
-                    {draftSourceLabel(draft)}
-                  </p>
-                </div>
-                <div className="flex shrink-0 items-center gap-2">
-                  <span className={`border px-2 py-0.5 text-[11px] font-bold ${draft.status === "promoted" ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300" : "border-amber-400/30 bg-amber-400/10 text-amber-300"}`}>
-                    {draft.status === "promoted" ? "已发布" : "草稿中"}
-                  </span>
-                  {draft.status === "promoted" && draft.promoted_problem_id ? (
-                    <Link
-                      href={`/problems/${draft.promoted_problem_id}`}
-                      target="_blank"
-                      className="text-xs font-bold text-cyan-300 hover:underline"
-                    >
-                      查看正式题目 ↗
-                    </Link>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => promoteDraft(draft.id)}
-                      disabled={saving}
-                      className="inline-flex h-8 items-center gap-1.5 border border-violet-400/40 bg-violet-400/10 px-3 text-xs font-bold text-violet-300 transition hover:bg-violet-400/15 disabled:opacity-50"
-                    >
-                      <UploadCloud className="size-3.5" />
-                      发布到公开题库
-                    </button>
-                  )}
-                </div>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <div className="flex items-center gap-2 text-sm font-bold text-white">
+                <BookMarked className="size-4 text-violet-300" />
+                草稿箱
               </div>
-            ))}
-          </div>
-
-          <div className="mt-5 border-t border-white/10 pt-4">
-            <Link
-              href="/admin/problem-vault/new"
-              className="inline-flex items-center gap-2 border border-violet-400/40 bg-violet-400/[0.06] px-4 py-2 text-sm font-bold text-violet-300 transition hover:border-violet-400/60 hover:bg-violet-400/10"
-            >
-              <Plus className="size-4" />
-              新建草稿题目
-            </Link>
-            <p className="mt-2 text-xs text-zinc-600">在草稿箱中创建和编辑题目，完成后回到此处关联赛题。</p>
+              <p className="mt-1 text-xs leading-5 text-zinc-500">
+                草稿题目在专门页面维护；这里仅在添加赛题时选择关联。
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Link
+                href="/admin/problem-vault"
+                className="inline-flex h-9 items-center gap-2 border border-violet-400/40 bg-violet-400/[0.06] px-3 text-xs font-bold text-violet-300 transition hover:border-violet-400/60 hover:bg-violet-400/10"
+              >
+                <BookMarked className="size-3.5" />
+                打开草稿箱
+              </Link>
+              <Link
+                href="/admin/problem-vault/new"
+                className="inline-flex h-9 items-center gap-2 border border-white/10 px-3 text-xs font-bold text-zinc-300 transition hover:border-violet-400/40 hover:text-violet-200"
+              >
+                <Plus className="size-3.5" />
+                新建草稿题
+              </Link>
+            </div>
           </div>
         </section>
 
@@ -1324,7 +1434,7 @@ export function AdminContestsView({ problems, initialDraftProblems = [] }: { pro
                       ))}
                     </select>
                     {draftProblems.filter((draft) => draft.status === "drafting").length === 0 && (
-                      <span className="text-xs text-zinc-600">未公开题库还没有可选题目，先在下方「未公开题库」区新建一个。</span>
+                      <span className="text-xs text-zinc-600">草稿箱还没有可选题目，请先到草稿箱页面新建。</span>
                     )}
                   </label>
                 )}
@@ -1439,6 +1549,13 @@ export function AdminContestsView({ problems, initialDraftProblems = [] }: { pro
                     <div>
                       <p className="font-bold text-amber-100">{award.title}</p>
                       <p className="mt-1 text-xs text-zinc-500">{contestAwardMeta[award.type]} · {award.points} 分</p>
+                      {(award.user_id || award.solution_id) && (
+                        <p className="mt-1 text-xs text-zinc-500">
+                          {award.user_id && `获奖人：${awardParticipantMap.get(award.user_id)?.label ?? award.user_id.slice(0, 8)}`}
+                          {award.user_id && award.solution_id ? " · " : ""}
+                          {award.solution_id && `解法：${awardSolutionMap.get(award.solution_id)?.title ?? award.solution_id}`}
+                        </p>
+                      )}
                       <p className="mt-1 text-sm leading-6 text-zinc-500">{award.reason || "未填写理由"}</p>
                     </div>
                     <button
@@ -1469,16 +1586,60 @@ export function AdminContestsView({ problems, initialDraftProblems = [] }: { pro
                   <span className="font-bold text-white">关联题目</span>
                   <select
                     value={awardForm.problemId}
-                    onChange={(event) => setAwardForm({ ...awardForm, problemId: event.target.value })}
+                    onChange={(event) => {
+                      const problemId = event.target.value;
+                      const selectedSolution = awardSolutions.find((solution) => solution.id === awardForm.solutionId);
+                      setAwardForm({
+                        ...awardForm,
+                        problemId,
+                        solutionId: selectedSolution && problemId && selectedSolution.problemId !== problemId ? "" : awardForm.solutionId,
+                      });
+                    }}
                     className="h-11 border border-white/10 bg-black/20 px-3 text-sm text-white"
                   >
                     <option value="">全场奖项</option>
-                    {problems.map((problem) => <option key={problem.id} value={problem.id}>{problem.source} · {problem.title}</option>)}
+                    {contestAwardProblemOptions.map((problem) => <option key={problem.id} value={problem.id}>{problem.label}</option>)}
                   </select>
                 </label>
                 <TextField label="加分" type="number" value={String(awardForm.points)} onChange={(points) => setAwardForm({ ...awardForm, points: Number(points) })} />
-                <TextField label="solutionId（可选）" value={awardForm.solutionId} onChange={(solutionId) => setAwardForm({ ...awardForm, solutionId })} />
-                <TextField label="userId（可选）" value={awardForm.userId} onChange={(userId) => setAwardForm({ ...awardForm, userId })} />
+                <label className="grid gap-2 text-sm">
+                  <span className="font-bold text-white">获奖人</span>
+                  <select
+                    value={awardForm.userId}
+                    onChange={(event) => setAwardForm({ ...awardForm, userId: event.target.value })}
+                    className="h-11 border border-white/10 bg-black/20 px-3 text-sm text-white"
+                  >
+                    <option value="">不指定获奖人</option>
+                    {awardParticipants.map((participant) => (
+                      <option key={participant.userId} value={participant.userId}>
+                        {participant.label} · {participant.submissionCount} 次投稿
+                      </option>
+                    ))}
+                  </select>
+                  {awardOptionsLoading && <span className="text-xs text-zinc-600">正在加载参赛者...</span>}
+                  {!awardOptionsLoading && awardParticipants.length === 0 && (
+                    <span className="text-xs text-zinc-600">本场还没有可选参赛者。</span>
+                  )}
+                </label>
+                <label className="grid gap-2 text-sm">
+                  <span className="font-bold text-white">获奖解法</span>
+                  <select
+                    value={awardForm.solutionId}
+                    onChange={(event) => updateAwardSolution(event.target.value)}
+                    className="h-11 border border-white/10 bg-black/20 px-3 text-sm text-white"
+                  >
+                    <option value="">不指定解法</option>
+                    {filteredAwardSolutions.map((solution) => (
+                      <option key={solution.id} value={solution.id}>
+                        {solution.title} · {solution.author}
+                      </option>
+                    ))}
+                  </select>
+                  {awardOptionsLoading && <span className="text-xs text-zinc-600">正在加载已发布解法...</span>}
+                  {!awardOptionsLoading && filteredAwardSolutions.length === 0 && (
+                    <span className="text-xs text-zinc-600">本场还没有已发布的正式解法；可以先只标获奖人。</span>
+                  )}
+                </label>
                 <div className="md:col-span-2">
                   <TextArea label="获奖理由" value={awardForm.reason} onChange={(reason) => setAwardForm({ ...awardForm, reason })} rows={4} />
                 </div>

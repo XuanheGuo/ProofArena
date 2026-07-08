@@ -135,7 +135,7 @@ export default async function ContestsPage() {
                   <div className="flex flex-col items-center gap-0.5 px-3 py-3">
                     <UsersRound className="size-3.5 text-emerald-400/70" />
                     <strong className="font-mono text-base font-bold tabular-nums text-white">
-                      {(stats?.participantCount ?? 0) > 0 ? stats!.participantCount : "—"}
+                      {stats?.participantCount ?? 0}
                     </strong>
                     <span className="text-[10px] text-zinc-600">参与者</span>
                   </div>
