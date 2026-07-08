@@ -47,32 +47,44 @@ export default async function SubmitPage({
     (item) => item.problemId === initialProblemId || item.draftProblemId === initialProblemId,
   );
 
-  // If the matched contest problem is backed by a draft (not yet in the
-  // public catalog), fetch its minimal data via the service-role path so
-  // participants can still read the title/statement and submit. We only do
-  // this when the contest problem is unlocked — isContestProblemLocked
-  // guards against premature reveal here just as it does in the dedicated
-  // /contests/[slug]/problems/[id] route.
-  let draftProblemOption: { id: string; title: string; source: string; solutions: never[] } | null = null;
-  if (
-    contest &&
-    contestProblem?.draftProblemId &&
-    !isContestProblemLocked(contest, contestProblem)
-  ) {
-    const draft = await getProblemDraftForContestDisplay(contestProblem.draftProblemId);
-    if (draft) {
-      const adapted = adaptProblemDraftToProblem(draft);
-      draftProblemOption = {
-        id: adapted.id,
-        title: adapted.title,
-        source: `${adapted.year} ${adapted.region}${adapted.number ? ` · ${adapted.number}` : ""}`,
-        solutions: [],
-      };
-    }
+  // Contest problems backed by Problem Vault drafts (not yet in the public
+  // catalog) need their minimal data fetched via the service-role path so
+  // participants can still pick them and submit. Offer every unlocked,
+  // non-sprint draft-backed problem of the contest — not just the one from
+  // the ?problem= param — so the contest page's generic "提交解法" entry
+  // (which carries no problem id) also gets a full problem list.
+  // isContestProblemLocked guards against premature reveal here just as it
+  // does in the dedicated /contests/[slug]/problems/[id] route.
+  let draftProblemOptions: Array<{ id: string; title: string; source: string; solutions: never[] }> = [];
+  if (contest) {
+    const unlockedDraftIds = [
+      ...new Set(
+        contest.problems
+          .filter(
+            (item) =>
+              item.draftProblemId &&
+              item.problemPhase !== "sprint" &&
+              !isContestProblemLocked(contest, item),
+          )
+          .map((item) => item.draftProblemId as string),
+      ),
+    ];
+    const drafts = await Promise.all(unlockedDraftIds.map((id) => getProblemDraftForContestDisplay(id)));
+    draftProblemOptions = drafts
+      .filter((draft): draft is NonNullable<typeof draft> => Boolean(draft))
+      .map((draft) => {
+        const adapted = adaptProblemDraftToProblem(draft);
+        return {
+          id: adapted.id,
+          title: adapted.title,
+          source: `${adapted.year} ${adapted.region}${adapted.number ? ` · ${adapted.number}` : ""}`,
+          solutions: [],
+        };
+      });
   }
 
   const problemOptions = [
-    ...(draftProblemOption ? [draftProblemOption] : []),
+    ...draftProblemOptions,
     ...problems.map((problem) => ({
       id: problem.id,
       title: problem.title,

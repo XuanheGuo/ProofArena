@@ -33,7 +33,11 @@ type PageProps = {
   params: Promise<{ slug: string }>;
 };
 
-export const revalidate = 300;
+// 60s (not 300s): contest problems unlock on exact Beijing-time boundaries
+// (10:00 open / 17:00 close), and ContestCountdown only triggers a
+// router.refresh() at those moments — a 5-minute ISR window would keep
+// serving the stale locked/draft page right when everyone is waiting.
+export const revalidate = 60;
 
 export async function generateStaticParams() {
   const contests = await getContests();
@@ -278,7 +282,8 @@ export default async function ContestDetailPage({ params }: PageProps) {
                         <h3 className="mt-3 font-bold text-white">
                           {isLocked ? contestProblem.theme : (displayTitle ?? "题目待关联")}
                         </h3>
-                        <p className="mt-1.5 text-sm leading-6 text-zinc-500">{contestProblem.theme}</p>
+                        {/* While locked the theme already serves as the heading — repeating it below reads like a bug. */}
+                        {!isLocked && <p className="mt-1.5 text-sm leading-6 text-zinc-500">{contestProblem.theme}</p>}
                       </div>
                       {!isLocked && (
                         <div className="flex shrink-0 divide-x divide-white/10 border border-white/10 text-center sm:w-40">

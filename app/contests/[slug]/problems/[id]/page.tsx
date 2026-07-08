@@ -11,7 +11,10 @@ import { adaptProblemDraftToProblem, getProblemDraftForContestDisplay } from "@/
 import { isContestProblemLocked, type Contest, type ContestProblem, type Problem } from "@/lib/types";
 import { formatContestDateTime } from "@/lib/format-contest-time";
 
-export const revalidate = 300;
+// 60s (not 300s): this page decides locked-vs-open server-side, so at the
+// 10:00 unlock moment a 5-minute ISR window would keep showing 未解锁 to
+// participants who are refreshing right on schedule.
+export const revalidate = 60;
 
 export async function generateStaticParams() {
   const contests = await getContests();

@@ -11,7 +11,9 @@ export const metadata: Metadata = {
   description: "ProofArena 思路擂台：围绕同一道题比较不同解法的活动与比赛。",
 };
 
-export const revalidate = 300;
+// Keep in step with the contest detail page's 60s window so the list's
+// status chips don't lag noticeably behind an opening/closing contest.
+export const revalidate = 60;
 
 export default async function ContestsPage() {
   const [problems, contests] = await Promise.all([getProblemSummaries(), getContests()]);
@@ -80,7 +82,10 @@ export default async function ContestsPage() {
         <div className="grid gap-4 lg:grid-cols-2">
           {contests.map((contest) => {
             const status = contestStatusMeta[contest.status];
-            const linkedProblems = contest.problems.filter((contestProblem) => contestProblem.problemId);
+            // Draft-backed contest problems (draftProblemId) count as real
+            // problems too — a contest run entirely on Problem Vault drafts
+            // must not display "0 题目" on its card.
+            const linkedProblems = contest.problems.filter((contestProblem) => contestProblem.problemId || contestProblem.draftProblemId);
             const solutionCount = linkedProblems.reduce((sum, contestProblem) => {
               const problem = contestProblem.problemId ? problemMap.get(contestProblem.problemId) : null;
               return sum + (problem?.solutions.length ?? 0);

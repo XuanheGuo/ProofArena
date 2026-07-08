@@ -327,8 +327,12 @@ export function SubmitForm({
         // choice/fill-blank, server-scored), never through this general
         // solution submission form.
         .filter((problem) => problem.problemPhase !== "sprint")
-        .map((problem) => problem.problemId)
-        .filter(Boolean),
+        // A contest problem may be backed by a public problem (problemId) or
+        // an unpublished Problem Vault draft (draftProblemId) — accept either
+        // id, matching the option ids app/submit/page.tsx injects for
+        // unlocked draft-backed problems.
+        .flatMap((problem) => [problem.problemId, problem.draftProblemId])
+        .filter((id): id is string => Boolean(id)),
     ),
     [contestContext],
   );

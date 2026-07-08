@@ -258,6 +258,14 @@ export function ContestSprintPanel({
                   type="text"
                   value={fillBlankAnswer}
                   onChange={(event) => setFillBlankAnswer(event.target.value)}
+                  onKeyDown={(event) => {
+                    // Every second counts in a timed sprint — Enter submits
+                    // directly instead of forcing a reach for the button.
+                    if (event.key === "Enter" && !submitting) {
+                      event.preventDefault();
+                      handleSubmit();
+                    }
+                  }}
                   placeholder="填写答案"
                   className="h-11 w-full max-w-xs border border-white/10 bg-black/20 px-3 text-sm text-white outline-none focus:border-amber-400/50"
                 />
