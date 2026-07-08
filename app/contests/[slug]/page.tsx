@@ -357,7 +357,7 @@ export default async function ContestDetailPage({ params }: PageProps) {
               )}
             </div>
             <p className="mt-1 text-xs leading-5 text-zinc-500">
-              普通题原始分 × 挑战倍率 + 计时题分 + 大题分 + 奖励分 − 扣分。比赛进行中实时公开，不做延迟隐藏。
+              普通题原始分 × 挑战倍率 + 计时题分 + 解答题分 + 奖励分 − 扣分。比赛进行中实时公开，不做延迟隐藏。
             </p>
 
             {scoreboard.length === 0 ? (
@@ -376,7 +376,7 @@ export default async function ContestDetailPage({ params }: PageProps) {
                       <th className="py-2 pr-2 text-right font-bold">挑战倍率</th>
                       <th className="py-2 pr-2 text-right font-bold">普通题结算分</th>
                       <th className="py-2 pr-2 text-right font-bold">计时题分</th>
-                      <th className="py-2 pr-2 text-right font-bold">大题分</th>
+                      <th className="py-2 pr-2 text-right font-bold">解答题分</th>
                       <th className="py-2 pr-2 text-right font-bold">奖励分</th>
                       <th className="py-2 pr-2 text-right font-bold">扣分</th>
                       <th className="py-2 pr-0 text-right font-bold">总分</th>

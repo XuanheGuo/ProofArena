@@ -99,12 +99,17 @@ async function main() {
   const contestId = contestResult.data.id as string;
   const { data: existingProblems, error: existingProblemsError } = await supabase
     .from("contest_problems")
-    .select("id, title, day_index, problem_phase")
+    .select("id, title, day_index, problem_phase, draft_problem_id")
     .eq("contest_id", contestId);
 
   if (existingProblemsError) throw new Error(`contest_problems read failed: ${existingProblemsError.message}`);
 
   const existingIdByKey = new Map((existingProblems ?? []).map((row) => [rowKey(row), row.id as string]));
+  const existingIdByDraftId = new Map(
+    (existingProblems ?? [])
+      .filter((row) => row.draft_problem_id)
+      .map((row) => [row.draft_problem_id as string, row.id as string]),
+  );
   const sprintAnswerKeyByDraftId = new Map(weekly01SprintAnswerKeys.map((answerKey) => [answerKey.draftProblemId, answerKey]));
 
   let inserted = 0;
@@ -136,7 +141,9 @@ async function main() {
     };
 
     const key = rowKey({ day_index: contestProblem.dayIndex, problem_phase: contestProblem.problemPhase, title: contestProblem.title });
-    const matchedId = existingIdByKey.get(key);
+    const matchedId =
+      (contestProblem.draftProblemId ? existingIdByDraftId.get(contestProblem.draftProblemId) : undefined) ??
+      existingIdByKey.get(key);
     let contestProblemId = matchedId;
 
     if (matchedId) {
@@ -148,6 +155,7 @@ async function main() {
       if (error || !data) throw new Error(`contest_problem insert failed (${contestProblem.title}): ${error?.message ?? "no id returned"}`);
       contestProblemId = data.id as string;
       existingIdByKey.set(key, contestProblemId);
+      if (contestProblem.draftProblemId) existingIdByDraftId.set(contestProblem.draftProblemId, contestProblemId);
       inserted += 1;
     }
 

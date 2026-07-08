@@ -360,7 +360,7 @@ export function AdminContestsView({ problems, initialDraftProblems = [] }: { pro
     // insert a new one otherwise, so re-running sync stays idempotent.
     const { data: existingProblems, error: existingProblemsError } = await supabase
       .from("contest_problems")
-      .select("id, title, day_index, problem_phase")
+      .select("id, title, day_index, problem_phase, draft_problem_id")
       .eq("contest_id", contestId);
 
     if (existingProblemsError) {
@@ -372,6 +372,11 @@ export function AdminContestsView({ problems, initialDraftProblems = [] }: { pro
     const rowKey = (row: { day_index: number; problem_phase: string; title: string }) =>
       `${row.day_index}::${row.problem_phase}::${row.title}`;
     const existingIdByKey = new Map((existingProblems ?? []).map((row) => [rowKey(row), row.id as string]));
+    const existingIdByDraftId = new Map(
+      (existingProblems ?? [])
+        .filter((row) => row.draft_problem_id)
+        .map((row) => [row.draft_problem_id as string, row.id as string]),
+    );
 
     let insertedCount = 0;
     let updatedCount = 0;
@@ -403,9 +408,11 @@ export function AdminContestsView({ problems, initialDraftProblems = [] }: { pro
         answer_format_note: contestProblem.answerFormatNote,
       };
 
-      const matchedId = existingIdByKey.get(
-        rowKey({ day_index: contestProblem.dayIndex, problem_phase: contestProblem.problemPhase, title: contestProblem.title }),
-      );
+      const matchedId =
+        (contestProblem.draftProblemId ? existingIdByDraftId.get(contestProblem.draftProblemId) : undefined) ??
+        existingIdByKey.get(
+          rowKey({ day_index: contestProblem.dayIndex, problem_phase: contestProblem.problemPhase, title: contestProblem.title }),
+        );
 
       // Stop at the first failure instead of silently skipping it — a
       // partial sync must never be reported as a success, since the admin
@@ -435,6 +442,7 @@ export function AdminContestsView({ problems, initialDraftProblems = [] }: { pro
           rowKey({ day_index: contestProblem.dayIndex, problem_phase: contestProblem.problemPhase, title: contestProblem.title }),
           insertedProblem.id as string,
         );
+        if (contestProblem.draftProblemId) existingIdByDraftId.set(contestProblem.draftProblemId, insertedProblem.id as string);
         insertedCount += 1;
       }
 

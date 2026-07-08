@@ -34,7 +34,7 @@ export const contestProblemPhaseMeta: Record<ContestProblemPhase, { label: strin
     className: "border-amber-400/30 bg-amber-400/10 text-amber-300",
   },
   major: {
-    label: "大题",
+    label: "解答题",
     className: "border-violet-400/30 bg-violet-400/10 text-violet-300",
   },
   discussion: {

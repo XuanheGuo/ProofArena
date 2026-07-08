@@ -344,7 +344,7 @@ export function AdminContestScoringView({
         评分台
       </div>
       <p className="mb-4 text-xs leading-5 text-zinc-500">
-        参赛者列表根据投稿和已有评分自动生成。普通题/挑战题/大题在此打分；挑战倍率和扣分写入参赛者档案；计时题分数由系统自动计算，此处只读。
+        参赛者列表根据投稿和已有评分自动生成。普通题/挑战题/解答题在此打分；挑战倍率和扣分写入参赛者档案；计时题分数由系统自动计算，此处只读。
       </p>
 
       {message && (
@@ -393,7 +393,7 @@ export function AdminContestScoringView({
                 </div>
 
                 {relevantProblems.length === 0 ? (
-                  <p className="px-3 py-2 text-xs text-zinc-600">该用户没有普通题/挑战题/大题投稿。</p>
+                  <p className="px-3 py-2 text-xs text-zinc-600">该用户没有普通题/挑战题/解答题投稿。</p>
                 ) : (
                   relevantProblems.map((cp) => {
                     const key = `${cp.id}:${userId}`;

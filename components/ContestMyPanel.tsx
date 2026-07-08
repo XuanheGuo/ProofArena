@@ -186,7 +186,7 @@ export function ContestMyPanel({
               <Stat label="挑战倍率" value={`${challengeMultiplier.toFixed(2)}x`} />
               <Stat label="普通题结算分" value={dailyFinalScore.toFixed(1)} accent />
               <Stat label="计时题分" value={sprintScore.toFixed(1)} />
-              <Stat label="大题分" value={majorScore.toFixed(1)} />
+              <Stat label="解答题分" value={majorScore.toFixed(1)} />
               <Stat label="总分" value={totalScore.toFixed(1)} accent />
             </div>
           )}
