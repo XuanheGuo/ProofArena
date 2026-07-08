@@ -188,11 +188,9 @@ export default async function ContestDetailPage({ params }: PageProps) {
               </div>
               <div className="flex flex-col items-center gap-0.5 p-4 text-center">
                 <strong className="font-mono text-2xl font-black tabular-nums text-emerald-300">
-                  {contestStats.participantCount > 0 ? contestStats.participantCount : (solutionCount > 0 ? solutionCount : "—")}
+                  {contestStats.participantCount}
                 </strong>
-                <span className="text-[11px] text-zinc-600">
-                  {contestStats.participantCount > 0 ? "参与者" : "现有解法"}
-                </span>
+                <span className="text-[11px] text-zinc-600">参与者</span>
               </div>
               <div className="flex flex-col items-center gap-0.5 p-4 text-center">
                 <strong className="font-mono text-2xl font-black tabular-nums text-amber-300">

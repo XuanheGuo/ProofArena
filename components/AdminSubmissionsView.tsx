@@ -21,6 +21,7 @@ import {
   XCircle,
 } from 'lucide-react';
 import { CASVerifier } from '@/components/CASVerifier';
+import { AdminContestScoringView, type ScoringContestProblem } from '@/components/AdminContestScoringView';
 import { MathBlock } from '@/components/MathBlock';
 import { ScoreBar } from '@/components/ScoreBar';
 import { convertPlainMathTextToLatex } from '@/lib/math-normalizer';
@@ -69,9 +70,20 @@ type Submission = {
   challenge_risk?: string | null;
 };
 
+type ScoringContest = {
+  id: string;
+  slug: string;
+  title: string;
+  contest_problems: ScoringContestProblem[];
+};
+
 function isForkPR(submission: Submission): boolean {
   const solution = submission.content.json?.solution;
   return Boolean(solution && typeof solution === 'object' && 'forkOf' in solution && solution.forkOf);
+}
+
+function isContestSubmission(submission: Submission): boolean {
+  return Boolean(submission.contest_slug);
 }
 
 type ReviewForm = {
@@ -380,11 +392,48 @@ export function AdminSubmissionsView() {
   );
   const [contestSlugFilter, setContestSlugFilter] = useState<string>(contestParam ?? '');
   const [contestProblemKeyFilter, setContestProblemKeyFilter] = useState<string>('');
+  const [scoringContest, setScoringContest] = useState<ScoringContest | null>(null);
+  const [scoringLoading, setScoringLoading] = useState(false);
+  const [scoringError, setScoringError] = useState('');
   const supabase = createClient();
 
   useEffect(() => {
     loadSubmissions();
   }, []);
+
+  useEffect(() => {
+    if (scopeFilter !== 'contest' || !contestSlugFilter) {
+      setScoringContest(null);
+      setScoringError('');
+      setScoringLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    async function loadScoringContest() {
+      setScoringLoading(true);
+      setScoringError('');
+      const { data, error: loadError } = await supabase
+        .from('contests')
+        .select('id, slug, title, contest_problems(id, day_index, title, problem_phase, score_max, problem_id, draft_problem_id)')
+        .eq('slug', contestSlugFilter)
+        .single();
+
+      if (cancelled) return;
+      setScoringLoading(false);
+      if (loadError || !data) {
+        setScoringContest(null);
+        setScoringError(loadError?.message || '加载比赛评分台失败。');
+        return;
+      }
+      setScoringContest(data as ScoringContest);
+    }
+
+    void loadScoringContest();
+    return () => {
+      cancelled = true;
+    };
+  }, [scopeFilter, contestSlugFilter]);
 
   const loadSubmissions = async () => {
     const { data, error: loadError } = await supabase
@@ -448,7 +497,12 @@ export function AdminSubmissionsView() {
 
   const saveReview = async (nextStatus?: SubmissionStatus) => {
     if (!selectedSubmission || !form) return;
-    if (nextStatus && !form.moderatorNotes.trim()) {
+    const contestSubmission = isContestSubmission(selectedSubmission);
+    if (
+      nextStatus &&
+      !form.moderatorNotes.trim() &&
+      (!contestSubmission || nextStatus === 'needs_revision' || nextStatus === 'rejected')
+    ) {
       setError('请先填写审核评语，再给出通过、退回或拒绝结论。');
       return;
     }
@@ -457,18 +511,22 @@ export function AdminSubmissionsView() {
     setError('');
     setMessage('');
 
-    const nextContent = contentFromForm(selectedSubmission, form);
-    const patch = {
-      title: form.title,
-      kind: form.kind,
-      content: nextContent,
-      moderator_notes: form.moderatorNotes.trim() || null,
-      challenge_target_solution_id: form.challengeTargetSolutionId || null,
-      challenge_claim: form.challengeClaim.trim() || null,
-      challenge_advantages: splitList(form.challengeAdvantages),
-      challenge_risk: form.challengeRisk.trim() || null,
-      ...(nextStatus ? { status: nextStatus } : {}),
-    };
+    const patch = contestSubmission
+      ? {
+          moderator_notes: form.moderatorNotes.trim() || null,
+          ...(nextStatus ? { status: nextStatus } : {}),
+        }
+      : {
+          title: form.title,
+          kind: form.kind,
+          content: contentFromForm(selectedSubmission, form),
+          moderator_notes: form.moderatorNotes.trim() || null,
+          challenge_target_solution_id: form.challengeTargetSolutionId || null,
+          challenge_claim: form.challengeClaim.trim() || null,
+          challenge_advantages: splitList(form.challengeAdvantages),
+          challenge_risk: form.challengeRisk.trim() || null,
+          ...(nextStatus ? { status: nextStatus } : {}),
+        };
 
     const { data, error: updateError } = await supabase
       .from('submissions')
@@ -684,6 +742,34 @@ export function AdminSubmissionsView() {
           })()}
         </div>
 
+        {scopeFilter === 'contest' && (
+          <div className="mb-5">
+            {!contestSlugFilter ? (
+              <section className="border border-amber-400/25 bg-amber-400/[0.05] p-4">
+                <p className="text-sm font-bold text-amber-200">选择一个比赛后，这里会显示评分台。</p>
+                <p className="mt-1 text-xs leading-5 text-zinc-500">审核比赛投稿后，可以直接在同一页为参赛者录入分数。</p>
+              </section>
+            ) : scoringLoading ? (
+              <section className="border border-white/10 bg-zinc-950 p-5">
+                <div className="mb-3 h-4 w-28 animate-pulse bg-white/10" />
+                <div className="space-y-2">
+                  {[1, 2].map((i) => <div key={i} className="h-14 animate-pulse bg-white/[0.04]" />)}
+                </div>
+              </section>
+            ) : scoringError ? (
+              <section className="border border-red-400/30 bg-red-400/[0.06] p-4 text-sm text-red-300">
+                {scoringError}
+              </section>
+            ) : scoringContest ? (
+              <AdminContestScoringView
+                contestId={scoringContest.id}
+                contestSlug={scoringContest.slug}
+                contestProblems={scoringContest.contest_problems ?? []}
+              />
+            ) : null}
+          </div>
+        )}
+
         <div className="space-y-3">
           {visibleSubmissions.map((sub) => (
             <div key={sub.id} className="rounded border border-white/10 bg-white/[0.02] p-5 transition hover:bg-white/[0.04]">
@@ -720,7 +806,7 @@ export function AdminSubmissionsView() {
                   </p>
                 </div>
                 <div className="flex shrink-0 gap-2">
-                  {sub.status === 'approved' && (!sub.contest_slug || sub.submission_type === 'solution') && (
+                  {sub.status === 'approved' && !sub.contest_slug && (
                     <button
                       type="button"
                       onClick={() => publishExisting(sub.id)}
@@ -782,31 +868,35 @@ export function AdminSubmissionsView() {
 
               <div className="grid min-h-0 flex-1 gap-0 lg:grid-cols-[minmax(0,1fr)_22rem]">
                 <div className="min-h-0 overflow-auto p-5">
-                  <div className="mb-5 inline-flex rounded border border-white/10 bg-black/20 p-1">
-                    {[
-                      ['structured', FileText, '图形化编辑'],
-                      ['card', Eye, '真实卡片'],
-                      ['markdown', MessageSquareText, 'Markdown 预览'],
-                    ].map(([value, Icon, label]) => {
-                      const TabIcon = Icon as typeof FileText;
-                      const active = previewMode === value;
-                      return (
-                        <button
-                          key={value as string}
-                          type="button"
-                          onClick={() => setPreviewMode(value as typeof previewMode)}
-                          className={`inline-flex h-9 items-center gap-2 rounded px-3 text-xs font-bold transition ${
-                            active ? 'bg-cyan-400 text-zinc-950' : 'text-zinc-400 hover:text-white'
-                          }`}
-                        >
-                          <TabIcon className="size-3.5" />
-                          {label as string}
-                        </button>
-                      );
-                    })}
-                  </div>
+                  {!isContestSubmission(selectedSubmission) && (
+                    <div className="mb-5 inline-flex rounded border border-white/10 bg-black/20 p-1">
+                      {[
+                        ['structured', FileText, '图形化编辑'],
+                        ['card', Eye, '真实卡片'],
+                        ['markdown', MessageSquareText, 'Markdown 预览'],
+                      ].map(([value, Icon, label]) => {
+                        const TabIcon = Icon as typeof FileText;
+                        const active = previewMode === value;
+                        return (
+                          <button
+                            key={value as string}
+                            type="button"
+                            onClick={() => setPreviewMode(value as typeof previewMode)}
+                            className={`inline-flex h-9 items-center gap-2 rounded px-3 text-xs font-bold transition ${
+                              active ? 'bg-cyan-400 text-zinc-950' : 'text-zinc-400 hover:text-white'
+                            }`}
+                          >
+                            <TabIcon className="size-3.5" />
+                            {label as string}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
 
-                  {previewMode === 'structured' ? (
+                  {isContestSubmission(selectedSubmission) ? (
+                    <ContestSubmissionReviewPreview submission={selectedSubmission} />
+                  ) : previewMode === 'structured' ? (
                     <div className="space-y-5">
                       <section className="grid gap-4 md:grid-cols-2">
                         <TextField label="解法标题" value={form.title} onChange={(value) => updateField('title', value)} />
@@ -944,16 +1034,34 @@ export function AdminSubmissionsView() {
                       value={form.moderatorNotes}
                       onChange={(value) => updateField('moderatorNotes', value)}
                       rows={8}
-                      placeholder="说明通过理由、需要修改的位置，或拒绝原因。审核结论必须带评语。"
+                      placeholder={
+                        isContestSubmission(selectedSubmission)
+                          ? '可选：给参赛者留一句审核说明。退回或拒绝时请写清原因。'
+                          : '说明通过理由、需要修改的位置，或拒绝原因。审核结论必须带评语。'
+                      }
                     />
 
-                    <button
-                      type="button"
-                      onClick={convertMathFields}
-                      className="inline-flex h-10 w-full items-center justify-center gap-2 rounded border border-amber-400/30 text-sm font-bold text-amber-300 transition hover:bg-amber-400/10"
-                    >
-                      自动转码公式
-                    </button>
+                    {!isContestSubmission(selectedSubmission) ? (
+                      <button
+                        type="button"
+                        onClick={convertMathFields}
+                        className="inline-flex h-10 w-full items-center justify-center gap-2 rounded border border-amber-400/30 text-sm font-bold text-amber-300 transition hover:bg-amber-400/10"
+                      >
+                        自动转码公式
+                      </button>
+                    ) : (
+                      <div className="rounded border border-amber-400/25 bg-amber-400/[0.06] p-3 text-xs leading-5 text-amber-100">
+                        比赛投稿审核只处理状态与评语；分数请到对应比赛的评分台录入。
+                        {selectedSubmission.contest_slug && (
+                          <a
+                            href={`/admin/submissions?contest=${selectedSubmission.contest_slug}`}
+                            className="mt-2 inline-flex font-bold text-amber-200 underline decoration-amber-300/40 underline-offset-4 hover:text-white"
+                          >
+                            打开本页评分台
+                          </a>
+                        )}
+                      </div>
+                    )}
 
                     {message && <p className="rounded border border-emerald-400/30 bg-emerald-400/[0.06] px-3 py-2 text-sm text-emerald-300">{message}</p>}
                     {error && <p className="rounded border border-red-400/30 bg-red-400/[0.06] px-3 py-2 text-sm text-red-300">{error}</p>}
@@ -965,7 +1073,7 @@ export function AdminSubmissionsView() {
                       className="inline-flex h-11 w-full items-center justify-center gap-2 rounded border border-white/10 text-sm font-bold text-zinc-300 transition hover:border-cyan-400/40 hover:text-cyan-200 disabled:opacity-50"
                     >
                       <Save className="size-4" />
-                      {saving ? '保存中...' : '保存修改'}
+                      {saving ? '保存中...' : isContestSubmission(selectedSubmission) ? '保存评语' : '保存修改'}
                     </button>
 
                     <div className="space-y-3 border-t border-white/10 pt-5">
@@ -976,7 +1084,9 @@ export function AdminSubmissionsView() {
                         className="inline-flex h-11 w-full items-center justify-center gap-2 rounded bg-emerald-400 text-sm font-bold text-zinc-950 transition hover:bg-emerald-300 disabled:opacity-50"
                       >
                         <CheckCircle2 className="size-4" />
-                        {selectedSubmission && isForkPR(selectedSubmission) ? '批准合并' : '保存并通过'}
+                        {isContestSubmission(selectedSubmission)
+                          ? '通过比赛投稿'
+                          : selectedSubmission && isForkPR(selectedSubmission) ? '批准合并' : '保存并通过'}
                       </button>
                       <button
                         type="button"
@@ -1080,6 +1190,109 @@ function GraphDraftSection({
         </div>
       )}
     </section>
+  );
+}
+
+function renderContestValue(value: unknown) {
+  if (value == null || value === '') return null;
+  if (Array.isArray(value)) {
+    const items = value.map((item) => String(item)).filter(Boolean);
+    if (items.length === 0) return null;
+    return (
+      <ul className="space-y-2">
+        {items.map((item, index) => (
+          <li key={`${item}-${index}`} className="border-l border-cyan-400/30 pl-3 text-sm leading-7 text-zinc-300">
+            <MathBlock>{item}</MathBlock>
+          </li>
+        ))}
+      </ul>
+    );
+  }
+  if (typeof value === 'object') {
+    return (
+      <pre className="overflow-auto rounded border border-white/10 bg-black/20 p-3 text-xs leading-6 text-zinc-400">
+        <code>{JSON.stringify(value, null, 2)}</code>
+      </pre>
+    );
+  }
+  return (
+    <div className="text-sm leading-7 text-zinc-300">
+      <MathBlock>{String(value)}</MathBlock>
+    </div>
+  );
+}
+
+function ContestSubmissionReviewPreview({ submission }: { submission: Submission }) {
+  const solution = submission.content.json?.solution ?? {};
+  const rawSections: Array<[string, unknown]> = [
+    ['我的思路', submission.content.thought ?? submission.content.approach ?? solution.origin],
+    ['关键转化', submission.content.keyTransform ?? solution.keyTransform],
+    ['完整过程', submission.content.steps ?? solution.process],
+    ['启发点', submission.content.insight ?? solution.inspiration],
+    ['可验证位置', submission.content.verification ?? solution.verifiableSteps],
+  ];
+  const sections = rawSections.filter(([, value]) => value != null && value !== '');
+  const rawMarkdown = typeof submission.content.markdown === 'string' ? submission.content.markdown : '';
+
+  return (
+    <div className="space-y-5">
+      <section className="rounded border border-amber-400/25 bg-amber-400/[0.055] p-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="border border-amber-400/30 px-2.5 py-1 text-xs font-bold text-amber-200">
+            {submission.contest_slug}
+          </span>
+          {submission.contest_solution_type && (
+            <span className="border border-cyan-400/25 px-2.5 py-1 text-xs font-bold text-cyan-200">
+              {contestSolutionTypeMeta[submission.contest_solution_type]?.label ?? submission.contest_solution_type}
+            </span>
+          )}
+          {submission.is_post_contest && (
+            <span className="border border-white/10 px-2.5 py-1 text-xs font-bold text-zinc-400">赛后补充</span>
+          )}
+        </div>
+        <h3 className="mt-4 text-xl font-black text-white">{submission.title || '未命名比赛投稿'}</h3>
+        <p className="mt-2 text-sm leading-6 text-zinc-500">
+          {submission.problem_source ?? submission.problem_id ?? submission.draft_problem_id ?? '未绑定题目'}
+          {submission.contest_problem_key ? ` · 赛题 ${submission.contest_problem_key}` : ''}
+        </p>
+      </section>
+
+      {sections.length > 0 ? (
+        <div className="space-y-4">
+          {sections.map(([label, value]) => (
+            <section key={label} className="rounded border border-white/10 bg-black/20 p-4">
+              <h4 className="mb-3 text-sm font-bold text-white">{label}</h4>
+              {renderContestValue(value)}
+            </section>
+          ))}
+        </div>
+      ) : rawMarkdown ? (
+        <section className="rounded border border-white/10 bg-black/20 p-4">
+          <h4 className="mb-3 text-sm font-bold text-white">原始投稿</h4>
+          <div className="text-sm leading-7 text-zinc-300">
+            <MathBlock>{rawMarkdown}</MathBlock>
+          </div>
+        </section>
+      ) : (
+        <section className="rounded border border-white/10 bg-black/20 p-8 text-center text-sm text-zinc-500">
+          这条比赛投稿没有可展示的文本内容。
+        </section>
+      )}
+
+      {submission.attachment_urls && submission.attachment_urls.length > 0 && (
+        <section className="rounded border border-white/10 bg-black/20 p-4">
+          <h4 className="text-sm font-bold text-white">投稿图片</h4>
+          <div className="mt-3 grid gap-3 md:grid-cols-2">
+            {submission.attachment_urls.map((url) => (
+              <a key={url} href={url} target="_blank" rel="noreferrer" className="block overflow-hidden rounded border border-white/10 bg-zinc-950">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={url} alt="投稿图片" className="max-h-96 w-full object-contain" />
+              </a>
+            ))}
+          </div>
+        </section>
+      )}
+    </div>
   );
 }
 

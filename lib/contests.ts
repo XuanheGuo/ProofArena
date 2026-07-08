@@ -286,12 +286,15 @@ export async function getContestStats(contestIds: string[]): Promise<ContestStat
     return contestIds.map((id) => ({ contestId: id, submissionCount: 0, participantCount: 0 }));
   }
 
-  const supabase = createPublicClient();
+  const supabase = process.env.SUPABASE_SERVICE_ROLE_KEY ? createServiceClient() : createPublicClient();
 
   const { data } = await supabase
     .from("submissions")
     .select("contest_slug, user_id")
-    .in("contest_slug", contestIds);
+    .in("contest_slug", contestIds)
+    .eq("submission_type", "solution")
+    .neq("status", "rejected")
+    .or("is_post_contest.is.null,is_post_contest.eq.false");
 
   if (!data) return contestIds.map((id) => ({ contestId: id, submissionCount: 0, participantCount: 0 }));
 
@@ -320,15 +323,18 @@ export async function getContestSubmissionStats(contestSlug: string) {
     return { submissionCount: 0, participantCount: 0 };
   }
 
-  const supabase = createPublicClient();
+  const supabase = process.env.SUPABASE_SERVICE_ROLE_KEY ? createServiceClient() : createPublicClient();
   // Rejected submissions are spam/noise, not real participation — they must
   // not inflate the public submission/participant counts shown on the
-  // contest list and detail pages.
+  // contest list and detail pages. Post-contest additions are discussion
+  // artifacts, not official participation, so they are excluded too.
   const { data } = await supabase
     .from("submissions")
     .select("user_id")
     .eq("contest_slug", contestSlug)
-    .neq("status", "rejected");
+    .eq("submission_type", "solution")
+    .neq("status", "rejected")
+    .or("is_post_contest.is.null,is_post_contest.eq.false");
 
   if (!data) return { submissionCount: 0, participantCount: 0 };
 
