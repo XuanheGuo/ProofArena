@@ -79,65 +79,94 @@ export default async function ContestsPage() {
             </p>
           </div>
         ) : (
-        <div className="grid gap-4 lg:grid-cols-2">
+        <div className="grid gap-5 lg:grid-cols-2">
           {contests.map((contest) => {
             const status = contestStatusMeta[contest.status];
-            // Draft-backed contest problems (draftProblemId) count as real
-            // problems too — a contest run entirely on Problem Vault drafts
-            // must not display "0 题目" on its card.
-            const linkedProblems = contest.problems.filter((contestProblem) => contestProblem.problemId || contestProblem.draftProblemId);
-            const solutionCount = linkedProblems.reduce((sum, contestProblem) => {
-              const problem = contestProblem.problemId ? problemMap.get(contestProblem.problemId) : null;
-              return sum + (problem?.solutions.length ?? 0);
+            const linkedProblems = contest.problems.filter((cp) => cp.problemId || cp.draftProblemId);
+            const stats = statsMap.get(contest.slug);
+            const solutionCount = linkedProblems.reduce((sum, cp) => {
+              const p = cp.problemId ? problemMap.get(cp.problemId) : null;
+              return sum + (p?.solutions.length ?? 0);
             }, 0);
+            const isActive = contest.status === "active";
+            const isDraft = contest.status === "draft";
 
             return (
-              <article key={contest.id} className="flex flex-col border border-white/10 bg-zinc-950 transition hover:border-white/20">
-                <div className="flex-1 p-5 md:p-6">
+              <article
+                key={contest.id}
+                className={`group relative flex flex-col overflow-hidden border bg-zinc-950 transition hover:border-white/25 ${
+                  isActive ? "border-emerald-500/30" : "border-white/10"
+                }`}
+              >
+                {/* Active pulse stripe */}
+                {isActive && (
+                  <span className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-transparent via-emerald-400/60 to-transparent" />
+                )}
+
+                <div className="flex-1 px-5 pt-5 pb-4 md:px-6 md:pt-6">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className={`border px-2 py-0.5 text-[11px] font-bold ${status.className}`}>{status.label}</span>
-                    <span className="text-[11px] text-zinc-500">
+                    <span className={`border px-2.5 py-0.5 text-[11px] font-bold ${status.className}`}>
+                      {status.label}
+                    </span>
+                    <span className="flex items-center gap-1 text-[11px] text-zinc-500">
+                      <CalendarDays className="size-3" />
                       {formatContestDateTime(contest.startAt)} – {formatContestDateTime(contest.endAt)}（北京时间）
                     </span>
                   </div>
-                  <h2 className="mt-4 text-xl font-black leading-snug text-white sm:text-2xl">{contest.title}</h2>
-                  <p className="mt-2 text-sm leading-6 text-zinc-400">{contest.tagline}</p>
+
+                  <h2 className="mt-4 text-xl font-black leading-snug text-white group-hover:text-cyan-50 sm:text-2xl">
+                    {contest.title}
+                  </h2>
+                  <p className="mt-2 line-clamp-2 text-sm leading-6 text-zinc-400">{contest.tagline}</p>
+                  {contest.description && (
+                    <p className="mt-1.5 text-xs text-zinc-600">{contest.description}</p>
+                  )}
                 </div>
-                <div className="grid grid-cols-3 divide-x divide-white/[0.07] border-y border-white/[0.07]">
-                  <div className="p-3 text-center">
-                    <ClipboardList className="mx-auto size-4 text-cyan-400" />
-                    <strong className="mt-1.5 block text-lg font-bold tabular-nums text-white">{linkedProblems.length}</strong>
-                    <span className="text-[10px] text-zinc-500">题目</span>
-                  </div>
-                  <div className="p-3 text-center">
-                    <UsersRound className="mx-auto size-4 text-emerald-400" />
-                    <strong className="mt-1.5 block text-lg font-bold tabular-nums text-white">
-                      {(statsMap.get(contest.slug)?.participantCount ?? 0) > 0
-                        ? statsMap.get(contest.slug)!.participantCount
-                        : "—"}
+
+                {/* Stats bar */}
+                <div className="grid grid-cols-3 divide-x divide-white/[0.06] border-t border-white/[0.06] bg-black/20">
+                  <div className="flex flex-col items-center gap-0.5 px-3 py-3">
+                    <ClipboardList className="size-3.5 text-cyan-400/70" />
+                    <strong className="font-mono text-base font-bold tabular-nums text-white">
+                      {linkedProblems.length}
                     </strong>
-                    <span className="text-[10px] text-zinc-500">参与者</span>
+                    <span className="text-[10px] text-zinc-600">赛题</span>
                   </div>
-                  <div className="p-3 text-center">
-                    <Trophy className="mx-auto size-4 text-amber-400" />
-                    <strong className="mt-1.5 block text-lg font-bold tabular-nums text-white">
-                      {(statsMap.get(contest.slug)?.submissionCount ?? 0) > 0
-                        ? statsMap.get(contest.slug)!.submissionCount
-                        : (solutionCount > 0 ? solutionCount : "—")}
+                  <div className="flex flex-col items-center gap-0.5 px-3 py-3">
+                    <UsersRound className="size-3.5 text-emerald-400/70" />
+                    <strong className="font-mono text-base font-bold tabular-nums text-white">
+                      {(stats?.participantCount ?? 0) > 0 ? stats!.participantCount : "—"}
                     </strong>
-                    <span className="text-[10px] text-zinc-500">
-                      {(statsMap.get(contest.slug)?.submissionCount ?? 0) > 0 ? "投稿" : "解法"}
+                    <span className="text-[10px] text-zinc-600">参与者</span>
+                  </div>
+                  <div className="flex flex-col items-center gap-0.5 px-3 py-3">
+                    <Trophy className="size-3.5 text-amber-400/70" />
+                    <strong className="font-mono text-base font-bold tabular-nums text-white">
+                      {(stats?.submissionCount ?? 0) > 0 ? stats!.submissionCount : solutionCount > 0 ? solutionCount : "—"}
+                    </strong>
+                    <span className="text-[10px] text-zinc-600">
+                      {(stats?.submissionCount ?? 0) > 0 ? "投稿" : "解法"}
                     </span>
                   </div>
                 </div>
-                <div className="flex items-center justify-between gap-3 p-4 md:px-5">
-                  <span className="text-xs text-zinc-500">{contest.description}</span>
+
+                {/* Footer CTA */}
+                <div className="flex items-center justify-between gap-3 border-t border-white/[0.06] px-5 py-3 md:px-6">
+                  {isDraft ? (
+                    <span className="text-xs text-zinc-600">比赛尚未开始，敬请期待</span>
+                  ) : (
+                    <span className="text-xs text-zinc-600">{contest.awards.length} 个奖项</span>
+                  )}
                   <Link
                     href={`/contests/${contest.slug}`}
-                    className="inline-flex shrink-0 items-center gap-1.5 bg-cyan-400 px-4 py-2 text-sm font-bold text-zinc-950 transition hover:bg-cyan-300"
+                    className={`inline-flex shrink-0 items-center gap-1.5 px-4 py-2 text-sm font-bold transition ${
+                      isActive
+                        ? "bg-emerald-400 text-zinc-950 hover:bg-emerald-300"
+                        : "bg-cyan-400 text-zinc-950 hover:bg-cyan-300"
+                    }`}
                   >
-                    进入
-                    <ArrowUpRight className="size-4" />
+                    {isActive ? "进入比赛" : "查看详情"}
+                    <ArrowUpRight className="size-3.5" />
                   </Link>
                 </div>
               </article>

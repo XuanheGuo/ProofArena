@@ -147,6 +147,32 @@ function normalizeAscendingIntegerList(raw: string): string | null {
   return nums.join(",");
 }
 
+// Strip common math-typesetting noise before normalization so participants
+// can type answers in natural ways (√5, \sqrt5, \sqrt{5}, $\sqrt{5}$, etc.)
+// without being penalised for format knowledge they don't need in a sprint.
+// This runs on both the submitted answer AND every answer-key candidate so
+// comparison remains a plain string equality check after normalization.
+function stripMathNoise(s: string): string {
+  return s
+    // Remove LaTeX math delimiters ($…$ and $$…$$)
+    .replace(/\$\$?([^$]*)\$\$?/g, "$1")
+    // Normalize LaTeX fractions \frac{a}{b} → a/b
+    .replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g, "$1/$2")
+    // Normalize LaTeX sqrt with braces \sqrt{n} → sqrt(n)
+    .replace(/\\sqrt\{([^}]+)\}/g, "sqrt($1)")
+    // Normalize plain \sqrt n → sqrt(n) (handles \sqrt2, \sqrt 5, etc.)
+    .replace(/\\sqrt\s*([A-Za-z0-9.]+)/g, "sqrt($1)")
+    // Normalize Unicode radical sign √n → sqrt(n); handles √5, √{5}, 2√6
+    .replace(/√\{([^}]+)\}/g, "sqrt($1)")
+    .replace(/√([A-Za-z0-9.]+)/g, "sqrt($1)")
+    // Strip remaining LaTeX commands (\ln, \pi, \infty, etc.) — keep letters
+    .replace(/\\([A-Za-z]+)/g, "$1")
+    // Strip LaTeX braces that survive the above replacements
+    .replace(/[{}]/g, "")
+    // Collapse all remaining whitespace
+    .replace(/\s+/g, "");
+}
+
 // Normalizes a raw sprint answer per docs/WEEKLY_CONTEST_FORMAT.md §6.4's
 // format rules, applied identically to both the submitted answer and every
 // candidate in the stored answer key, so comparison is a plain string
@@ -169,16 +195,17 @@ export function normalizeSprintAnswer(answerType: ContestAnswerType, rawInput: s
     return [...new Set(tokens)].sort().join(",");
   }
 
-  // fill_blank: try fraction reduction, then ascending integer list, then
-  // letters-only case-insensitive, else fall back to a whitespace-collapsed
-  // string — see format doc's fill-blank format table (§6.4).
-  const collapsed = raw.replace(/\s*,\s*/g, ",").replace(/\s+/g, "");
+  // fill_blank: strip LaTeX/Unicode math noise first, then try structured
+  // forms (fraction, integer list, letters), else fall back to a
+  // whitespace-collapsed string — see format doc's fill-blank format table.
+  const denoised = stripMathNoise(raw);
+  const collapsed = denoised.replace(/\s*,\s*/g, ",").replace(/\s+/g, "");
   const asFraction = reduceFraction(collapsed);
   if (asFraction !== null) return asFraction;
   const asIntList = normalizeAscendingIntegerList(collapsed);
   if (asIntList !== null) return asIntList;
   if (/^[a-zA-Z]+$/.test(collapsed)) return collapsed.toUpperCase();
-  return collapsed;
+  return collapsed.toLowerCase();
 }
 
 // answer_key is stored as a JSON array of acceptable raw answer strings

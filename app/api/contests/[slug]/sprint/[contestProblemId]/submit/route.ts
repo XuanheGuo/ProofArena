@@ -87,6 +87,19 @@ export async function POST(req: Request, context: RouteContext) {
   const isCorrect = sprintAnswerMatches(contestProblem.answer_type, rawAnswer, answerKeyRow.answer_key);
   const normalizedAnswer = normalizeSprintAnswer(contestProblem.answer_type, rawAnswer);
 
+  // fill_blank answers that don't match any key after normalization are NOT
+  // immediately marked wrong — the participant may have used a correct but
+  // non-canonical form that the answer key doesn't enumerate (e.g. decimal
+  // vs fraction vs a different radical notation). Instead we set
+  // is_correct = null to flag the row as "needs human review"; score stays 0
+  // until an admin fills it in via AdminContestScoringView. Choice answers
+  // have no such ambiguity (A/B/C/D is unambiguous), so they are final.
+  const isFillBlankPending =
+    contestProblem.answer_type === "fill_blank" && !isCorrect && !isOverTime;
+
+  // is_correct: true → correct; false → wrong (for choices, or overtime);
+  //             null  → pending human review (fill_blank, within time, no key match).
+  const isCorrectDb: boolean | null = isFillBlankPending ? null : isCorrect;
   const score =
     isCorrect && !isOverTime ? computeSprintStepScore(Number(contestProblem.score_max), timeLimitSeconds, elapsedMs) : 0;
 
@@ -97,7 +110,7 @@ export async function POST(req: Request, context: RouteContext) {
       elapsed_ms: elapsedMs,
       answer_raw: rawAnswer,
       answer_normalized: normalizedAnswer,
-      is_correct: isCorrect,
+      is_correct: isCorrectDb,
       score,
     })
     .eq("id", attempt.id)
@@ -120,6 +133,7 @@ export async function POST(req: Request, context: RouteContext) {
     if (settled?.submitted_at) {
       return NextResponse.json({
         isCorrect: settled.is_correct,
+        needsReview: settled.is_correct === null,
         elapsedMs: settled.elapsed_ms,
         score: settled.score,
         submittedAt: settled.submitted_at,
@@ -131,6 +145,7 @@ export async function POST(req: Request, context: RouteContext) {
 
   return NextResponse.json({
     isCorrect: updated.is_correct,
+    needsReview: updated.is_correct === null,
     elapsedMs: updated.elapsed_ms,
     score: updated.score,
     submittedAt: updated.submitted_at,

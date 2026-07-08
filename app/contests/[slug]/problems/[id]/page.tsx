@@ -147,6 +147,8 @@ function SprintContestProblem({
 }) {
   return (
     <main className="grid-surface min-h-screen">
+      {/* Amber accent stripe for sprint problems */}
+      <div className="h-0.5 bg-gradient-to-r from-transparent via-amber-400/50 to-transparent" />
       <div className="mx-auto max-w-3xl px-4 py-8 md:px-6 md:py-12">
         <Link
           href={`/contests/${contest.slug}`}
@@ -156,20 +158,25 @@ function SprintContestProblem({
           返回比赛主页
         </Link>
 
-        <div className="mt-5 flex flex-wrap items-center gap-2 text-xs">
-          <span className="border border-amber-400/30 bg-amber-400/10 px-2 py-0.5 font-bold text-amber-300">
+        <div className="mt-6 flex flex-wrap items-center gap-2 text-xs">
+          <span className="bg-cyan-400 px-2.5 py-1 font-bold text-zinc-950">Day {contestProblem.dayIndex}</span>
+          <span className="border border-amber-400/30 bg-amber-400/10 px-2.5 py-1 font-bold text-amber-300">
             计时题
           </span>
-          <span className="bg-cyan-400 px-2 py-0.5 font-bold text-zinc-950">Day {contestProblem.dayIndex}</span>
-          <span className="border border-white/15 px-2 py-0.5 text-zinc-400">{contestProblem.title}</span>
+          <span className="border border-white/15 px-2.5 py-1 text-zinc-400">{contestProblem.title}</span>
         </div>
 
-        <h1 className="mt-4 text-2xl font-black text-white">{contestProblem.theme}</h1>
+        <h1 className="mt-4 text-2xl font-black leading-snug text-white">{contestProblem.theme}</h1>
         <p className="mt-2 text-sm leading-6 text-zinc-500">
-          题面在解锁后显示，解锁即开始计时，请确认准备好再解锁。
+          解锁后题面立即显示，计时同时开始。满分{" "}
+          <span className="font-bold text-amber-300">{contestProblem.scoreMax} 分</span>
+          {contestProblem.timeLimitSeconds
+            ? <>，限时 <span className="font-bold text-amber-300">{contestProblem.timeLimitSeconds} 秒</span>。</>
+            : "。"}
+          {" "}答错或超时不计分，不影响其他题型的挑战倍率。
         </p>
 
-        <div className="mt-5">
+        <div className="mt-6">
           <ContestSprintPanel
             contestSlug={contest.slug}
             contestProblemId={contestProblem.id}

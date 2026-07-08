@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { CheckCircle2, Clock, LogIn, Timer, XCircle } from "lucide-react";
+import { AlertCircle, CheckCircle2, Clock, HelpCircle, LogIn, Timer, Unlock, XCircle } from "lucide-react";
 import { createClient } from "@/lib/supabase-client";
 import { MathBlock } from "@/components/MathBlock";
 import type { ContestAnswerType } from "@/lib/types";
@@ -25,11 +25,8 @@ type AttemptStatus = {
   submittedAt: string | null;
   elapsedMs: number | null;
   isCorrect: boolean | null;
+  needsReview?: boolean;
   score: number | null;
-  // Only ever populated by the API once an attempt exists — see
-  // lib/contest-sprint.ts resolveSprintProblemDisplay. Absent (null) in the
-  // "not unlocked" state, which is exactly why this component must never
-  // receive the problem statement as a prop from the server-rendered page.
   title: string | null;
   statement: string[] | null;
 };
@@ -41,13 +38,18 @@ type PanelState =
   | { phase: "error"; message: string }
   | { phase: "locked" }
   | { phase: "unlocked"; unlockAt: string; title: string; statement: string[] }
-  | { phase: "submitted"; isCorrect: boolean; elapsedMs: number; score: number; title: string; statement: string[] };
+  | { phase: "submitted"; isCorrect: boolean; elapsedMs: number; score: number; title: string; statement: string[] }
+  // fill_blank answer received but didn't match any key — admin will review.
+  | { phase: "pending-review"; elapsedMs: number; title: string; statement: string[] };
 
 function toPanelState(status: AttemptStatus): PanelState {
   if (!status.unlocked) return { phase: "locked" };
   const title = status.title ?? "";
   const statement = status.statement ?? [];
   if (status.submittedAt) {
+    if (status.needsReview || status.isCorrect === null) {
+      return { phase: "pending-review", elapsedMs: status.elapsedMs ?? 0, title, statement };
+    }
     return {
       phase: "submitted",
       isCorrect: Boolean(status.isCorrect),
@@ -58,6 +60,31 @@ function toPanelState(status: AttemptStatus): PanelState {
     };
   }
   return { phase: "unlocked", unlockAt: status.unlockAt as string, title, statement };
+}
+
+// Compact circular timer ring rendered with an SVG stroke-dashoffset trick.
+function TimerRing({ remaining, total }: { remaining: number; total: number }) {
+  const r = 22;
+  const circumference = 2 * Math.PI * r;
+  const fraction = total > 0 ? Math.max(0, remaining / total) : 0;
+  const offset = circumference * (1 - fraction);
+  const color = fraction > 0.4 ? "text-amber-400" : fraction > 0.15 ? "text-orange-400" : "text-red-400";
+  return (
+    <svg width={56} height={56} viewBox="0 0 56 56" className={color} aria-hidden>
+      {/* track */}
+      <circle cx={28} cy={28} r={r} fill="none" stroke="currentColor" strokeWidth={3} opacity={0.15} />
+      {/* progress */}
+      <circle
+        cx={28} cy={28} r={r} fill="none"
+        stroke="currentColor" strokeWidth={3}
+        strokeLinecap="round"
+        strokeDasharray={circumference}
+        strokeDashoffset={offset}
+        transform="rotate(-90 28 28)"
+        style={{ transition: "stroke-dashoffset 0.9s linear" }}
+      />
+    </svg>
+  );
 }
 
 export function ContestSprintPanel({
@@ -112,9 +139,6 @@ export function ContestSprintPanel({
       .catch(() => setState({ phase: "error", message: "网络错误，无法获取计时题状态。" }));
   }, [userId, basePath]);
 
-  // Tick every second while an attempt is running, purely to redraw the
-  // countdown — elapsed/score are always computed authoritatively by the
-  // submit route from the server's own clock, never from this timer.
   useEffect(() => {
     if (state.phase !== "unlocked") return;
     const id = setInterval(() => setNowTick(Date.now()), 1000);
@@ -152,9 +176,6 @@ export function ContestSprintPanel({
         : selectedChoices.slice().sort().join(",");
     if (!answer.trim()) return;
 
-    // The submit route intentionally doesn't re-fetch/return the problem
-    // face (it only grades an answer) — carry the title/statement over from
-    // the current "unlocked" state instead of dropping them on submit.
     const { title, statement } = state;
 
     setSubmitting(true);
@@ -169,14 +190,18 @@ export function ContestSprintPanel({
         setState({ phase: "error", message: body.error || "提交失败，请重试。" });
         return;
       }
-      setState({
-        phase: "submitted",
-        isCorrect: Boolean(body.isCorrect),
-        elapsedMs: body.elapsedMs ?? 0,
-        score: body.score ?? 0,
-        title,
-        statement,
-      });
+      if (body.needsReview || body.isCorrect === null) {
+        setState({ phase: "pending-review", elapsedMs: body.elapsedMs ?? 0, title, statement });
+      } else {
+        setState({
+          phase: "submitted",
+          isCorrect: Boolean(body.isCorrect),
+          elapsedMs: body.elapsedMs ?? 0,
+          score: body.score ?? 0,
+          title,
+          statement,
+        });
+      }
     } catch {
       setState({ phase: "error", message: "网络错误，提交失败。" });
     } finally {
@@ -194,132 +219,223 @@ export function ContestSprintPanel({
     );
   }
 
+  const showProblemFace =
+    state.phase === "unlocked" ||
+    state.phase === "submitted" ||
+    state.phase === "pending-review";
+
   return (
-    <section className="border border-amber-400/25 bg-zinc-950 p-5">
-      <div className="flex items-center gap-2 text-sm font-bold text-white">
-        <Timer className="size-4 text-amber-300" />
-        计时题
-        <span className="ml-auto text-xs font-normal text-zinc-500">
-          满分 {scoreMax} 分{timeLimitSeconds ? ` · 限时 ${timeLimitSeconds} 秒` : ""}
+    <div className="overflow-hidden border border-amber-400/20 bg-zinc-950">
+      {/* Header bar */}
+      <div className="flex items-center gap-2 border-b border-amber-400/15 bg-amber-400/[0.04] px-5 py-3">
+        <Timer className="size-4 text-amber-400" />
+        <span className="text-sm font-bold text-amber-200">计时题</span>
+        <span className="ml-auto font-mono text-xs text-zinc-500">
+          满分 <span className="text-amber-300">{scoreMax}</span> 分
+          {timeLimitSeconds ? <> · 限时 <span className="text-amber-300">{timeLimitSeconds}s</span></> : null}
         </span>
       </div>
 
-      <div className="mt-4">
-        {/* The problem face only ever renders here, sourced from this
-            component's own state — never as a prop from the server-rendered
-            page — and only once `state` is "unlocked" or "submitted" (i.e.
-            the API has confirmed a personal attempt exists). */}
-        {(state.phase === "unlocked" || state.phase === "submitted") && (
-          <div className="mb-4 space-y-2 border-b border-white/[0.07] pb-4">
-            {state.title && <h2 className="text-base font-bold text-white">{state.title}</h2>}
+      <div className="p-5">
+        {/* Problem face — only shown after personal unlock */}
+        {showProblemFace && (
+          <div className="mb-5 space-y-2 border-b border-white/[0.07] pb-5">
+            {(state.phase === "unlocked" || state.phase === "submitted" || state.phase === "pending-review") && state.title && (
+              <h2 className="text-base font-bold leading-snug text-white">{state.title}</h2>
+            )}
             <div className="space-y-2 text-sm leading-7 text-zinc-200">
-              {state.statement.map((line, index) => (
-                <p key={index}><MathBlock>{line}</MathBlock></p>
-              ))}
+              {(state.phase === "unlocked" || state.phase === "submitted" || state.phase === "pending-review") &&
+                state.statement.map((line, index) => (
+                  <p key={index}><MathBlock>{line}</MathBlock></p>
+                ))}
             </div>
           </div>
         )}
 
+        {/* State-specific body */}
         {state.phase === "checking-auth" || state.phase === "loading-status" ? (
-          <div className="h-16 animate-pulse bg-white/[0.03]" />
+          <div className="flex flex-col gap-2">
+            <div className="h-4 w-2/3 animate-pulse rounded bg-white/[0.05]" />
+            <div className="h-4 w-1/2 animate-pulse rounded bg-white/[0.04]" />
+            <div className="mt-2 h-10 w-32 animate-pulse rounded bg-white/[0.03]" />
+          </div>
+
         ) : state.phase === "logged-out" ? (
-          <div className="flex items-center gap-3 border border-amber-400/20 bg-amber-400/[0.04] px-4 py-3">
-            <LogIn className="size-4 shrink-0 text-amber-400" />
-            <p className="text-sm text-zinc-400">
+          <div className="flex items-start gap-3 rounded border border-amber-400/20 bg-amber-400/[0.04] px-4 py-3.5">
+            <LogIn className="mt-0.5 size-4 shrink-0 text-amber-400" />
+            <p className="text-sm leading-6 text-zinc-400">
               <Link href="/auth/login" className="font-bold text-cyan-300 hover:underline">登录</Link>
-              {" "}后可以解锁并作答计时题。
+              {" "}后可以解锁并作答计时题。解锁后计时即刻开始，期间不要刷新页面。
             </p>
           </div>
+
         ) : state.phase === "error" ? (
-          <p className="text-sm text-red-300">{state.message}</p>
+          <div className="flex items-center gap-2 text-sm text-red-300">
+            <AlertCircle className="size-4 shrink-0" />
+            {state.message}
+          </div>
+
         ) : state.phase === "locked" ? (
-          <button
-            type="button"
-            onClick={handleUnlock}
-            disabled={unlocking}
-            className="inline-flex h-10 items-center justify-center gap-2 bg-amber-300 px-5 text-sm font-bold text-zinc-950 transition hover:bg-amber-200 disabled:opacity-50"
-          >
-            <Clock className="size-4" />
-            {unlocking ? "解锁中…" : "解锁计时题"}
-          </button>
+          <div className="flex flex-col gap-4">
+            <p className="text-sm leading-6 text-zinc-400">
+              点击下方按钮后，题面立即显示，<span className="text-amber-300">计时同步开始</span>。
+              确认准备好后再解锁，计时不可暂停。
+            </p>
+            <button
+              type="button"
+              onClick={handleUnlock}
+              disabled={unlocking}
+              className="inline-flex h-11 w-fit items-center gap-2 bg-amber-400 px-6 text-sm font-bold text-zinc-950 transition hover:bg-amber-300 disabled:opacity-50"
+            >
+              <Unlock className="size-4" />
+              {unlocking ? "解锁中…" : "解锁并开始计时"}
+            </button>
+          </div>
+
         ) : state.phase === "unlocked" ? (
-          <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <Clock className="size-4 text-amber-300" />
-              <span className={`font-mono text-2xl font-bold tabular-nums ${remainingSeconds === 0 ? "text-red-400" : "text-amber-300"}`}>
-                {remainingSeconds !== null ? `${remainingSeconds}s` : "—"}
-              </span>
-              {remainingSeconds === 0 && <span className="text-xs text-red-400">已超时，提交将得 0 分</span>}
+          <div className="space-y-5">
+            {/* Live countdown */}
+            <div className="flex items-center gap-4">
+              {timeLimitSeconds !== null && remainingSeconds !== null && (
+                <div className="relative">
+                  <TimerRing remaining={remainingSeconds} total={timeLimitSeconds} />
+                  <span
+                    className={`absolute inset-0 flex items-center justify-center font-mono text-sm font-bold tabular-nums ${
+                      remainingSeconds === 0 ? "text-red-400" : remainingSeconds <= timeLimitSeconds * 0.15 ? "text-orange-400" : "text-amber-300"
+                    }`}
+                  >
+                    {remainingSeconds}
+                  </span>
+                </div>
+              )}
+              <div>
+                {remainingSeconds === 0 ? (
+                  <p className="text-sm font-bold text-red-400">已超时</p>
+                ) : remainingSeconds !== null && remainingSeconds <= timeLimitSeconds! * 0.25 ? (
+                  <p className="text-sm font-bold text-orange-400">剩余时间不多了！</p>
+                ) : (
+                  <p className="text-sm text-zinc-400">
+                    {remainingSeconds === null ? "—" : `剩余 ${remainingSeconds} 秒`}
+                    {remainingSeconds === 0 && "，提交将得 0 分"}
+                  </p>
+                )}
+                <p className="mt-0.5 text-xs text-zinc-600">
+                  成绩由服务器时钟计算，此倒计时仅供参考
+                </p>
+              </div>
             </div>
 
+            {/* Answer input */}
             {answerType === "fill_blank" ? (
-              <div className="space-y-1.5">
+              <div className="space-y-2">
+                <label className="block text-xs font-bold uppercase tracking-wide text-zinc-500">
+                  填写答案
+                </label>
                 <input
                   type="text"
                   value={fillBlankAnswer}
                   onChange={(event) => setFillBlankAnswer(event.target.value)}
                   onKeyDown={(event) => {
-                    // Every second counts in a timed sprint — Enter submits
-                    // directly instead of forcing a reach for the button.
                     if (event.key === "Enter" && !submitting) {
                       event.preventDefault();
                       handleSubmit();
                     }
                   }}
-                  placeholder="填写答案"
-                  className="h-11 w-full max-w-xs border border-white/10 bg-black/20 px-3 text-sm text-white outline-none focus:border-amber-400/50"
+                  placeholder="例：sqrt(5) 或 √5；分数写 3/4"
+                  className="h-11 w-full max-w-sm border border-white/10 bg-black/30 px-3 text-sm text-white placeholder-zinc-600 outline-none transition focus:border-amber-400/50 focus:bg-black/40"
+                  autoFocus
                 />
-                {answerFormatNote && <p className="text-xs text-zinc-500">{answerFormatNote}</p>}
+                {answerFormatNote && (
+                  <p className="text-xs leading-5 text-zinc-500">{answerFormatNote}</p>
+                )}
               </div>
             ) : (
-              <div className="flex flex-wrap gap-2">
-                {CHOICE_OPTIONS.map((choice) => {
-                  const active = selectedChoices.includes(choice);
-                  return (
-                    <button
-                      key={choice}
-                      type="button"
-                      onClick={() => toggleChoice(choice)}
-                      className={`h-11 w-11 border text-sm font-bold transition ${
-                        active
-                          ? "border-amber-300 bg-amber-300 text-zinc-950"
-                          : "border-white/15 text-zinc-300 hover:border-amber-400/40"
-                      }`}
-                    >
-                      {choice}
-                    </button>
-                  );
-                })}
+              <div className="space-y-2">
+                <label className="block text-xs font-bold uppercase tracking-wide text-zinc-500">
+                  {answerType === "multiple_choice" ? "多选（可选多个）" : "选择答案"}
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {CHOICE_OPTIONS.map((choice) => {
+                    const active = selectedChoices.includes(choice);
+                    return (
+                      <button
+                        key={choice}
+                        type="button"
+                        onClick={() => toggleChoice(choice)}
+                        className={`size-12 border text-base font-bold transition ${
+                          active
+                            ? "border-amber-400 bg-amber-400 text-zinc-950 shadow-[0_0_12px] shadow-amber-400/30"
+                            : "border-white/15 text-zinc-300 hover:border-amber-400/50 hover:bg-amber-400/[0.07]"
+                        }`}
+                      >
+                        {choice}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             )}
 
             <button
               type="button"
               onClick={handleSubmit}
-              disabled={submitting}
-              className="inline-flex h-10 items-center justify-center gap-2 border border-amber-400/40 bg-amber-400/10 px-5 text-sm font-bold text-amber-200 transition hover:bg-amber-400/15 disabled:opacity-50"
+              disabled={submitting || (answerType === "fill_blank" ? !fillBlankAnswer.trim() : selectedChoices.length === 0)}
+              className="inline-flex h-11 items-center gap-2 border border-amber-400/50 bg-amber-400/10 px-6 text-sm font-bold text-amber-200 transition hover:bg-amber-400/20 disabled:cursor-not-allowed disabled:opacity-40"
             >
               {submitting ? "提交中…" : "提交答案"}
             </button>
           </div>
+
+        ) : state.phase === "pending-review" ? (
+          /* fill_blank answer received but not matched — pending human review */
+          <div className="space-y-4">
+            <div className="flex items-start gap-3 border border-sky-500/30 bg-sky-500/[0.06] px-4 py-4">
+              <HelpCircle className="mt-0.5 size-5 shrink-0 text-sky-400" />
+              <div className="text-sm">
+                <p className="font-bold text-sky-300">答案已收到，待人工复核</p>
+                <p className="mt-1 leading-5 text-zinc-400">
+                  你的答案没有匹配到标准形式，不代表一定错误——可能是写法不同。
+                  管理员复核后会更新得分，请关注最终积分榜。
+                </p>
+                <p className="mt-2 text-xs text-zinc-600">
+                  用时 {(state.elapsedMs / 1000).toFixed(1)} 秒
+                </p>
+              </div>
+            </div>
+          </div>
+
         ) : (
-          <div className={`flex items-center gap-3 border px-4 py-3 ${state.isCorrect ? "border-emerald-500/40 bg-emerald-500/[0.07]" : "border-red-500/40 bg-red-500/[0.07]"}`}>
-            {state.isCorrect ? (
-              <CheckCircle2 className="size-5 shrink-0 text-emerald-400" />
-            ) : (
-              <XCircle className="size-5 shrink-0 text-red-400" />
-            )}
-            <div className="text-sm">
-              <p className={`font-bold ${state.isCorrect ? "text-emerald-300" : "text-red-300"}`}>
-                {state.isCorrect ? "回答正确" : "回答错误"}
-              </p>
-              <p className="mt-0.5 text-xs text-zinc-500">
-                用时 {(state.elapsedMs / 1000).toFixed(1)} 秒 · 得分 {state.score} / {scoreMax}
-              </p>
+          /* submitted — correct or wrong */
+          <div className="space-y-4">
+            <div
+              className={`flex items-start gap-3 border px-4 py-4 ${
+                state.isCorrect
+                  ? "border-emerald-500/35 bg-emerald-500/[0.06]"
+                  : "border-red-500/35 bg-red-500/[0.06]"
+              }`}
+            >
+              {state.isCorrect ? (
+                <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-emerald-400" />
+              ) : (
+                <XCircle className="mt-0.5 size-5 shrink-0 text-red-400" />
+              )}
+              <div className="text-sm">
+                <p className={`text-base font-bold ${state.isCorrect ? "text-emerald-300" : "text-red-300"}`}>
+                  {state.isCorrect ? "回答正确！" : "回答错误"}
+                </p>
+                <p className="mt-1 text-zinc-400">
+                  用时 <span className="tabular-nums text-white">{(state.elapsedMs / 1000).toFixed(1)}</span> 秒
+                  {" · "}得分{" "}
+                  <span className={`font-mono font-bold tabular-nums ${state.isCorrect ? "text-amber-300" : "text-zinc-500"}`}>
+                    {state.score}
+                  </span>
+                  {" "}/ {scoreMax}
+                </p>
+              </div>
             </div>
           </div>
         )}
       </div>
-    </section>
+    </div>
   );
 }

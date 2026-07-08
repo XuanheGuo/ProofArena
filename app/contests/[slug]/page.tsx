@@ -131,7 +131,11 @@ export default async function ContestDetailPage({ params }: PageProps) {
 
   return (
     <main className="grid-surface min-h-screen">
-      <section className="border-b border-white/10 bg-zinc-950/90">
+      {/* ── Hero ──────────────────────────────────────────────────────────── */}
+      <section className={`border-b ${contest.status === "active" ? "border-emerald-500/20 bg-zinc-950" : "border-white/10 bg-zinc-950/90"}`}>
+        {contest.status === "active" && (
+          <div className="h-0.5 bg-gradient-to-r from-transparent via-emerald-400/50 to-transparent" />
+        )}
         <div className="mx-auto max-w-7xl px-4 py-8 md:px-6 md:py-12">
           <Link href="/contests" className="inline-flex items-center gap-2 text-sm text-zinc-500 transition hover:text-white">
             <ArrowLeft className="size-4" />
@@ -141,18 +145,19 @@ export default async function ContestDetailPage({ params }: PageProps) {
             <div>
               <div className="flex flex-wrap items-center gap-2 text-xs">
                 <span className={`border px-2.5 py-1 font-bold ${status.className}`}>{status.label}</span>
-                <span className="border border-white/10 px-2.5 py-1 text-zinc-500">
-                  {formatContestDateTime(contest.startAt)} - {formatContestDateTime(contest.endAt)}（北京时间）
+                <span className="flex items-center gap-1.5 border border-white/10 px-2.5 py-1 text-zinc-500">
+                  <CalendarDays className="size-3" />
+                  {formatContestDateTime(contest.startAt)} – {formatContestDateTime(contest.endAt)}（北京时间）
                 </span>
               </div>
               <h1 className="mt-5 text-3xl font-black leading-tight text-white sm:text-4xl md:text-5xl">{contest.title}</h1>
               <p className="mt-4 max-w-3xl text-base leading-8 text-zinc-300">{contest.tagline}</p>
-              <p className="mt-2 text-sm leading-7 text-zinc-500">{contest.description}</p>
+              <p className="mt-1.5 text-sm leading-6 text-zinc-500">{contest.description}</p>
               <div className="mt-6 flex flex-wrap gap-2">
                 {todayRouteId && (
                   <Link
                     href={`/contests/${contest.slug}/problems/${todayRouteId}`}
-                    className="inline-flex h-10 items-center gap-2 bg-cyan-400 px-5 text-sm font-bold text-zinc-950 transition hover:bg-cyan-300"
+                    className="inline-flex h-10 items-center gap-2 bg-emerald-400 px-5 text-sm font-bold text-zinc-950 transition hover:bg-emerald-300"
                   >
                     <Flame className="size-4" />
                     今日题目
@@ -176,24 +181,25 @@ export default async function ContestDetailPage({ params }: PageProps) {
                 </a>
               </div>
             </div>
-            <div className="grid grid-cols-3 divide-x divide-white/10 border border-white/10 bg-black/30">
-              <div className="p-4 text-center">
-                <strong className="font-display block text-2xl tabular-nums text-cyan-300">{contest.problems.length}</strong>
-                <span className="mt-1 block text-[11px] text-zinc-500">赛题</span>
+            {/* Stats summary */}
+            <div className="grid grid-cols-3 divide-x divide-white/[0.07] border border-white/[0.09] bg-black/30">
+              <div className="flex flex-col items-center gap-0.5 p-4 text-center">
+                <strong className="font-mono text-2xl font-black tabular-nums text-cyan-300">{contest.problems.length}</strong>
+                <span className="text-[11px] text-zinc-600">赛题</span>
               </div>
-              <div className="p-4 text-center">
-                <strong className="font-display block text-2xl tabular-nums text-emerald-300">
+              <div className="flex flex-col items-center gap-0.5 p-4 text-center">
+                <strong className="font-mono text-2xl font-black tabular-nums text-emerald-300">
                   {contestStats.participantCount > 0 ? contestStats.participantCount : (solutionCount > 0 ? solutionCount : "—")}
                 </strong>
-                <span className="mt-1 block text-[11px] text-zinc-500">
+                <span className="text-[11px] text-zinc-600">
                   {contestStats.participantCount > 0 ? "参与者" : "现有解法"}
                 </span>
               </div>
-              <div className="p-4 text-center">
-                <strong className="font-display block text-2xl tabular-nums text-amber-300">
+              <div className="flex flex-col items-center gap-0.5 p-4 text-center">
+                <strong className="font-mono text-2xl font-black tabular-nums text-amber-300">
                   {contestStats.submissionCount > 0 ? contestStats.submissionCount : contest.awards.length}
                 </strong>
-                <span className="mt-1 block text-[11px] text-zinc-500">
+                <span className="text-[11px] text-zinc-600">
                   {contestStats.submissionCount > 0 ? "参赛投稿" : "奖项"}
                 </span>
               </div>
@@ -252,14 +258,32 @@ export default async function ContestDetailPage({ params }: PageProps) {
               {linkedWithStatus.map(({ contestProblem, problem, effectiveStatus, isLocked, routeId }) => {
                 const draftTitle = contestProblem.draftProblemId ? draftTitleMap[contestProblem.draftProblemId] : undefined;
                 const displayTitle = problem?.title ?? draftTitle;
+                const phase = contestProblem.problemPhase ?? "daily";
+                const phaseMeta = contestProblemPhaseMeta[phase];
+                // Phase-colored left accent stripe on unlocked cards.
+                const phaseStripe = {
+                  daily: "border-l-cyan-400/50",
+                  challenge: "border-l-red-400/50",
+                  sprint: "border-l-amber-400/50",
+                  major: "border-l-violet-400/50",
+                  discussion: "border-l-zinc-500/50",
+                }[phase] ?? "border-l-white/10";
+
                 return (
-                  <article key={contestProblem.id} className={`border bg-zinc-950 transition ${isLocked ? "border-white/[0.06] opacity-50" : "border-white/10 hover:border-white/20"}`}>
+                  <article
+                    key={contestProblem.id}
+                    className={`border bg-zinc-950 transition ${
+                      isLocked
+                        ? "border-white/[0.06] opacity-50"
+                        : `border-l-2 ${phaseStripe} border-t border-r border-b border-white/10 hover:border-white/20 hover:bg-zinc-900/50`
+                    }`}
+                  >
                     <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-start sm:justify-between">
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-1.5 text-xs">
                           <span className="bg-cyan-400 px-2 py-0.5 font-bold text-zinc-950">Day {contestProblem.dayIndex}</span>
-                          <span className={`border px-2 py-0.5 font-bold ${contestProblemPhaseMeta[contestProblem.problemPhase ?? "daily"].className}`}>
-                            {contestProblemPhaseMeta[contestProblem.problemPhase ?? "daily"].label}
+                          <span className={`border px-2 py-0.5 font-bold ${phaseMeta.className}`}>
+                            {phaseMeta.label}
                           </span>
                           <span className="border border-white/15 px-2 py-0.5 text-zinc-400">{contestProblem.title}</span>
                           {problem && !isLocked && <span className={`border px-2 py-0.5 ${difficultyBadgeClass[problem.difficulty]}`}>{problem.difficulty}</span>}
@@ -282,11 +306,10 @@ export default async function ContestDetailPage({ params }: PageProps) {
                         <h3 className="mt-3 font-bold text-white">
                           {isLocked ? contestProblem.theme : (displayTitle ?? "题目待关联")}
                         </h3>
-                        {/* While locked the theme already serves as the heading — repeating it below reads like a bug. */}
                         {!isLocked && <p className="mt-1.5 text-sm leading-6 text-zinc-500">{contestProblem.theme}</p>}
                       </div>
                       {!isLocked && (
-                        <div className="flex shrink-0 divide-x divide-white/10 border border-white/10 text-center sm:w-40">
+                        <div className="flex shrink-0 divide-x divide-white/10 border border-white/10 text-center sm:w-36">
                           <div className="flex-1 px-3 py-2.5">
                             <strong className="block text-base font-bold text-white">{problem?.solutions.length ?? 0}</strong>
                             <span className="text-[10px] text-zinc-500">解法</span>
@@ -319,8 +342,6 @@ export default async function ContestDetailPage({ params }: PageProps) {
                             进入题目
                             <ArrowUpRight className="size-3.5" />
                           </Link>
-                          {/* Sprint problems go through ContestSprintPanel on their own
-                              page instead of the general solution SubmitForm. */}
                           {contestProblem.problemPhase !== "sprint" && (contest.status === "active" || contest.status === "judging") && (
                             <Link
                               href={`/submit?contest=${contest.slug}&problem=${routeId}`}
