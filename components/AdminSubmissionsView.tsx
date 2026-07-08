@@ -415,7 +415,7 @@ export function AdminSubmissionsView() {
       setScoringError('');
       const { data, error: loadError } = await supabase
         .from('contests')
-        .select('id, slug, title, contest_problems(id, day_index, title, problem_phase, score_max, problem_id, draft_problem_id)')
+        .select('id, slug, title, contest_problems(id, day_index, title, problem_phase, score_max, time_limit_seconds, problem_id, draft_problem_id)')
         .eq('slug', contestSlugFilter)
         .single();
 
