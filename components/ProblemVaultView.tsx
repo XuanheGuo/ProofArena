@@ -425,13 +425,28 @@ export function ProblemVaultView({
       setError("这个草稿已被比赛引用，请先在比赛配置中解绑后再删除。");
       return;
     }
+
+    const supabase = createClient();
+    const { count: submissionCount, error: submissionLookupError } = await supabase
+      .from("submissions")
+      .select("id", { count: "exact", head: true })
+      .eq("draft_problem_id", selected.id);
+
+    if (submissionLookupError) {
+      setError(`删除前检查投稿引用失败：${submissionLookupError.message}`);
+      return;
+    }
+    if ((submissionCount ?? 0) > 0) {
+      setError(`这个草稿已有 ${submissionCount} 条投稿引用，不能直接删除。请先处理或迁移这些投稿。`);
+      return;
+    }
+
     if (!confirm(`确认删除草稿「${selected.title || selected.id}」？删除后无法恢复。`)) return;
 
     setDeleting(true);
     setError(null);
     setMessage(null);
 
-    const supabase = createClient();
     const { error: deleteError } = await supabase
       .from("problem_drafts")
       .delete()
