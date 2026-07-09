@@ -49,7 +49,9 @@ type AwardRow = {
   id: string;
   contest_id: string;
   problem_id: string | null;
+  draft_problem_id: string | null;
   solution_id: string | null;
+  submission_id: string | null;
   user_id: string | null;
   type: ContestAward["type"];
   title: string;
@@ -100,7 +102,9 @@ function toContest(row: ContestRow): Contest {
       id: award.id,
       contestId: award.contest_id,
       problemId: award.problem_id ?? undefined,
+      draftProblemId: award.draft_problem_id ?? undefined,
       solutionId: award.solution_id ?? undefined,
+      submissionId: award.submission_id ?? undefined,
       userId: award.user_id ?? undefined,
       type: award.type,
       title: award.title,
