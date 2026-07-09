@@ -45,6 +45,8 @@ type SubmissionRow = {
   draft_problem_id: string | null;
   contest_problem_key: string | null;
   status: SubmissionStatus;
+  title: string;
+  moderator_notes: string | null;
   created_at: string;
 };
 
@@ -163,7 +165,7 @@ export function AdminContestScoringView({
     const [subsRes, scoresRes, profilesRes, sprintRes] = await Promise.all([
       supabase
         .from("submissions")
-        .select("id, user_id, problem_id, draft_problem_id, contest_problem_key, status, created_at")
+        .select("id, user_id, problem_id, draft_problem_id, contest_problem_key, status, title, moderator_notes, created_at")
         .eq("contest_slug", contestSlug)
         .eq("submission_type", "solution")
         .not("status", "in", "(rejected,precheck_failed)")
@@ -472,58 +474,72 @@ export function AdminContestScoringView({
                     const phaseMeta = contestProblemPhaseMeta[cp.problem_phase];
 
                     return (
-                      <div key={cp.id} className="flex flex-wrap items-center gap-2 border-t border-white/[0.05] px-3 py-2">
-                        <span className={`shrink-0 border px-1.5 py-0.5 text-[10px] font-bold ${phaseMeta.className}`}>
-                          Day {cp.day_index} · {phaseMeta.label}
-                        </span>
-                        <span className="min-w-[6rem] flex-1 truncate text-xs font-bold text-white" title={cp.title}>
-                          {cp.title}
-                        </span>
-                        <span className="shrink-0 text-[11px] text-zinc-500">
-                          {subs.length === 0 ? (
-                            "未提交"
-                          ) : (
-                            <>
-                              {subs.length} 次
-                              {latestSub && (
-                                <span className={`ml-1 border px-1 py-0.5 ${submissionStatusMeta[latestSub.status].className}`}>
-                                  {submissionStatusMeta[latestSub.status].label}
-                                </span>
-                              )}
-                            </>
-                          )}
-                        </span>
-                        <input
-                          type="number"
-                          value={edit.rawScore}
-                          onChange={(event) =>
-                            setScoreEdits((prev) => ({ ...prev, [key]: { ...edit, rawScore: event.target.value } }))
-                          }
-                          className="h-7 w-16 shrink-0 border border-white/15 bg-black/20 px-1.5 text-xs text-white outline-none focus:border-cyan-400/50"
-                        />
-                        <span className="shrink-0 text-[11px] text-zinc-600">/ {cp.score_max}</span>
-                        <input
-                          type="text"
-                          placeholder="评语（可选）"
-                          value={edit.judgeNote}
-                          onChange={(event) =>
-                            setScoreEdits((prev) => ({ ...prev, [key]: { ...edit, judgeNote: event.target.value } }))
-                          }
-                          className="h-7 min-w-[8rem] flex-1 border border-white/15 bg-black/20 px-1.5 text-xs text-white outline-none focus:border-cyan-400/50"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => saveScore(cp, userId, edit)}
-                          disabled={isSaving}
-                          className="inline-flex h-7 shrink-0 items-center gap-1 border border-cyan-400/30 px-2 text-[11px] font-bold text-cyan-300 transition hover:bg-cyan-400/10 disabled:opacity-50"
-                        >
-                          <Save className="size-3" />
-                          {isSaving ? "保存中…" : "保存"}
-                        </button>
-                        {existing && (
-                          <span title={`已于 ${existing.scored_at ? formatContestDateTime(existing.scored_at) : "—"} 评分`}>
-                            <CheckCircle2 className="size-3.5 shrink-0 text-emerald-400" />
+                      <div key={cp.id} className="border-t border-white/[0.05] px-3 py-2">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className={`shrink-0 border px-1.5 py-0.5 text-[10px] font-bold ${phaseMeta.className}`}>
+                            Day {cp.day_index} · {phaseMeta.label}
                           </span>
+                          <span className="min-w-[6rem] flex-1 truncate text-xs font-bold text-white" title={cp.title}>
+                            {cp.title}
+                          </span>
+                          <span className="shrink-0 text-[11px] text-zinc-500">
+                            {subs.length === 0 ? (
+                              "未提交"
+                            ) : (
+                              <>
+                                {subs.length} 次
+                                {latestSub && (
+                                  <span className={`ml-1 border px-1 py-0.5 ${submissionStatusMeta[latestSub.status].className}`}>
+                                    {submissionStatusMeta[latestSub.status].label}
+                                  </span>
+                                )}
+                              </>
+                            )}
+                          </span>
+                          <input
+                            type="number"
+                            value={edit.rawScore}
+                            onChange={(event) =>
+                              setScoreEdits((prev) => ({ ...prev, [key]: { ...edit, rawScore: event.target.value } }))
+                            }
+                            className="h-7 w-16 shrink-0 border border-white/15 bg-black/20 px-1.5 text-xs text-white outline-none focus:border-cyan-400/50"
+                          />
+                          <span className="shrink-0 text-[11px] text-zinc-600">/ {cp.score_max}</span>
+                          <input
+                            type="text"
+                            placeholder="评分备注（可选）"
+                            value={edit.judgeNote}
+                            onChange={(event) =>
+                              setScoreEdits((prev) => ({ ...prev, [key]: { ...edit, judgeNote: event.target.value } }))
+                            }
+                            className="h-7 min-w-[8rem] flex-1 border border-white/15 bg-black/20 px-1.5 text-xs text-white outline-none focus:border-cyan-400/50"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => saveScore(cp, userId, edit)}
+                            disabled={isSaving}
+                            className="inline-flex h-7 shrink-0 items-center gap-1 border border-cyan-400/30 px-2 text-[11px] font-bold text-cyan-300 transition hover:bg-cyan-400/10 disabled:opacity-50"
+                          >
+                            <Save className="size-3" />
+                            {isSaving ? "保存中…" : "保存"}
+                          </button>
+                          {existing && (
+                            <span title={`已于 ${existing.scored_at ? formatContestDateTime(existing.scored_at) : "—"} 评分`}>
+                              <CheckCircle2 className="size-3.5 shrink-0 text-emerald-400" />
+                            </span>
+                          )}
+                        </div>
+                        {latestSub?.moderator_notes && (
+                          <div className="mt-2 rounded border border-amber-400/20 bg-amber-400/[0.045] px-2 py-1.5 text-[11px] leading-5 text-amber-100">
+                            <span className="font-bold text-amber-200">审核评语：</span>
+                            {latestSub.moderator_notes}
+                          </div>
+                        )}
+                        {existing?.judge_note && (
+                          <div className="mt-1 text-[11px] leading-5 text-zinc-500">
+                            <span className="font-bold text-zinc-400">评分备注：</span>
+                            {existing.judge_note}
+                          </div>
                         )}
                       </div>
                     );

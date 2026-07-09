@@ -14,6 +14,7 @@ import {
   Plus,
   Save,
   Search,
+  Trash2,
   X,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase-client";
@@ -22,8 +23,6 @@ import { contestProblemPhaseMeta } from "@/lib/contest-meta";
 import { MathBlock } from "@/components/MathBlock";
 import { MathPreviewTextArea } from "@/components/MathPreviewTextArea";
 import type { ContestProblemPhase } from "@/lib/types";
-
-const WEEKLY_SLUG = "weekly-arena-01";
 
 type DraftStatus = "drafting" | "promoted";
 
@@ -74,6 +73,11 @@ export interface DraftContestRef {
   hasAnswerKey: boolean;
 }
 
+export interface ContestAuditOption {
+  slug: string;
+  title: string;
+}
+
 type StatusFilter = "all" | "drafting" | "promoted";
 
 type DraftEditForm = {
@@ -95,6 +99,17 @@ type WeeklyAuditItem = {
   dayIndex: number;
   slotTitle: string;
   issues: string[];
+};
+
+type ContestAuditData = {
+  contest: ContestAuditOption | null;
+  draftPrefix: string | null;
+  total: number;
+  bound: number;
+  issueCount: number;
+  sprintTotal: number;
+  sprintReady: number;
+  grouped: Map<string, WeeklyAuditItem[]>;
 };
 
 const ANSWER_TYPE_LABELS: Record<string, string> = {
@@ -158,8 +173,14 @@ function weeklyPhaseSortKey(phase: string) {
   return index === -1 ? WEEKLY_PHASE_ORDER.length : index;
 }
 
-function weeklyDraftSortKey(id: string) {
-  const match = id.match(/^pa-weekly01-([dscm])(\d+)$/);
+function contestDraftPrefix(slug: string) {
+  const weekly = slug.match(/^weekly-arena-(\d+)$/);
+  if (weekly) return `pa-weekly${weekly[1]}-`;
+  return null;
+}
+
+function contestDraftSortKey(id: string) {
+  const match = id.match(/^pa-weekly\d+-([dscm])(\d+)$/);
   if (!match) return id;
   const groupRank: Record<string, string> = { d: "1", s: "2", c: "3", m: "4" };
   return `${groupRank[match[1]] ?? "9"}-${match[2].padStart(2, "0")}`;
@@ -168,10 +189,27 @@ function weeklyDraftSortKey(id: string) {
 export function ProblemVaultView({
   initialDrafts,
   contestRefs,
+  contests,
 }: {
   initialDrafts: ProblemDraft[];
   contestRefs: DraftContestRef[];
+  contests: ContestAuditOption[];
 }) {
+  const contestOptions = useMemo(() => {
+    const map = new Map<string, ContestAuditOption>();
+    for (const contest of contests) {
+      if (contest.slug) map.set(contest.slug, contest);
+    }
+    for (const ref of contestRefs) {
+      if (ref.contestSlug && !map.has(ref.contestSlug)) {
+        map.set(ref.contestSlug, { slug: ref.contestSlug, title: ref.contestTitle || ref.contestSlug });
+      }
+    }
+    return [...map.values()].sort((a, b) => b.slug.localeCompare(a.slug));
+  }, [contestRefs, contests]);
+  const [auditContestSlug, setAuditContestSlug] = useState<string>(
+    contestOptions.find((contest) => contest.slug.startsWith("weekly-arena-"))?.slug ?? contestOptions[0]?.slug ?? "",
+  );
   const [drafts, setDrafts] = useState<ProblemDraft[]>(initialDrafts);
   const [selectedId, setSelectedId] = useState<string | null>(
     initialDrafts.find((d) => d.status === "drafting")?.id ?? initialDrafts[0]?.id ?? null,
@@ -181,6 +219,7 @@ export function ProblemVaultView({
   const [editForm, setEditForm] = useState<DraftEditForm | null>(null);
   const [saving, setSaving] = useState(false);
   const [promoting, setPromoting] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -211,19 +250,35 @@ export function ProblemVaultView({
 
   const selected = drafts.find((draft) => draft.id === selectedId) ?? null;
   const selectedRefs = selected ? (refsByDraft.get(selected.id) ?? []) : [];
-  const isWeeklyBound = selectedRefs.some((ref) => ref.contestSlug === WEEKLY_SLUG);
+  const selectedAuditContest = contestOptions.find((contest) => contest.slug === auditContestSlug) ?? null;
+  const isAuditContestBound = Boolean(auditContestSlug && selectedRefs.some((ref) => ref.contestSlug === auditContestSlug));
 
-  const weeklyAudit = useMemo(() => {
-    const weeklyRefs = contestRefs.filter((ref) => ref.contestSlug === WEEKLY_SLUG);
-    const weeklyRefByDraft = new Map(weeklyRefs.map((ref) => [ref.draftId, ref]));
-    const weeklyDrafts = drafts
-      .filter((draft) => draft.id.startsWith("pa-weekly01-") || weeklyRefByDraft.has(draft.id))
-      .sort((a, b) => weeklyDraftSortKey(a.id).localeCompare(weeklyDraftSortKey(b.id)));
+  const contestAudit = useMemo<ContestAuditData>(() => {
+    const contest = contestOptions.find((option) => option.slug === auditContestSlug) ?? null;
+    if (!contest) {
+      return {
+        contest: null,
+        draftPrefix: null,
+        total: 0,
+        bound: 0,
+        issueCount: 0,
+        sprintTotal: 0,
+        sprintReady: 0,
+        grouped: new Map(),
+      };
+    }
 
-    const items: WeeklyAuditItem[] = weeklyDrafts.map((draft) => {
-      const ref = weeklyRefByDraft.get(draft.id) ?? null;
+    const draftPrefix = contestDraftPrefix(contest.slug);
+    const contestSpecificRefs = contestRefs.filter((ref) => ref.contestSlug === contest.slug);
+    const contestRefByDraft = new Map(contestSpecificRefs.map((ref) => [ref.draftId, ref]));
+    const contestDrafts = drafts
+      .filter((draft) => (draftPrefix ? draft.id.startsWith(draftPrefix) : false) || contestRefByDraft.has(draft.id))
+      .sort((a, b) => contestDraftSortKey(a.id).localeCompare(contestDraftSortKey(b.id)));
+
+    const items: WeeklyAuditItem[] = contestDrafts.map((draft) => {
+      const ref = contestRefByDraft.get(draft.id) ?? null;
       const issues = [...draftWarnings(draft)];
-      if (!ref) issues.push("未绑定 W01");
+      if (!ref) issues.push(`未绑定 ${contest.slug}`);
       if (draft.status !== "drafting") issues.push("不是草稿中");
       if (ref && isSprintRef(ref)) {
         if (!ref.answerType) issues.push("缺 answer_type");
@@ -247,6 +302,8 @@ export function ProblemVaultView({
     }
 
     return {
+      contest,
+      draftPrefix,
       total: items.length,
       bound: items.filter((item) => item.ref).length,
       issueCount: items.reduce((sum, item) => sum + item.issues.length, 0),
@@ -254,7 +311,7 @@ export function ProblemVaultView({
       sprintReady: items.filter((item) => item.phase === "sprint" && item.ref?.answerType && item.ref.hasAnswerKey).length,
       grouped,
     };
-  }, [contestRefs, drafts]);
+  }, [auditContestSlug, contestOptions, contestRefs, drafts]);
 
   function selectDraft(id: string) {
     if (id === selectedId) return;
@@ -357,6 +414,43 @@ export function ProblemVaultView({
     }
   }
 
+  async function handleDelete() {
+    if (!selected) return;
+    const refs = refsByDraft.get(selected.id) ?? [];
+    if (selected.status === "promoted") {
+      setError("已发布的草稿不能删除。");
+      return;
+    }
+    if (refs.length > 0) {
+      setError("这个草稿已被比赛引用，请先在比赛配置中解绑后再删除。");
+      return;
+    }
+    if (!confirm(`确认删除草稿「${selected.title || selected.id}」？删除后无法恢复。`)) return;
+
+    setDeleting(true);
+    setError(null);
+    setMessage(null);
+
+    const supabase = createClient();
+    const { error: deleteError } = await supabase
+      .from("problem_drafts")
+      .delete()
+      .eq("id", selected.id)
+      .eq("status", "drafting");
+
+    setDeleting(false);
+    if (deleteError) {
+      setError(`删除失败：${deleteError.message}`);
+      return;
+    }
+
+    const remaining = drafts.filter((draft) => draft.id !== selected.id);
+    setDrafts(remaining);
+    setSelectedId(remaining.find((draft) => draft.status === "drafting")?.id ?? remaining[0]?.id ?? null);
+    setEditForm(null);
+    setMessage("草稿已删除。");
+  }
+
   const draftingCount = drafts.filter((d) => d.status === "drafting").length;
   const promotedCount = drafts.filter((d) => d.status === "promoted").length;
 
@@ -392,7 +486,10 @@ export function ProblemVaultView({
       )}
 
       <WeeklyAuditPanel
-        audit={weeklyAudit}
+        audit={contestAudit}
+        contestOptions={contestOptions}
+        selectedContestSlug={auditContestSlug}
+        onSelectContest={setAuditContestSlug}
         selectedId={selectedId}
         onSelectDraft={selectDraft}
       />
@@ -443,7 +540,7 @@ export function ProblemVaultView({
             ) : (
               filteredDrafts.map((draft) => {
                 const warnings = draftWarnings(draft);
-                const bound = (refsByDraft.get(draft.id) ?? []).some((ref) => ref.contestSlug === WEEKLY_SLUG);
+                const bound = Boolean(auditContestSlug && (refsByDraft.get(draft.id) ?? []).some((ref) => ref.contestSlug === auditContestSlug));
                 const active = draft.id === selectedId;
                 return (
                   <button
@@ -476,7 +573,7 @@ export function ProblemVaultView({
                       <span className="truncate font-mono text-[10px] text-zinc-600">{draft.id}</span>
                       {bound && (
                         <span className="shrink-0 border border-cyan-400/30 bg-cyan-400/10 px-1 text-[10px] font-bold text-cyan-300">
-                          W01
+                          {auditContestSlug.replace(/^weekly-arena-/, "W")}
                         </span>
                       )}
                       {warnings.length > 0 && (
@@ -509,14 +606,17 @@ export function ProblemVaultView({
             <DraftDetail
               draft={selected}
               refs={selectedRefs}
-              isWeeklyBound={isWeeklyBound}
+              isAuditContestBound={isAuditContestBound}
+              auditContestLabel={selectedAuditContest?.title || selectedAuditContest?.slug || "当前比赛"}
               promoting={promoting}
+              deleting={deleting}
               onEdit={() => {
                 setEditForm(buildEditForm(selected));
                 setError(null);
                 setMessage(null);
               }}
               onPromote={handlePromote}
+              onDelete={handleDelete}
             />
           )}
         </div>
@@ -527,17 +627,16 @@ export function ProblemVaultView({
 
 function WeeklyAuditPanel({
   audit,
+  contestOptions,
+  selectedContestSlug,
+  onSelectContest,
   selectedId,
   onSelectDraft,
 }: {
-  audit: {
-    total: number;
-    bound: number;
-    issueCount: number;
-    sprintTotal: number;
-    sprintReady: number;
-    grouped: Map<string, WeeklyAuditItem[]>;
-  };
+  audit: ContestAuditData;
+  contestOptions: ContestAuditOption[];
+  selectedContestSlug: string;
+  onSelectContest: (slug: string) => void;
   selectedId: string | null;
   onSelectDraft: (id: string) => void;
 }) {
@@ -553,7 +652,7 @@ function WeeklyAuditPanel({
         <div>
           <div className="flex items-center gap-2">
             <ListChecks className="size-4 text-cyan-300" />
-            <h3 className="text-sm font-black text-white">Weekly 01 赛前检查</h3>
+            <h3 className="text-sm font-black text-white">赛前检查</h3>
             <span
               className={`inline-flex items-center gap-1 border px-2 py-0.5 text-[11px] font-bold ${
                 ready
@@ -566,11 +665,30 @@ function WeeklyAuditPanel({
             </span>
           </div>
           <p className="mt-1 text-xs text-zinc-500">
+            {audit.contest ? `${audit.contest.title || audit.contest.slug} · ` : ""}
             {audit.bound}/{audit.total} 已绑定 · sprint key {audit.sprintReady}/{audit.sprintTotal} · {audit.issueCount} 个检查项
           </p>
         </div>
 
-        <div className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
+        <div className="grid gap-2 text-xs sm:grid-cols-[minmax(12rem,1fr)_repeat(4,auto)]">
+          <label className="grid gap-1">
+            <span className="text-[10px] uppercase tracking-wide text-zinc-600">检查比赛</span>
+            <select
+              value={selectedContestSlug}
+              onChange={(event) => onSelectContest(event.target.value)}
+              className="h-9 min-w-0 border border-white/10 bg-zinc-950 px-2 text-xs font-bold text-zinc-200 outline-none focus:border-cyan-400/50"
+            >
+              {contestOptions.length === 0 ? (
+                <option value="">暂无比赛</option>
+              ) : (
+                contestOptions.map((contest) => (
+                  <option key={contest.slug} value={contest.slug}>
+                    {contest.title || contest.slug}
+                  </option>
+                ))
+              )}
+            </select>
+          </label>
           <AuditMetric label="草稿" value={String(audit.total)} />
           <AuditMetric label="已绑定" value={`${audit.bound}/${audit.total}`} />
           <AuditMetric label="计时 key" value={`${audit.sprintReady}/${audit.sprintTotal}`} />
@@ -578,13 +696,17 @@ function WeeklyAuditPanel({
         </div>
       </div>
 
-      {audit.total === 0 ? (
-        <p className="mt-3 text-xs text-zinc-500">没有检测到 pa-weekly01-* 草稿。</p>
+      {!audit.contest ? (
+        <p className="mt-3 text-xs text-zinc-500">暂无可检查的比赛。</p>
+      ) : audit.total === 0 ? (
+        <p className="mt-3 text-xs text-zinc-500">
+          没有检测到{audit.draftPrefix ? ` ${audit.draftPrefix}* 草稿或` : ""}绑定到该比赛的草稿。
+        </p>
       ) : (
         <div className="mt-3 grid gap-2 xl:grid-cols-4">
           {groups.map(([phase, items]) => {
             const meta = phaseMeta(phase);
-            const sorted = [...items].sort((a, b) => a.dayIndex - b.dayIndex || weeklyDraftSortKey(a.draft.id).localeCompare(weeklyDraftSortKey(b.draft.id)));
+            const sorted = [...items].sort((a, b) => a.dayIndex - b.dayIndex || contestDraftSortKey(a.draft.id).localeCompare(contestDraftSortKey(b.draft.id)));
             return (
               <div key={phase} className="border border-white/10 bg-black/25">
                 <div className="flex items-center justify-between border-b border-white/10 px-3 py-2">
@@ -660,17 +782,23 @@ function AuditMetric({ label, value, tone = "neutral" }: { label: string; value:
 function DraftDetail({
   draft,
   refs,
-  isWeeklyBound,
+  isAuditContestBound,
+  auditContestLabel,
   promoting,
+  deleting,
   onEdit,
   onPromote,
+  onDelete,
 }: {
   draft: ProblemDraft;
   refs: DraftContestRef[];
-  isWeeklyBound: boolean;
+  isAuditContestBound: boolean;
+  auditContestLabel: string;
   promoting: boolean;
+  deleting: boolean;
   onEdit: () => void;
   onPromote: () => void;
+  onDelete: () => void;
 }) {
   const warnings = draftWarnings(draft);
   const guide = draft.learning_guide;
@@ -696,12 +824,12 @@ function DraftDetail({
         <div className="flex shrink-0 flex-wrap items-center gap-2">
           <span
             className={`border px-2 py-0.5 text-xs font-bold ${
-              isWeeklyBound
+              isAuditContestBound
                 ? "border-cyan-400/40 bg-cyan-400/10 text-cyan-300"
                 : "border-zinc-500/30 bg-zinc-500/10 text-zinc-400"
             }`}
           >
-            Weekly 01 {isWeeklyBound ? "已绑定" : "未绑定"}
+            {auditContestLabel} {isAuditContestBound ? "已绑定" : "未绑定"}
           </span>
           <span
             className={`border px-2 py-0.5 text-xs font-bold ${
@@ -753,6 +881,18 @@ function DraftDetail({
             className="inline-flex h-8 items-center gap-1.5 border border-violet-500/30 bg-violet-500/10 px-3 text-xs font-bold text-violet-300 transition hover:border-violet-400/50 hover:bg-violet-500/20 disabled:opacity-50"
           >
             {promoting ? "发布中…" : <>发布到公开题库 <ArrowUpRight className="size-3" /></>}
+          </button>
+        )}
+        {draft.status !== "promoted" && (
+          <button
+            type="button"
+            onClick={onDelete}
+            disabled={deleting || refs.length > 0}
+            title={refs.length > 0 ? "这个草稿已被比赛引用，请先解绑" : "删除草稿"}
+            className="inline-flex h-8 items-center gap-1.5 border border-red-500/30 px-3 text-xs font-bold text-red-300 transition hover:bg-red-500/10 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <Trash2 className="size-3.5" />
+            {deleting ? "删除中…" : "删除草稿"}
           </button>
         )}
       </div>

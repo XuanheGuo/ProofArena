@@ -12,6 +12,7 @@ import {
   Clock,
   Eye,
   FileText,
+  KeyRound,
   Lightbulb,
   ListChecks,
   MessageSquareText,
@@ -29,7 +30,7 @@ import { convertPlainMathTextToLatex } from '@/lib/math-normalizer';
 import { getSolutionKindMeta } from '@/lib/solution-kinds';
 import { contestSolutionTypeMeta } from '@/lib/contest-meta';
 import { clearSubmissionCooldown } from '@/lib/submission-rate-limit-actions';
-import type { ContestSolutionType, SolutionScores } from '@/lib/types';
+import type { ContestAnswerType, ContestSolutionType, SolutionScores } from '@/lib/types';
 
 type SubmissionStatus = 'pending' | 'approved' | 'rejected' | 'needs_revision' | 'precheck_failed';
 type SolutionKind = 'standard' | 'insight' | 'robust' | 'teaching';
@@ -77,6 +78,40 @@ type ScoringContest = {
   slug: string;
   title: string;
   contest_problems: ScoringContestProblem[];
+};
+
+type ContestProblemAnswerKeyRow = {
+  contest_problem_id: string;
+  answer_type: ContestAnswerType;
+  answer_key: unknown;
+  format_note: string;
+};
+
+type ContestProblemAnswerHint = {
+  contestProblemId: string;
+  contestId: string;
+  contestProblemTitle: string;
+  problemPhase: string;
+  scoreMax: number;
+  answerType: ContestAnswerType | null;
+  answerFormatNote: string;
+  answerKey: unknown;
+  referenceAnswer: string;
+};
+
+type ContestSubmissionScoreRow = {
+  id: string;
+  contest_problem_id: string;
+  submission_id: string | null;
+  user_id: string;
+  raw_score: number;
+  judge_note: string;
+  scored_at: string | null;
+};
+
+type InlineScoreDraft = {
+  rawScore: string;
+  judgeNote: string;
 };
 
 function isForkPR(submission: Submission): boolean {
@@ -200,6 +235,28 @@ function normalizeScores(value: unknown): SolutionScores {
     elegance: normalizeScore(raw.elegance, defaultScores.elegance),
     calculation: normalizeScore(raw.calculation, defaultScores.calculation),
     explanation: normalizeScore(raw.explanation, defaultScores.explanation),
+  };
+}
+
+function answerKeyToText(value: unknown) {
+  if (Array.isArray(value)) {
+    return value.map((item) => String(item)).filter(Boolean).join('\n');
+  }
+  if (typeof value === 'string') return value;
+  if (value == null) return '';
+  return JSON.stringify(value);
+}
+
+const answerTypeLabels: Record<ContestAnswerType, string> = {
+  single_choice: '单选',
+  multiple_choice: '多选',
+  fill_blank: '填空',
+};
+
+function inlineScoreDraftFrom(score?: ContestSubmissionScoreRow): InlineScoreDraft {
+  return {
+    rawScore: score ? String(score.raw_score) : '',
+    judgeNote: score?.judge_note ?? '',
   };
 }
 
@@ -415,6 +472,10 @@ export function AdminSubmissionsView() {
   const [showPrecheckFailed, setShowPrecheckFailed] = useState(false);
   const [rateLimitLookup, setRateLimitLookup] = useState<{ consecutiveFailures: number; cooldownUntil: string | null } | null>(null);
   const [clearingCooldown, setClearingCooldown] = useState(false);
+  const [answerHints, setAnswerHints] = useState<Record<string, ContestProblemAnswerHint>>({});
+  const [submissionScores, setSubmissionScores] = useState<Record<string, ContestSubmissionScoreRow>>({});
+  const [inlineScoreDraft, setInlineScoreDraft] = useState<InlineScoreDraft>({ rawScore: '', judgeNote: '' });
+  const [inlineScoreSaving, setInlineScoreSaving] = useState(false);
   const supabase = createClient();
 
   useEffect(() => {
@@ -462,14 +523,156 @@ export function AdminSubmissionsView() {
       .order('created_at', { ascending: false });
 
     if (!loadError && data) {
-      setSubmissions(data as Submission[]);
+      const rows = data as Submission[];
+      setSubmissions(rows);
+      await loadContestAnswerHints(rows);
     }
     setLoading(false);
+  };
+
+  const loadContestAnswerHints = async (rows: Submission[]) => {
+    const contestRows = rows.filter((submission) => submission.contest_slug);
+    if (contestRows.length === 0) {
+      setAnswerHints({});
+      return;
+    }
+
+    const contestProblemIds = [
+      ...new Set(
+        contestRows
+          .map((submission) => submission.contest_problem_key)
+          .filter((value): value is string => Boolean(value)),
+      ),
+    ];
+    const problemIds = [
+      ...new Set(
+        contestRows
+          .map((submission) => submission.problem_id)
+          .filter((value): value is string => Boolean(value)),
+      ),
+    ];
+    const draftProblemIds = [
+      ...new Set(
+        contestRows
+          .map((submission) => submission.draft_problem_id)
+          .filter((value): value is string => Boolean(value)),
+      ),
+    ];
+
+    const [contestProblemsRes, answerKeysRes, problemsRes, draftsRes] = await Promise.all([
+      contestProblemIds.length > 0
+        ? supabase
+            .from('contest_problems')
+            .select('id, contest_id, title, problem_id, draft_problem_id, problem_phase, score_max, answer_type, answer_format_note')
+            .in('id', contestProblemIds)
+        : Promise.resolve({ data: [], error: null }),
+      contestProblemIds.length > 0
+        ? supabase
+            .from('contest_problem_answer_keys')
+            .select('contest_problem_id, answer_type, answer_key, format_note')
+            .in('contest_problem_id', contestProblemIds)
+        : Promise.resolve({ data: [], error: null }),
+      problemIds.length > 0
+        ? supabase
+            .from('problems')
+            .select('id, answer')
+            .in('id', problemIds)
+        : Promise.resolve({ data: [], error: null }),
+      draftProblemIds.length > 0
+        ? supabase
+            .from('problem_drafts')
+            .select('id, answer')
+            .in('id', draftProblemIds)
+        : Promise.resolve({ data: [], error: null }),
+    ]);
+
+    if (contestProblemsRes.error) {
+      setAnswerHints({});
+      return;
+    }
+
+    const contestProblems = (contestProblemsRes.data ?? []) as Array<{
+      id: string;
+      title: string;
+      problem_id: string | null;
+      draft_problem_id: string | null;
+      answer_type: ContestAnswerType | null;
+      answer_format_note: string | null;
+      contest_id: string;
+      problem_phase: string;
+      score_max: number;
+    }>;
+    const answerKeys = new Map(
+      ((answerKeysRes.data ?? []) as ContestProblemAnswerKeyRow[]).map((row) => [row.contest_problem_id, row]),
+    );
+    const problemAnswers = new Map(
+      ((problemsRes.data ?? []) as Array<{ id: string; answer: string | null }>).map((row) => [row.id, row.answer ?? '']),
+    );
+    const draftAnswers = new Map(
+      ((draftsRes.data ?? []) as Array<{ id: string; answer: string | null }>).map((row) => [row.id, row.answer ?? '']),
+    );
+
+    const contestProblemById = new Map(contestProblems.map((problem) => [problem.id, problem]));
+    const nextHints: Record<string, ContestProblemAnswerHint> = {};
+    for (const submission of contestRows) {
+      const contestProblem = submission.contest_problem_key
+        ? contestProblemById.get(submission.contest_problem_key)
+        : undefined;
+      if (!contestProblem) continue;
+
+      const answerKey = answerKeys.get(contestProblem.id);
+      const referenceAnswer = contestProblem.draft_problem_id
+        ? draftAnswers.get(contestProblem.draft_problem_id) ?? ''
+        : contestProblem.problem_id
+          ? problemAnswers.get(contestProblem.problem_id) ?? ''
+          : '';
+
+      nextHints[submission.id] = {
+        contestProblemId: contestProblem.id,
+        contestId: contestProblem.contest_id,
+        contestProblemTitle: contestProblem.title,
+        problemPhase: contestProblem.problem_phase,
+        scoreMax: Number(contestProblem.score_max) || 100,
+        answerType: answerKey?.answer_type ?? contestProblem.answer_type,
+        answerFormatNote: answerKey?.format_note ?? contestProblem.answer_format_note ?? '',
+        answerKey: answerKey?.answer_key,
+        referenceAnswer,
+      };
+    }
+
+    setAnswerHints(nextHints);
+
+    const scoreRowsRes = contestProblemIds.length > 0
+      ? await supabase
+          .from('contest_submission_scores')
+          .select('id, contest_problem_id, submission_id, user_id, raw_score, judge_note, scored_at')
+          .in('contest_problem_id', contestProblemIds)
+      : { data: [], error: null };
+
+    if (scoreRowsRes.error) {
+      setSubmissionScores({});
+      return;
+    }
+
+    const scoreRows = (scoreRowsRes.data ?? []) as ContestSubmissionScoreRow[];
+    const nextScores: Record<string, ContestSubmissionScoreRow> = {};
+    for (const submission of contestRows) {
+      const hint = nextHints[submission.id];
+      if (!hint) continue;
+      const score = scoreRows.find(
+        (row) =>
+          row.contest_problem_id === hint.contestProblemId &&
+          (row.submission_id === submission.id || row.user_id === submission.user_id),
+      );
+      if (score) nextScores[submission.id] = score;
+    }
+    setSubmissionScores(nextScores);
   };
 
   const openSubmission = (submission: Submission) => {
     setSelectedSubmission(submission);
     setForm(formFromSubmission(submission));
+    setInlineScoreDraft(inlineScoreDraftFrom(submissionScores[submission.id]));
     setPreviewMode('structured');
     setMessage('');
     setError('');
@@ -478,6 +681,7 @@ export function AdminSubmissionsView() {
   const closeSubmission = () => {
     setSelectedSubmission(null);
     setForm(null);
+    setInlineScoreDraft({ rawScore: '', judgeNote: '' });
     setMessage('');
     setError('');
   };
@@ -493,6 +697,12 @@ export function AdminSubmissionsView() {
       ...current,
       scores: { ...current.scores, [key]: normalizeScore(value, current.scores[key]) },
     } : current);
+    setMessage('');
+    setError('');
+  };
+
+  const updateInlineScoreDraft = <K extends keyof InlineScoreDraft>(key: K, value: InlineScoreDraft[K]) => {
+    setInlineScoreDraft((current) => ({ ...current, [key]: value }));
     setMessage('');
     setError('');
   };
@@ -586,6 +796,60 @@ export function AdminSubmissionsView() {
     }
 
     await loadSubmissions();
+  };
+
+  const saveInlineContestScore = async () => {
+    if (!selectedSubmission || !selectedSubmission.user_id) return;
+    const hint = answerHints[selectedSubmission.id];
+    if (!hint) {
+      setError('找不到当前投稿对应的赛题，无法保存评分。');
+      return;
+    }
+
+    const rawScoreNum = Number(inlineScoreDraft.rawScore);
+    if (inlineScoreDraft.rawScore.trim() === '' || Number.isNaN(rawScoreNum)) {
+      setError('请输入有效的比赛分数。');
+      return;
+    }
+    if (rawScoreNum < 0 || rawScoreNum > hint.scoreMax) {
+      setError(`分数需要在 0 - ${hint.scoreMax} 之间。`);
+      return;
+    }
+
+    setInlineScoreSaving(true);
+    setError('');
+    setMessage('');
+
+    const { data: adminData } = await supabase.auth.getUser();
+    const { data, error: upsertError } = await supabase.from('contest_submission_scores').upsert(
+      {
+        contest_id: hint.contestId,
+        contest_problem_id: hint.contestProblemId,
+        submission_id: selectedSubmission.id,
+        user_id: selectedSubmission.user_id,
+        problem_phase: hint.problemPhase,
+        raw_score: rawScoreNum,
+        score_max: hint.scoreMax,
+        rubric: {},
+        judge_note: inlineScoreDraft.judgeNote.trim() || form?.moderatorNotes.trim() || '',
+        scored_by: adminData.user?.id ?? null,
+        scored_at: new Date().toISOString(),
+      },
+      { onConflict: 'contest_problem_id,user_id' },
+    ).select('id, contest_problem_id, submission_id, user_id, raw_score, judge_note, scored_at');
+
+    setInlineScoreSaving(false);
+    if (upsertError) {
+      setError(upsertError.message || '保存比赛评分失败。');
+      return;
+    }
+
+    const score = data?.[0] as ContestSubmissionScoreRow | undefined;
+    if (score) {
+      setSubmissionScores((current) => ({ ...current, [selectedSubmission.id]: score }));
+      setInlineScoreDraft(inlineScoreDraftFrom(score));
+    }
+    setMessage('比赛评分已保存。');
   };
 
   const publishExisting = async (submissionId: string) => {
@@ -726,9 +990,9 @@ export function AdminSubmissionsView() {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-950 px-4 py-16">
+    <div className="min-h-screen bg-zinc-950 px-0 py-8 sm:px-4 sm:py-16">
       <div className="mx-auto max-w-6xl">
-        <div className="mb-8 flex items-center justify-between">
+        <div className="mb-6 flex flex-col gap-4 px-4 sm:mb-8 sm:flex-row sm:items-center sm:justify-between sm:px-0">
           <div>
             <h1 className="text-2xl font-black text-white">投稿审核</h1>
             <p className="mt-2 text-sm text-zinc-500">先修改内容，再写审核评语，最后给出通过、退回或拒绝结论。</p>
@@ -741,8 +1005,8 @@ export function AdminSubmissionsView() {
               </a>
             </div>
           </div>
-          <div className="flex flex-col items-end gap-2">
-            <div className="flex gap-2 text-xs">
+          <div className="flex flex-col gap-2 sm:items-end">
+            <div className="flex gap-2 text-xs sm:justify-end">
               <span className="text-zinc-500">
                 待审核 <span className="font-bold text-amber-300">{submissions.filter((s) => s.status === 'pending').length}</span>
               </span>
@@ -768,7 +1032,7 @@ export function AdminSubmissionsView() {
           </div>
         </div>
 
-        <div className="mb-5 flex flex-wrap gap-2 border border-white/10 bg-black/20 p-2">
+        <div className="mb-5 flex flex-wrap gap-2 border-y border-white/10 bg-black/20 p-2 sm:border">
           {[
             ['all', '全部投稿'],
             ['regular', '普通投稿'],
@@ -800,7 +1064,7 @@ export function AdminSubmissionsView() {
                 <select
                   value={contestSlugFilter}
                   onChange={(e) => { setContestSlugFilter(e.target.value); setContestProblemKeyFilter(''); }}
-                  className="h-9 border border-white/10 bg-zinc-900 px-2 text-xs text-zinc-300 outline-none"
+                  className="h-9 min-w-0 flex-1 border border-white/10 bg-zinc-900 px-2 text-xs text-zinc-300 outline-none sm:flex-none"
                   title="筛选比赛"
                 >
                   <option value="">全部比赛</option>
@@ -810,7 +1074,7 @@ export function AdminSubmissionsView() {
                   <select
                     value={contestProblemKeyFilter}
                     onChange={(e) => setContestProblemKeyFilter(e.target.value)}
-                    className="h-9 border border-white/10 bg-zinc-900 px-2 text-xs text-zinc-300 outline-none"
+                    className="h-9 min-w-0 flex-1 border border-white/10 bg-zinc-900 px-2 text-xs text-zinc-300 outline-none sm:flex-none"
                     title="筛选赛题"
                   >
                     <option value="">全部赛题</option>
@@ -850,10 +1114,10 @@ export function AdminSubmissionsView() {
           </div>
         )}
 
-        <div className="space-y-3">
+        <div className="space-y-3 px-4 sm:px-0">
           {visibleSubmissions.map((sub) => (
             <div key={sub.id} className="rounded border border-white/10 bg-white/[0.02] p-5 transition hover:bg-white/[0.04]">
-              <div className="flex items-start justify-between gap-4">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <div className="min-w-0 flex-1">
                   <div className="mb-2 flex flex-wrap items-center gap-2">
                     {getStatusBadge(sub.status)}
@@ -878,14 +1142,20 @@ export function AdminSubmissionsView() {
                     )}
                     <span className="text-xs text-zinc-600">{new Date(sub.created_at).toLocaleDateString('zh-CN')}</span>
                     {sub.moderator_notes && <span className="rounded border border-white/10 px-2 py-1 text-xs text-zinc-500">已有评语</span>}
+                    {answerHints[sub.id] && (
+                      <span className="inline-flex items-center gap-1 rounded border border-emerald-400/25 bg-emerald-400/[0.055] px-2 py-1 text-xs font-bold text-emerald-300">
+                        <KeyRound className="size-3" />
+                        有标准答案
+                      </span>
+                    )}
                   </div>
-                  <h3 className="truncate font-bold text-white">{sub.title}</h3>
+                  <h3 className="break-words font-bold text-white sm:truncate">{sub.title}</h3>
                   <p className="mt-1 text-sm text-zinc-500">
                     {getTypeLabel(sub)} · {getTargetLabel(sub)} · 类型: {kindLabels[sub.kind] ?? sub.kind}
                     {sub.contest_slug && ` · ${sub.contest_slug}${sub.contest_problem_key ? ` / ${sub.contest_problem_key}` : ''}`}
                   </p>
                 </div>
-                <div className="flex shrink-0 gap-2">
+                <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
                   {sub.status === 'approved' && !sub.contest_slug && (
                     <button
                       type="button"
@@ -904,7 +1174,7 @@ export function AdminSubmissionsView() {
                   <button
                     type="button"
                     onClick={() => openSubmission(sub)}
-                    className="inline-flex h-9 items-center gap-2 rounded border border-white/10 px-4 text-sm text-zinc-400 transition hover:border-cyan-400/50 hover:text-cyan-400"
+                    className="inline-flex h-9 items-center justify-center gap-2 rounded border border-white/10 px-4 text-sm text-zinc-400 transition hover:border-cyan-400/50 hover:text-cyan-400"
                   >
                     <Eye className="size-4" />
                     审核编辑
@@ -922,18 +1192,18 @@ export function AdminSubmissionsView() {
         </div>
 
         {selectedSubmission && form && (
-          <div className="fixed inset-0 z-50 bg-black/80 p-4">
-            <div className="mx-auto flex h-full w-full max-w-7xl flex-col overflow-hidden rounded border border-white/10 bg-zinc-950">
-              <div className="flex items-start justify-between gap-4 border-b border-white/10 px-5 py-4">
+          <div className="fixed inset-0 z-50 bg-black/80 p-0 sm:p-4">
+            <div className="mx-auto flex h-full w-full max-w-7xl flex-col overflow-hidden rounded-none border-white/10 bg-zinc-950 sm:rounded sm:border">
+              <div className="flex items-start justify-between gap-3 border-b border-white/10 px-4 py-3 sm:gap-4 sm:px-5 sm:py-4">
                 <div className="min-w-0">
-                  <div className="mb-2 flex items-center gap-2">
+                  <div className="mb-2 flex flex-wrap items-center gap-2">
                     {getStatusBadge(selectedSubmission.status)}
                     <span className={`rounded border px-2 py-1 text-xs font-bold ${selectedSubmission.contest_slug ? 'border-amber-400/30 bg-amber-400/[0.06] text-amber-300' : 'border-white/10 text-zinc-500'}`}>
                       {getScopeLabel(selectedSubmission)}
                     </span>
                     <span className="text-xs text-zinc-600">{new Date(selectedSubmission.created_at).toLocaleString('zh-CN')}</span>
                   </div>
-                  <h2 className="truncate text-xl font-black text-white">{form.title || selectedSubmission.title}</h2>
+                  <h2 className="line-clamp-2 text-lg font-black text-white sm:truncate sm:text-xl">{form.title || selectedSubmission.title}</h2>
                   <p className="mt-1 text-sm text-zinc-500">{getTypeLabel(selectedSubmission)} · {getTargetLabel(selectedSubmission)}</p>
                   {rateLimitLookup && (rateLimitLookup.consecutiveFailures > 0 || rateLimitLookup.cooldownUntil) && (
                     <div className="mt-2 flex flex-wrap items-center gap-2 border border-orange-400/25 bg-orange-400/[0.05] px-2.5 py-1.5 text-xs text-orange-300">
@@ -963,7 +1233,7 @@ export function AdminSubmissionsView() {
               </div>
 
               <div className="grid min-h-0 flex-1 gap-0 lg:grid-cols-[minmax(0,1fr)_22rem]">
-                <div className="min-h-0 overflow-auto p-5">
+                <div className="min-h-0 overflow-auto p-4 sm:p-5">
                   {!isContestSubmission(selectedSubmission) && (
                     <div className="mb-5 inline-flex rounded border border-white/10 bg-black/20 p-1">
                       {[
@@ -991,7 +1261,7 @@ export function AdminSubmissionsView() {
                   )}
 
                   {isContestSubmission(selectedSubmission) ? (
-                    <ContestSubmissionReviewPreview submission={selectedSubmission} />
+                    <ContestSubmissionReviewPreview submission={selectedSubmission} answerHint={answerHints[selectedSubmission.id]} />
                   ) : previewMode === 'structured' ? (
                     <div className="space-y-5">
                       <section className="grid gap-4 md:grid-cols-2">
@@ -1123,19 +1393,76 @@ export function AdminSubmissionsView() {
                   )}
                 </div>
 
-                <aside className="min-h-0 overflow-auto border-t border-white/10 p-5 lg:border-l lg:border-t-0">
+                <aside className="order-first max-h-[48vh] min-h-0 overflow-auto border-b border-white/10 p-4 sm:p-5 lg:order-none lg:max-h-none lg:border-b-0 lg:border-l">
                   <div className="space-y-5">
+                    {isContestSubmission(selectedSubmission) && (
+                      <StandardAnswerHintPanel hint={answerHints[selectedSubmission.id]} compact />
+                    )}
+
                     <TextArea
                       label="审核评语"
                       value={form.moderatorNotes}
                       onChange={(value) => updateField('moderatorNotes', value)}
-                      rows={8}
+                      rows={isContestSubmission(selectedSubmission) ? 4 : 6}
                       placeholder={
                         isContestSubmission(selectedSubmission)
                           ? '可选：给参赛者留一句审核说明。退回或拒绝时请写清原因。'
                           : '说明通过理由、需要修改的位置，或拒绝原因。审核结论必须带评语。'
                       }
                     />
+
+                    {isContestSubmission(selectedSubmission) && answerHints[selectedSubmission.id] && (
+                      <section className="rounded border border-cyan-400/25 bg-cyan-400/[0.045] p-3">
+                        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                          <div>
+                            <h3 className="text-sm font-bold text-cyan-100">当前投稿评分</h3>
+                            <p className="mt-1 text-xs text-zinc-500">
+                              {answerHints[selectedSubmission.id].contestProblemTitle}
+                            </p>
+                          </div>
+                          {submissionScores[selectedSubmission.id] && (
+                            <span className="inline-flex items-center gap-1 border border-emerald-400/30 px-2 py-1 text-[11px] font-bold text-emerald-300">
+                              <CheckCircle2 className="size-3" />
+                              已评分
+                            </span>
+                          )}
+                        </div>
+                        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-2">
+                          <label className="grid gap-1 text-xs">
+                            <span className="font-bold text-zinc-300">分数</span>
+                            <input
+                              type="number"
+                              min="0"
+                              max={answerHints[selectedSubmission.id].scoreMax}
+                              value={inlineScoreDraft.rawScore}
+                              onChange={(event) => updateInlineScoreDraft('rawScore', event.target.value)}
+                              className="h-10 rounded border border-white/15 bg-black/20 px-3 text-sm text-white outline-none focus:border-cyan-400/60"
+                              placeholder="0"
+                            />
+                          </label>
+                          <span className="pb-2 text-xs text-zinc-500">/ {answerHints[selectedSubmission.id].scoreMax}</span>
+                        </div>
+                        <label className="mt-3 grid gap-1 text-xs">
+                          <span className="font-bold text-zinc-300">评分备注</span>
+                          <textarea
+                            rows={3}
+                            value={inlineScoreDraft.judgeNote}
+                            onChange={(event) => updateInlineScoreDraft('judgeNote', event.target.value)}
+                            placeholder="可直接沿用审核评语；留空时保存会自动带入审核评语。"
+                            className="resize-y rounded border border-white/15 bg-black/20 px-3 py-2 text-sm text-white outline-none focus:border-cyan-400/60"
+                          />
+                        </label>
+                        <button
+                          type="button"
+                          onClick={saveInlineContestScore}
+                          disabled={inlineScoreSaving}
+                          className="mt-3 inline-flex h-10 w-full items-center justify-center gap-2 rounded bg-cyan-400 text-sm font-bold text-zinc-950 transition hover:bg-cyan-300 disabled:opacity-50"
+                        >
+                          <Save className="size-4" />
+                          {inlineScoreSaving ? '保存评分中...' : '保存比赛评分'}
+                        </button>
+                      </section>
+                    )}
 
                     {!isContestSubmission(selectedSubmission) ? (
                       <button
@@ -1318,7 +1645,74 @@ function renderContestValue(value: unknown) {
   );
 }
 
-function ContestSubmissionReviewPreview({ submission }: { submission: Submission }) {
+function StandardAnswerHintPanel({
+  hint,
+  compact = false,
+}: {
+  hint?: ContestProblemAnswerHint;
+  compact?: boolean;
+}) {
+  if (!hint) {
+    return (
+      <section className="rounded border border-amber-400/25 bg-amber-400/[0.055] p-3">
+        <div className="flex items-center gap-2 text-sm font-bold text-amber-200">
+          <KeyRound className="size-4" />
+          标准答案未载入
+        </div>
+        <p className="mt-2 text-xs leading-5 text-zinc-500">未找到这条投稿对应的赛题答案。可以检查 contest_problem_key 或赛题绑定。</p>
+      </section>
+    );
+  }
+
+  const answerKeyText = answerKeyToText(hint.answerKey);
+
+  return (
+    <section className="rounded border border-emerald-400/25 bg-emerald-400/[0.045] p-3 sm:p-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="inline-flex items-center gap-1.5 text-sm font-bold text-emerald-200">
+          <KeyRound className="size-4" />
+          标准答案指示
+        </span>
+        {hint.answerType && (
+          <span className="border border-emerald-400/25 px-2 py-0.5 text-[11px] font-bold text-emerald-200">
+            {answerTypeLabels[hint.answerType]}
+          </span>
+        )}
+      </div>
+
+      <p className="mt-2 text-xs leading-5 text-zinc-500">{hint.contestProblemTitle}</p>
+
+      {answerKeyText && (
+        <div className="mt-3 rounded border border-white/10 bg-zinc-950/70 p-3">
+          <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-zinc-500">答案 key</p>
+          <pre className="whitespace-pre-wrap break-words font-mono text-sm leading-6 text-emerald-100">{answerKeyText}</pre>
+          {hint.answerFormatNote && <p className="mt-2 text-xs leading-5 text-zinc-500">{hint.answerFormatNote}</p>}
+        </div>
+      )}
+
+      {hint.referenceAnswer && (
+        <div className="mt-3 rounded border border-white/10 bg-black/20 p-3">
+          <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-zinc-500">参考解析</p>
+          <div className={`${compact ? 'max-h-44' : 'max-h-72'} overflow-auto pr-1 text-sm leading-7 text-zinc-300`}>
+            <MathBlock>{hint.referenceAnswer}</MathBlock>
+          </div>
+        </div>
+      )}
+
+      {!answerKeyText && !hint.referenceAnswer && (
+        <p className="mt-3 text-xs leading-5 text-zinc-500">这道赛题还没有配置可展示的答案 key 或参考解析。</p>
+      )}
+    </section>
+  );
+}
+
+function ContestSubmissionReviewPreview({
+  submission,
+  answerHint,
+}: {
+  submission: Submission;
+  answerHint?: ContestProblemAnswerHint;
+}) {
   const solution = submission.content.json?.solution ?? {};
   const rawSections: Array<[string, unknown]> = [
     ['我的思路', submission.content.thought ?? submission.content.approach ?? solution.origin],
@@ -1352,6 +1746,8 @@ function ContestSubmissionReviewPreview({ submission }: { submission: Submission
           {submission.contest_problem_key ? ` · 赛题 ${submission.contest_problem_key}` : ''}
         </p>
       </section>
+
+      <StandardAnswerHintPanel hint={answerHint} />
 
       {sections.length > 0 ? (
         <div className="space-y-4">

@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient, createServiceClient } from "@/lib/supabase-server";
 import {
+  type ContestAuditOption,
   ProblemVaultView,
   type DraftContestRef,
   type ProblemDraft,
@@ -49,7 +50,7 @@ export default async function ProblemVaultPage() {
   // Service-role reads (bypass RLS) are only reached AFTER the admin/moderator
   // check above — draft content must never serialize into a non-admin page.
   const serviceSupabase = createServiceClient();
-  const [{ data: drafts, error: draftsError }, { data: refRows }] = await Promise.all([
+  const [{ data: drafts, error: draftsError }, { data: refRows }, { data: contestRows }] = await Promise.all([
     serviceSupabase
       .from("problem_drafts")
       .select(
@@ -60,6 +61,10 @@ export default async function ProblemVaultPage() {
       .from("contest_problems")
       .select("id, draft_problem_id, day_index, problem_phase, title, answer_type, timed_mode_enabled, contests(slug, title)")
       .not("draft_problem_id", "is", null),
+    serviceSupabase
+      .from("contests")
+      .select("slug, title")
+      .order("start_at", { ascending: false }),
   ]);
 
   // Existence-only check on answer keys: select just the id column, never
@@ -109,6 +114,7 @@ export default async function ProblemVaultPage() {
           <ProblemVaultView
             initialDrafts={(drafts ?? []) as ProblemDraft[]}
             contestRefs={contestRefs}
+            contests={(contestRows ?? []) as ContestAuditOption[]}
           />
         </div>
       </div>
