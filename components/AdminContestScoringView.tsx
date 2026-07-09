@@ -166,7 +166,7 @@ export function AdminContestScoringView({
         .select("id, user_id, problem_id, draft_problem_id, contest_problem_key, status, created_at")
         .eq("contest_slug", contestSlug)
         .eq("submission_type", "solution")
-        .neq("status", "rejected")
+        .not("status", "in", "(rejected,precheck_failed)")
         .order("created_at", { ascending: false }),
       supabase
         .from("contest_submission_scores")

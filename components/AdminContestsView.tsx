@@ -338,7 +338,7 @@ export function AdminContestsView({ problems, initialDraftProblems = [] }: { pro
           .select("id, title, user_id, problem_id, draft_problem_id, contest_problem_key, contest_solution_type, status, created_at")
           .eq("contest_slug", contestForOptions.slug)
           .eq("submission_type", "solution")
-          .neq("status", "rejected"),
+          .not("status", "in", "(rejected,precheck_failed)"),
         supabase
           .from("solutions")
           .select("id, title, author, author_id, problem_id, source_submission_id, contest_problem_key, contest_solution_type")
