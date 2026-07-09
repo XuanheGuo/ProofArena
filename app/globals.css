@@ -2,10 +2,28 @@
 @import "katex/dist/katex.min.css";
 @import "./jsxgraph.css";
 
+/*
+ * Semantic color tokens. These are a value-preserving extraction of the
+ * colors already hardcoded across the [data-theme] override rules below —
+ * every var() reference resolves to the exact same color that literal used
+ * to, per theme. The goal is a single source of truth for the site's brand
+ * accent (which wavered between cyan and indigo depending on where you
+ * looked) plus the danger/contest/verified semantic colors, not a visual
+ * redesign. See docs/UI_UX_AUDIT.md A2.
+ */
 :root {
   --background: #f7f8fa;
   --foreground: #111827;
   --grid-line: rgba(17, 24, 39, 0.045);
+  --accent: #4f46e5;
+  --accent-strong: #4f46e5;
+  --accent-soft: rgba(79, 70, 229, 0.06);
+  --accent-border: rgba(79, 70, 229, 0.22);
+  --danger: #c2410c;
+  --danger-border: rgba(245, 158, 11, 0.46);
+  --danger-soft: rgba(245, 158, 11, 0.08);
+  --contest: #b45309;
+  --verified: #047857;
 }
 
 :root[data-theme="light"] {
@@ -13,6 +31,15 @@
   --foreground: #111827;
   --grid-line: rgba(17, 24, 39, 0.045);
   --surface: #ffffff;
+  --accent: #4f46e5;
+  --accent-strong: #4f46e5;
+  --accent-soft: rgba(79, 70, 229, 0.06);
+  --accent-border: rgba(79, 70, 229, 0.22);
+  --danger: #c2410c;
+  --danger-border: rgba(245, 158, 11, 0.46);
+  --danger-soft: rgba(245, 158, 11, 0.08);
+  --contest: #b45309;
+  --verified: #047857;
 }
 
 :root[data-theme="dark"] {
@@ -20,10 +47,29 @@
   --foreground: #f3f4f6;
   --grid-line: rgba(255, 255, 255, 0.045);
   --surface: #181b23;
+  --accent: #a5b4fc;
+  --accent-strong: #6366f1;
+  --accent-soft: rgba(99, 102, 241, 0.14);
+  --accent-border: rgba(129, 140, 248, 0.34);
+  --danger: #fb923c;
+  --danger-border: rgba(245, 158, 11, 0.45);
+  --danger-soft: rgba(245, 158, 11, 0.12);
+  --contest: #fbbf24;
+  --verified: #34d399;
 }
 
 * {
   box-sizing: border-box;
+}
+
+:root {
+  /* Shared timing for hover/focus/press micro-interactions — a single
+     reference so new components don't each invent their own duration/easing.
+     Deliberately not retrofitted onto every existing `transition` utility
+     class site-wide in this pass (that's a broad, purely-cosmetic sweep
+     across many components with no visual QA available right now); use this
+     going forward for new interactive elements. */
+  --transition-fast: 150ms cubic-bezier(0.2, 0, 0, 1);
 }
 
 html {
@@ -95,12 +141,8 @@ select {
 }
 
 ::selection {
-  background: #4f46e5;
+  background: var(--accent-strong);
   color: #ffffff;
-}
-
-[data-theme="dark"] ::selection {
-  background: #6366f1;
 }
 
 :focus-visible {
@@ -161,7 +203,7 @@ select {
 
 .JXGtext,
 .JXGinfobox {
-  font-family: Arial, "PingFang SC", "Microsoft YaHei", sans-serif !important;
+  font-family: var(--font-sans), "PingFang SC", "MiSans", "HarmonyOS Sans SC", "Noto Sans SC", sans-serif !important;
 }
 
 [data-theme="light"] .jxgbox {
@@ -246,29 +288,29 @@ select {
 [data-theme="light"] [class~="text-cyan-200"],
 [data-theme="light"] [class~="text-cyan-300"],
 [data-theme="light"] [class~="text-cyan-400"] {
-  color: #4f46e5 !important;
+  color: var(--accent) !important;
 }
 
 [data-theme="light"] [class~="text-amber-200"],
 [data-theme="light"] [class~="text-amber-300"] {
-  color: #b45309 !important;
+  color: var(--contest) !important;
 }
 
 [data-theme="light"] [class~="text-emerald-200"],
 [data-theme="light"] [class~="text-emerald-300"],
 [data-theme="light"] [class~="text-emerald-400"] {
-  color: #047857 !important;
+  color: var(--verified) !important;
 }
 
 [data-theme="light"] [class~="text-red-200"],
 [data-theme="light"] [class~="text-red-300"],
 [data-theme="light"] [class~="text-red-400"] {
-  color: #c2410c !important;
+  color: var(--danger) !important;
 }
 
 [data-theme="light"] [class~="bg-cyan-400"],
 [data-theme="light"] [class~="hover:bg-cyan-300"]:hover {
-  background-color: #4f46e5 !important;
+  background-color: var(--accent-strong) !important;
 }
 
 [data-theme="light"] [class~="bg-cyan-400"][class~="text-zinc-950"],
@@ -280,7 +322,7 @@ select {
 [data-theme="light"] [class~="bg-cyan-400/[0.04]"],
 [data-theme="light"] [class~="bg-cyan-400/[0.06]"],
 [data-theme="light"] [class~="bg-cyan-400/10"] {
-  background-color: rgba(79, 70, 229, 0.06) !important;
+  background-color: var(--accent-soft) !important;
 }
 
 [data-theme="light"] [class~="border-cyan-400/20"],
@@ -289,11 +331,11 @@ select {
 [data-theme="light"] [class~="border-cyan-400/35"],
 [data-theme="light"] [class~="border-cyan-400/40"],
 [data-theme="light"] [class~="border-cyan-400"] {
-  border-color: rgba(79, 70, 229, 0.22) !important;
+  border-color: var(--accent-border) !important;
 }
 
 [data-theme="light"] [class~="border-cyan-400"][class~="bg-cyan-400"] {
-  border-color: #4f46e5 !important;
+  border-color: var(--accent-strong) !important;
 }
 
 [data-theme="light"] [class~="border-red-400/20"],
@@ -302,13 +344,13 @@ select {
 [data-theme="light"] [class~="border-red-400/35"],
 [data-theme="light"] [class~="border-red-400/40"],
 [data-theme="light"] [class~="border-red-500"] {
-  border-color: rgba(245, 158, 11, 0.46) !important;
+  border-color: var(--danger-border) !important;
 }
 
 [data-theme="light"] [class~="bg-red-400/10"],
 [data-theme="light"] [class~="bg-red-500/5"],
 [data-theme="light"] [class~="bg-red-500/[0.04]"] {
-  background-color: rgba(245, 158, 11, 0.08) !important;
+  background-color: var(--danger-soft) !important;
 }
 
 [data-theme="light"] [class~="bg-red-500"][class~="text-white"] {
@@ -340,7 +382,7 @@ select {
 /* Share cards have their own reading surface, so light mode does not inherit dark gradients. */
 [data-theme="light"] .share-card {
   border-color: rgba(63, 63, 70, 0.18) !important;
-  border-top-color: #4f46e5 !important;
+  border-top-color: var(--accent) !important;
   background: #ffffff !important;
   box-shadow: 0 16px 36px rgba(24, 24, 27, 0.08) !important;
 }
@@ -357,7 +399,7 @@ select {
 [data-theme="light"] .share-card .text-cyan-100,
 [data-theme="light"] .share-card .text-cyan-200,
 [data-theme="light"] .share-card .text-cyan-300 {
-  color: #4f46e5 !important;
+  color: var(--accent) !important;
 }
 
 [data-theme="light"] .share-card .text-amber-300 {
@@ -446,29 +488,29 @@ select {
 [data-theme="dark"] [class~="text-cyan-200"],
 [data-theme="dark"] [class~="text-cyan-300"],
 [data-theme="dark"] [class~="text-cyan-400"] {
-  color: #a5b4fc !important;
+  color: var(--accent) !important;
 }
 
 [data-theme="dark"] [class~="text-amber-200"],
 [data-theme="dark"] [class~="text-amber-300"] {
-  color: #fbbf24 !important;
+  color: var(--contest) !important;
 }
 
 [data-theme="dark"] [class~="text-emerald-200"],
 [data-theme="dark"] [class~="text-emerald-300"],
 [data-theme="dark"] [class~="text-emerald-400"] {
-  color: #34d399 !important;
+  color: var(--verified) !important;
 }
 
 [data-theme="dark"] [class~="text-red-200"],
 [data-theme="dark"] [class~="text-red-300"],
 [data-theme="dark"] [class~="text-red-400"] {
-  color: #fb923c !important;
+  color: var(--danger) !important;
 }
 
 [data-theme="dark"] [class~="bg-cyan-400"],
 [data-theme="dark"] [class~="hover:bg-cyan-300"]:hover {
-  background-color: #6366f1 !important;
+  background-color: var(--accent-strong) !important;
 }
 
 [data-theme="dark"] [class~="bg-cyan-400"][class~="text-zinc-950"],
@@ -480,7 +522,7 @@ select {
 [data-theme="dark"] [class~="bg-cyan-400/[0.04]"],
 [data-theme="dark"] [class~="bg-cyan-400/[0.06]"],
 [data-theme="dark"] [class~="bg-cyan-400/10"] {
-  background-color: rgba(99, 102, 241, 0.14) !important;
+  background-color: var(--accent-soft) !important;
 }
 
 [data-theme="dark"] [class~="border-cyan-400/20"],
@@ -489,11 +531,11 @@ select {
 [data-theme="dark"] [class~="border-cyan-400/35"],
 [data-theme="dark"] [class~="border-cyan-400/40"],
 [data-theme="dark"] [class~="border-cyan-400"] {
-  border-color: rgba(129, 140, 248, 0.34) !important;
+  border-color: var(--accent-border) !important;
 }
 
 [data-theme="dark"] [class~="border-cyan-400"][class~="bg-cyan-400"] {
-  border-color: #6366f1 !important;
+  border-color: var(--accent-strong) !important;
 }
 
 [data-theme="dark"] [class~="border-red-400/20"],
@@ -502,13 +544,13 @@ select {
 [data-theme="dark"] [class~="border-red-400/35"],
 [data-theme="dark"] [class~="border-red-400/40"],
 [data-theme="dark"] [class~="border-red-500"] {
-  border-color: rgba(245, 158, 11, 0.45) !important;
+  border-color: var(--danger-border) !important;
 }
 
 [data-theme="dark"] [class~="bg-red-400/10"],
 [data-theme="dark"] [class~="bg-red-500/5"],
 [data-theme="dark"] [class~="bg-red-500/[0.04]"] {
-  background-color: rgba(245, 158, 11, 0.12) !important;
+  background-color: var(--danger-soft) !important;
 }
 
 [data-theme="dark"] section[class*="border"][class*="bg-zinc-950"],
@@ -535,7 +577,7 @@ select {
 
 [data-theme="dark"] .share-card {
   border-color: #2a2f3a !important;
-  border-top-color: #6366f1 !important;
+  border-top-color: var(--accent-strong) !important;
   background: #181b23 !important;
   box-shadow: 0 18px 42px rgba(0, 0, 0, 0.22) !important;
 }

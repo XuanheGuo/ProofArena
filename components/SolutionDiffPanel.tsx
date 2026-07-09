@@ -5,6 +5,7 @@ import { useState } from "react";
 import type { ReactNode } from "react";
 import { ChevronDown, GitBranch, GitCompare } from "lucide-react";
 import { MathBlock } from "@/components/MathBlock";
+import { Listbox } from "@/components/Listbox";
 import { stripMathDelimiters } from "@/lib/math-normalizer";
 import type { Problem, ProofChallengeEdge, ProofObservation, ProofStrategyBranch, ProofTransformation, Solution } from "@/lib/types";
 
@@ -270,31 +271,31 @@ export function SolutionDiffPanel({ problem }: { problem: Problem }) {
         <div className="mb-4 grid gap-2 sm:grid-cols-2">
           <div className="grid min-w-0 gap-1 text-xs">
             <span className="font-bold text-cyan-300">路线 A</span>
-            <select
+            <Listbox
+              label="路线 A"
               value={aId}
-              onChange={(e) => setAId(e.target.value)}
-              className="h-9 w-full min-w-0 rounded border border-white/10 bg-zinc-900 px-2 text-xs text-white outline-none focus:border-cyan-400/50"
-            >
-              {solutions.filter((s) => s.id !== bId).map((s) => (
-                <option key={s.id} value={s.id}>
-                  [{kindLabel[s.kind] ?? s.kind}] {stripMathDelimiters(s.title)}
-                </option>
-              ))}
-            </select>
+              onChange={setAId}
+              options={solutions.filter((s) => s.id !== bId).map((s) => s.id)}
+              renderOption={(id) => {
+                const s = solutions.find((item) => item.id === id);
+                return s ? `[${kindLabel[s.kind] ?? s.kind}] ${stripMathDelimiters(s.title)}` : id;
+              }}
+              buttonClassName="flex h-9 w-full min-w-0 items-center justify-between rounded border border-white/10 bg-zinc-900 px-2 text-xs text-white outline-none transition active:translate-y-px focus-visible:border-cyan-400/50"
+            />
           </div>
           <div className="grid min-w-0 gap-1 text-xs">
             <span className="font-bold text-amber-300">路线 B</span>
-            <select
+            <Listbox
+              label="路线 B"
               value={bId}
-              onChange={(e) => setBId(e.target.value)}
-              className="h-9 w-full min-w-0 rounded border border-white/10 bg-zinc-900 px-2 text-xs text-white outline-none focus:border-amber-400/50"
-            >
-              {solutions.filter((s) => s.id !== aId).map((s) => (
-                <option key={s.id} value={s.id}>
-                  [{kindLabel[s.kind] ?? s.kind}] {stripMathDelimiters(s.title)}
-                </option>
-              ))}
-            </select>
+              onChange={setBId}
+              options={solutions.filter((s) => s.id !== aId).map((s) => s.id)}
+              renderOption={(id) => {
+                const s = solutions.find((item) => item.id === id);
+                return s ? `[${kindLabel[s.kind] ?? s.kind}] ${stripMathDelimiters(s.title)}` : id;
+              }}
+              buttonClassName="flex h-9 w-full min-w-0 items-center justify-between rounded border border-white/10 bg-zinc-900 px-2 text-xs text-white outline-none transition active:translate-y-px focus-visible:border-amber-400/50"
+            />
           </div>
         </div>
 

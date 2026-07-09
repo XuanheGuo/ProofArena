@@ -1,11 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ChevronDown, LayoutList, Rows3, Search, SlidersHorizontal, X } from "lucide-react";
+import { LayoutList, Rows3, Search, SlidersHorizontal, X } from "lucide-react";
 import type { Difficulty, ExamRegion, ProblemSummary, QuestionType } from "@/lib/types";
 import { ProblemCard } from "@/components/ProblemCard";
 import { ProblemScrollbar } from "@/components/ProblemScrollbar";
+import { Listbox } from "@/components/Listbox";
 
 const regions: Array<"全部卷别" | ExamRegion> = [
   "全部卷别",
@@ -80,7 +81,23 @@ export function ProblemExplorer({ problems }: ProblemExplorerProps) {
     router.replace(qs ? `/problems?${qs}` : "/problems", { scroll: false });
   }, [query, region, type, difficulty, topic, router]);
 
-  function handleQuery(v: string) { setQuery(v); pushUrl({ q: v }); }
+  // Filtering itself runs instantly off local `query` state (see `filtered`
+  // below) — only the URL sync is debounced, so fast typing doesn't spam
+  // history/router.replace calls on every keystroke. A ref keeps the
+  // debounced call pointing at the latest pushUrl (latest region/type/etc),
+  // not whatever was current when the timer was scheduled.
+  const pushUrlRef = useRef(pushUrl);
+  useEffect(() => { pushUrlRef.current = pushUrl; }, [pushUrl]);
+  const queryDebounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => {
+    if (queryDebounceTimer.current) clearTimeout(queryDebounceTimer.current);
+  }, []);
+
+  function handleQuery(v: string) {
+    setQuery(v);
+    if (queryDebounceTimer.current) clearTimeout(queryDebounceTimer.current);
+    queryDebounceTimer.current = setTimeout(() => pushUrlRef.current({ q: v }), 400);
+  }
   function handleRegion(v: string) { setRegion(v as typeof region); pushUrl({ region: v }); }
   function handleType(v: string) { setType(v as typeof type); pushUrl({ type: v }); }
   function handleDifficulty(v: string) { setDifficulty(v as typeof difficulty); pushUrl({ difficulty: v }); }
@@ -106,6 +123,7 @@ export function ProblemExplorer({ problems }: ProblemExplorerProps) {
   const hasFilters = query || region !== "全部卷别" || type !== "全部题型" || difficulty !== "全部难度" || topic !== "全部专题";
 
   function resetFilters() {
+    if (queryDebounceTimer.current) clearTimeout(queryDebounceTimer.current);
     setQuery(""); setRegion("全部卷别"); setType("全部题型"); setDifficulty("全部难度"); setTopic("全部专题");
     router.replace("/problems", { scroll: false });
   }
@@ -129,28 +147,8 @@ export function ProblemExplorer({ problems }: ProblemExplorerProps) {
                 </button>
               )}
             </label>
-            <div className="relative">
-              <select
-                value={region}
-                onChange={(event) => handleRegion(event.target.value)}
-                className="h-11 w-full appearance-none border border-white/10 bg-zinc-950 pl-3 pr-9 text-sm text-zinc-300 outline-none transition focus:border-cyan-400/50"
-                aria-label="卷别"
-              >
-                {regions.map((item) => <option key={item}>{item}</option>)}
-              </select>
-              <ChevronDown className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-zinc-500" />
-            </div>
-            <div className="relative">
-              <select
-                value={topic}
-                onChange={(event) => handleTopic(event.target.value)}
-                className="h-11 w-full appearance-none border border-white/10 bg-zinc-950 pl-3 pr-9 text-sm text-zinc-300 outline-none transition focus:border-cyan-400/50"
-                aria-label="专题"
-              >
-                {topics.map((item) => <option key={item}>{item}</option>)}
-              </select>
-              <ChevronDown className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-zinc-500" />
-            </div>
+            <Listbox label="卷别" value={region} onChange={handleRegion} options={regions} />
+            <Listbox label="专题" value={topic} onChange={handleTopic} options={topics} />
           </div>
 
           <details className="mt-3 border border-white/10 bg-black/20">

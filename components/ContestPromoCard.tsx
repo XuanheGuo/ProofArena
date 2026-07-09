@@ -13,15 +13,29 @@ const STORAGE_PREFIX = "proofarena:contest-promo-dismissed:";
 
 export function ContestPromoCard({ slug, title }: ContestPromoCardProps) {
   const [dismissed, setDismissed] = useState(true);
+  // dismissed starts true because reading localStorage before hydration would
+  // mismatch SSR output. That means the card can only ever mount client-side
+  // — so instead of popping in abruptly the moment `dismissed` flips false,
+  // `entered` stays false for one frame and then flips, giving the fade+slide
+  // transition below something to animate from.
+  const [entered, setEntered] = useState(false);
 
   useEffect(() => {
-    setDismissed(window.localStorage.getItem(`${STORAGE_PREFIX}${slug}`) === "1");
+    const alreadyDismissed = window.localStorage.getItem(`${STORAGE_PREFIX}${slug}`) === "1";
+    setDismissed(alreadyDismissed);
+    if (alreadyDismissed) return;
+    const frame = requestAnimationFrame(() => setEntered(true));
+    return () => cancelAnimationFrame(frame);
   }, [slug]);
 
   if (dismissed) return null;
 
   return (
-    <div className="fixed bottom-4 right-4 z-50 flex items-center gap-1.5 sm:bottom-5 sm:right-5">
+    <div
+      className={`fixed bottom-4 right-4 z-50 flex items-center gap-1.5 transition-all duration-300 ease-out sm:bottom-5 sm:right-5 ${
+        entered ? "translate-y-0 opacity-100" : "translate-y-2 opacity-0"
+      }`}
+    >
       <Link
         href={`/contests/${slug}`}
         className="flex items-center gap-2 border border-amber-400/25 bg-zinc-950/95 py-2 pl-2 pr-3 shadow-2xl shadow-black/30 transition hover:border-amber-300/50"

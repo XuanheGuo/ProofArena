@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, CheckCircle2, Compass, Send, Swords, Trophy } from "lucide-react";
+import { ArrowRight, CheckCircle2, Compass, Flame, Send, Swords, Trophy } from "lucide-react";
 import { getLearningIndex, getProblemSummaries, getProblemsByIds } from "@/lib/db";
 import { getFeaturedContest } from "@/lib/contests";
 import { difficultyBadgeClass } from "@/lib/problem-presentation";
@@ -24,13 +24,21 @@ export default async function HomePage() {
     [String(summaries.length).padStart(2, "0"), "精编真题"],
     [String(solutionCount).padStart(2, "0"), "完整解法"],
   ];
+  // Hero "动态战况" module — desktop-only, fills the right half of the hero
+  // that used to be empty background. Computed off `summaries` (already
+  // fetched above for the stats bar), no extra queries.
+  const topBySolutions = [...summaries].sort((a, b) => b.solutions.length - a.solutions.length)[0];
+  const topByHeat = [...summaries]
+    .sort((a, b) => b.heat - a.heat)
+    .find((problem) => problem.id !== topBySolutions?.id) ?? [...summaries].sort((a, b) => b.heat - a.heat)[0];
+  const hasArenaStatus = Boolean(currentContest || topBySolutions);
 
   return (
     <main>
       <section className="hero-arena relative min-h-[68vh] overflow-hidden border-b border-white/10">
         <div className="hero-overlay pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,#09090b_5%,rgba(9,9,11,.92)_36%,rgba(9,9,11,.25)_75%,#09090b_100%)]" />
         <div className="grid-surface pointer-events-none absolute inset-0 opacity-50" />
-        <div className="relative mx-auto flex min-h-[68vh] max-w-7xl items-center px-4 py-16 md:px-6">
+        <div className="relative mx-auto flex min-h-[68vh] max-w-7xl items-center gap-10 px-4 py-16 md:px-6">
           <div className="max-w-3xl">
             <div className="mb-5 flex items-center gap-3 font-mono text-xs uppercase tracking-[0.18em] text-cyan-300">
               <span className="h-px w-8 bg-cyan-400" />
@@ -65,6 +73,55 @@ export default async function HomePage() {
               </Link>
             </div>
           </div>
+
+          {hasArenaStatus && (
+            <div className="hidden w-full max-w-sm shrink-0 lg:block">
+              <div className="border border-white/10 bg-zinc-950/80 backdrop-blur">
+                <div className="flex items-center gap-2 border-b border-white/10 px-5 py-3">
+                  <Flame className="size-4 text-amber-300" />
+                  <span className="font-mono text-xs uppercase tracking-widest text-zinc-400">动态战况</span>
+                </div>
+                <div className="divide-y divide-white/10">
+                  {currentContest && (
+                    <Link
+                      href={`/contests/${currentContest.slug}`}
+                      className="flex items-center justify-between gap-3 px-5 py-4 transition hover:bg-white/[0.03]"
+                    >
+                      <div className="min-w-0">
+                        <p className="text-[11px] font-bold uppercase tracking-wider text-amber-300">比赛进行中</p>
+                        <p className="mt-1 truncate text-sm font-bold text-white"><MathBlock>{currentContest.title}</MathBlock></p>
+                      </div>
+                      <ArrowRight className="size-4 shrink-0 text-zinc-600" />
+                    </Link>
+                  )}
+                  {topBySolutions && (
+                    <Link
+                      href={`/problems/${topBySolutions.id}`}
+                      className="flex items-center justify-between gap-3 px-5 py-4 transition hover:bg-white/[0.03]"
+                    >
+                      <div className="min-w-0">
+                        <p className="text-[11px] font-bold uppercase tracking-wider text-cyan-300">对比最多解法</p>
+                        <p className="mt-1 truncate text-sm font-bold text-white"><MathBlock>{topBySolutions.title}</MathBlock></p>
+                      </div>
+                      <span className="shrink-0 font-display text-lg font-black tabular-nums text-cyan-300">{topBySolutions.solutions.length}</span>
+                    </Link>
+                  )}
+                  {topByHeat && topByHeat.id !== topBySolutions?.id && (
+                    <Link
+                      href={`/problems/${topByHeat.id}`}
+                      className="flex items-center justify-between gap-3 px-5 py-4 transition hover:bg-white/[0.03]"
+                    >
+                      <div className="min-w-0">
+                        <p className="text-[11px] font-bold uppercase tracking-wider text-emerald-300">热度最高</p>
+                        <p className="mt-1 truncate text-sm font-bold text-white"><MathBlock>{topByHeat.title}</MathBlock></p>
+                      </div>
+                      <ArrowRight className="size-4 shrink-0 text-zinc-600" />
+                    </Link>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
         <div className="relative mx-auto -mt-16 max-w-7xl px-4 md:px-6">
           <div className="flex w-full flex-col border border-white/10 bg-zinc-950/90 backdrop-blur sm:w-fit sm:flex-row">
@@ -185,15 +242,38 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <footer className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-10 text-xs text-zinc-600 md:px-6">
-        <p>当前为 ProofArena Demo，题目与解法数据仍在整理中。</p>
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <footer className="border-t border-white/10 bg-zinc-950">
+        <div className="mx-auto grid max-w-7xl gap-8 px-4 py-12 text-sm sm:grid-cols-3 md:px-6">
+          <div>
+            <span className="font-display text-lg font-black text-white">
+              Proof<span className="text-cyan-300">Arena</span>
+            </span>
+            <p className="mt-3 text-xs leading-6 text-zinc-500">
+              围绕数学题展开解法比较、思路拆解和知识关联的平台。当前为 Demo，题目与解法数据仍在整理中。
+            </p>
+          </div>
+          <div>
+            <span className="text-xs font-bold uppercase tracking-widest text-zinc-500">导航</span>
+            <ul className="mt-3 space-y-2 text-xs text-zinc-400">
+              <li><Link href="/problems" className="hover:text-white">题目擂台</Link></li>
+              <li><Link href="/contests" className="hover:text-white">比赛</Link></li>
+              <li><Link href="/library" className="hover:text-white">思路库</Link></li>
+              <li><Link href="/submit" className="hover:text-white">投稿</Link></li>
+              <li><Link href="/about" className="hover:text-white">关于</Link></li>
+            </ul>
+          </div>
+          <div>
+            <span className="text-xs font-bold uppercase tracking-widest text-zinc-500">开放协议</span>
+            <ul className="mt-3 space-y-2 text-xs text-zinc-400">
+              <li>应用代码 · AGPL-3.0</li>
+              <li>原创题解与编辑内容 · CC BY-SA 4.0</li>
+              <li><Link href="/about" className="text-cyan-400 hover:text-cyan-300">查看完整协议说明 →</Link></li>
+            </ul>
+          </div>
+        </div>
+        <div className="mx-auto flex max-w-7xl flex-col gap-2 border-t border-white/10 px-4 py-4 text-xs text-zinc-600 sm:flex-row sm:items-center sm:justify-between md:px-6">
           <span>ProofArena · 高中数学解法竞技场</span>
-          <span className="flex flex-wrap gap-4">
-            <Link href="/about" className="hover:text-white">关于</Link>
-            <Link href="/submit" className="hover:text-white">投稿</Link>
-            <span>Demo · 2026</span>
-          </span>
+          <span>Demo · 2026</span>
         </div>
       </footer>
 

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase-client';
 import { hasSupabasePublicEnv } from '@/lib/supabase-env';
 import { MathBlock } from '@/components/MathBlock';
+import { EditSubmissionForm, type EditableSubmission } from '@/components/EditSubmissionForm';
 import { User } from '@supabase/supabase-js';
 import { useRouter } from 'next/navigation';
 import {
@@ -13,41 +14,22 @@ import {
   CheckCircle2,
   Clock,
   Mail,
+  Pencil,
   Swords,
   Trophy,
   User as UserIcon,
   XCircle,
 } from 'lucide-react';
 
-type Submission = {
-  id: string;
-  title: string;
-  submission_type?: 'problem' | 'solution';
-  problem_id?: string | null;
-  problem_source?: string;
-  kind: string;
+const SUBMISSIONS_SELECT = 'id, title, submission_type, problem_id, problem_source, kind, status, created_at, updated_at, moderator_notes, content, contest_id, contest_slug, attachment_urls, challenge_target_solution_id, challenge_claim, challenge_advantages, challenge_risk';
+
+type Submission = EditableSubmission & {
   status: 'pending' | 'approved' | 'rejected' | 'needs_revision';
   created_at: string;
   updated_at: string;
-  moderator_notes?: string;
-  content?: {
-    json?: {
-      solution?: {
-        challenge?: {
-          targetSolutionId?: string;
-          targetSolutionTitle?: string;
-          targetSolutionAuthor?: string;
-          claim?: string;
-          advantages?: string[];
-          risk?: string;
-        } | null;
-      };
-    };
-  };
-  challenge_target_solution_id?: string | null;
-  challenge_claim?: string | null;
-  challenge_advantages?: string[] | null;
-  challenge_risk?: string | null;
+  moderator_notes?: string | null;
+  contest_id?: string | null;
+  contest_slug?: string | null;
 };
 
 type PublishedSolution = {
@@ -167,6 +149,7 @@ export default function ProfilePage() {
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [publishedSolutions, setPublishedSolutions] = useState<PublishedSolution[]>([]);
   const [loading, setLoading] = useState(communityEnabled);
+  const [editingSubmissionId, setEditingSubmissionId] = useState<string | null>(null);
   const router = useRouter();
   const supabase = communityEnabled ? createClient() : null;
 
@@ -192,7 +175,7 @@ export default function ProfilePage() {
 
       const { data: subs } = await client
         .from('submissions')
-        .select('id, title, submission_type, problem_id, problem_source, kind, status, created_at, updated_at, moderator_notes, content, challenge_target_solution_id, challenge_claim, challenge_advantages, challenge_risk')
+        .select(SUBMISSIONS_SELECT)
         .eq('user_id', data.user.id)
         .order('created_at', { ascending: false });
 
@@ -208,6 +191,11 @@ export default function ProfilePage() {
       setLoading(false);
     });
   }, [supabase, router]);
+
+  function handleSubmissionRevised(updated: EditableSubmission) {
+    setSubmissions((current) => current.map((item) => (item.id === updated.id ? { ...item, ...updated } : item)));
+    setEditingSubmissionId(null);
+  }
 
   if (!communityEnabled) {
     return (
@@ -457,6 +445,28 @@ export default function ProfilePage() {
                     </span>
                   </div>
                   <SubmissionProgress submission={sub} />
+                  {sub.status === 'needs_revision' && (
+                    sub.contest_id || sub.contest_slug ? (
+                      <p className="mt-4 text-xs leading-5 text-zinc-500">
+                        这是比赛投稿，暂不支持在原投稿上修改重投——请参考上方管理员反馈，在比赛页面重新提交一份参赛思路。
+                      </p>
+                    ) : editingSubmissionId === sub.id ? (
+                      <EditSubmissionForm
+                        submission={sub}
+                        onCancel={() => setEditingSubmissionId(null)}
+                        onSaved={handleSubmissionRevised}
+                      />
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setEditingSubmissionId(sub.id)}
+                        className="mt-4 inline-flex h-9 items-center gap-1.5 border border-cyan-400/30 px-3 text-xs font-bold text-cyan-300 transition hover:bg-cyan-400/10"
+                      >
+                        <Pencil className="size-3.5" />
+                        修改并重新提交
+                      </button>
+                    )
+                  )}
                 </div>
               ))}
             </div>

@@ -288,31 +288,62 @@ function ComparisonTabNav({ problem }: { problem: Problem }) {
       problem.solutions.some((solution) => solution.thinkingCues?.forkOf)
     ),
   );
-  const sections = [
-    { id: "comparison-release", label: "发布信息", show: Boolean(pg) },
-    { id: "comparison-matrix", label: "解法比较", show: true },
-    { id: "comparison-boundaries", label: "方法边界", show: Boolean(pg?.methodBoundaries.length) },
-    { id: "comparison-replay", label: "推导过程", show: hasReplay },
-    { id: "comparison-challenges", label: "解法挑战", show: Boolean(pg?.challengeEdges.length) },
-    { id: "comparison-diff", label: "解法 Diff", show: problem.solutions.length >= 2 },
-    { id: "comparison-provenance", label: "图谱来源", show: hasProvenance },
-    { id: "comparison-tree", label: "思路树", show: Boolean(problem.solutionTree?.roots.length) },
-  ].filter((section) => section.show);
+  // 8 flat sub-tool anchors read as a wall of buttons with no map — grouped
+  // into the same 总览/深入/溯源 clusters docs/UI_UX_AUDIT.md D3 suggested.
+  // Anchors/ids/section rendering below are unchanged; this only restructures
+  // how the nav presents them.
+  const groups = [
+    {
+      id: "overview",
+      label: "总览",
+      sections: [
+        { id: "comparison-matrix", label: "解法比较", show: true },
+        { id: "comparison-boundaries", label: "方法边界", show: Boolean(pg?.methodBoundaries.length) },
+      ],
+    },
+    {
+      id: "deep-dive",
+      label: "深入",
+      sections: [
+        { id: "comparison-replay", label: "推导过程", show: hasReplay },
+        { id: "comparison-challenges", label: "解法挑战", show: Boolean(pg?.challengeEdges.length) },
+        { id: "comparison-diff", label: "解法 Diff", show: problem.solutions.length >= 2 },
+      ],
+    },
+    {
+      id: "provenance",
+      label: "溯源",
+      sections: [
+        { id: "comparison-release", label: "发布信息", show: Boolean(pg) },
+        { id: "comparison-provenance", label: "图谱来源", show: hasProvenance },
+        { id: "comparison-tree", label: "思路树", show: Boolean(problem.solutionTree?.roots.length) },
+      ],
+    },
+  ]
+    .map((group) => ({ ...group, sections: group.sections.filter((section) => section.show) }))
+    .filter((group) => group.sections.length > 0);
 
   return (
-    <nav className="border border-white/10 bg-black/20 px-3 py-2" aria-label="比较工具目录">
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="mr-1 text-[10px] font-bold uppercase tracking-wide text-zinc-600">
-          比较工具
-        </span>
-        {sections.map((section) => (
-          <a
-            key={section.id}
-            href={`#${section.id}`}
-            className="inline-flex h-7 items-center border border-white/10 px-2.5 text-xs font-bold text-zinc-400 transition hover:border-cyan-400/35 hover:text-cyan-200"
+    <nav className="border border-white/10 bg-black/20 px-3 py-3" aria-label="比较工具目录">
+      <div className="flex flex-wrap gap-x-6 gap-y-3">
+        {groups.map((group, index) => (
+          <div
+            key={group.id}
+            className={`flex min-w-0 flex-wrap items-center gap-2 ${index > 0 ? "border-white/10 pl-0 sm:border-l sm:pl-6" : ""}`}
           >
-            {section.label}
-          </a>
+            <span className="mr-1 text-[10px] font-bold uppercase tracking-wide text-zinc-600">
+              {group.label}
+            </span>
+            {group.sections.map((section) => (
+              <a
+                key={section.id}
+                href={`#${section.id}`}
+                className="inline-flex h-7 items-center border border-white/10 px-2.5 text-xs font-bold text-zinc-400 transition hover:border-cyan-400/35 hover:text-cyan-200"
+              >
+                {section.label}
+              </a>
+            ))}
+          </div>
         ))}
       </div>
     </nav>
@@ -737,12 +768,22 @@ export function ProblemDetailExperience({
           <section className="grid gap-5 lg:grid-cols-[18rem_minmax(0,1fr)]">
             <aside className="hidden lg:block">
               <div className="sticky top-32 border border-white/10 bg-zinc-950 p-4">
-                <h2 className="text-sm font-bold text-white">对照题目</h2>
-                <div className="mt-3 max-h-[28rem] overflow-y-auto space-y-3 text-sm leading-7 text-zinc-400">
-                  {problem.statement.map((paragraph, i) => (
-                    <p key={i}><MathBlock>{paragraph}</MathBlock></p>
-                  ))}
-                </div>
+                {/* Collapsed by default: the full statement is already shown
+                    unconditionally in the "题目本体" card above the tab nav,
+                    which scrolls out of view once you're deep into solutions
+                    — this is a click-to-recall reference, not a second
+                    always-on copy of the same text (see docs/UI_UX_AUDIT.md D2). */}
+                <details className="group">
+                  <summary className="flex cursor-pointer list-none items-center justify-between gap-2 text-sm font-bold text-white marker:hidden">
+                    对照题目
+                    <span className="text-xs font-normal text-zinc-600">展开回看</span>
+                  </summary>
+                  <div className="mt-3 max-h-[28rem] overflow-y-auto space-y-3 text-sm leading-7 text-zinc-400">
+                    {problem.statement.map((paragraph, i) => (
+                      <p key={i}><MathBlock>{paragraph}</MathBlock></p>
+                    ))}
+                  </div>
+                </details>
               </div>
             </aside>
             <div id="solutions-content">

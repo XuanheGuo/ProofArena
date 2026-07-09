@@ -1,16 +1,27 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import { Hammer, Sparkles } from "lucide-react";
 import { StudioWorkspace } from "@/components/StudioWorkspace";
 import { getProblems } from "@/lib/db";
+import { createClient } from "@/lib/supabase-server";
 
 export const metadata: Metadata = {
   title: "ProofArena Studio",
   description: "完整投稿工作台，填写结构化解法数据直接提交。",
 };
 
-export const revalidate = 3600;
-
+// Not moderator-gated on purpose: this page's own copy ("登录后可直接提交到审核队列",
+// "新题投稿和快速解法可以走普通投稿") frames it as a more structured alternative to
+// /submit for any logged-in contributor, not an admin tool — it was only ever meant
+// to be hidden from the public nav (see SiteHeader), not walled off from regular
+// users. This just closes the gap where an anonymous visitor could still reach the
+// full workbench UI by direct URL; write attempts were already rejected server-side
+// by the submissions INSERT RLS policy regardless.
 export default async function StudioPage() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect("/auth/login");
+
   const problems = await getProblems();
   const problemOptions = problems.map((problem) => ({
     id: problem.id,
