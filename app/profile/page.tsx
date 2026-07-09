@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase-client';
 import { hasSupabasePublicEnv } from '@/lib/supabase-env';
 import { MathBlock } from '@/components/MathBlock';
 import { EditSubmissionForm, type EditableSubmission } from '@/components/EditSubmissionForm';
+import { ProfileSettingsPanel } from '@/components/ProfileSettingsPanel';
 import { getSubmissionFailureReasonLabel } from '@/lib/submission-meta';
 import { User } from '@supabase/supabase-js';
 import { useRouter } from 'next/navigation';
@@ -353,6 +354,12 @@ export default function ProfilePage() {
             <span className="text-sm">加入于 {joinedAt}</span>
           </div>
         </div>
+
+        <ProfileSettingsPanel
+          user={user}
+          username={appProfile?.username ?? ''}
+          onUsernameUpdated={(next) => setAppProfile((current) => (current ? { ...current, username: next } : current))}
+        />
 
         <section className="grid gap-3 md:grid-cols-4">
           {[
