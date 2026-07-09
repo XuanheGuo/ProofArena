@@ -99,7 +99,9 @@ type DbAward = {
   id: string;
   contest_id: string;
   problem_id: string | null;
+  draft_problem_id: string | null;
   solution_id: string | null;
+  submission_id: string | null;
   user_id: string | null;
   type: ContestAwardType;
   title: string;
@@ -116,11 +118,15 @@ type AwardParticipantOption = {
 
 type AwardSolutionOption = {
   id: string;
+  source: "solution" | "submission";
   title: string;
   author: string;
   authorId: string | null;
   problemId: string | null;
+  draftProblemId: string | null;
   contestProblemKey: string | null;
+  status?: string;
+  contestSolutionType?: string | null;
 };
 
 const emptyContest = {
@@ -165,7 +171,9 @@ const emptyAward = {
   reason: "",
   points: 0,
   problemId: "",
+  draftProblemId: "",
   solutionId: "",
+  submissionId: "",
   userId: "",
 };
 
@@ -230,21 +238,29 @@ export function AdminContestsView({ problems, initialDraftProblems = [] }: { pro
   const contestAwardProblemOptions = useMemo(
     () =>
       (selectedContest?.contest_problems ?? [])
-        .filter((contestProblem) => Boolean(contestProblem.problem_id))
         .sort((a, b) => a.day_index - b.day_index)
         .map((contestProblem) => ({
-          id: contestProblem.problem_id as string,
+          value: contestProblem.problem_id
+            ? `problem:${contestProblem.problem_id}`
+            : `draft:${contestProblem.draft_problem_id}`,
+          problemId: contestProblem.problem_id,
+          draftProblemId: contestProblem.draft_problem_id,
           label: `Day ${contestProblem.day_index} · ${contestProblem.title}`,
-        })),
+        }))
+        .filter((option) => option.problemId || option.draftProblemId),
     [selectedContest],
   );
 
   const filteredAwardSolutions = useMemo(
     () =>
-      awardForm.problemId
-        ? awardSolutions.filter((solution) => solution.problemId === awardForm.problemId)
+      awardForm.problemId || awardForm.draftProblemId
+        ? awardSolutions.filter((solution) =>
+            awardForm.problemId
+              ? solution.problemId === awardForm.problemId
+              : solution.draftProblemId === awardForm.draftProblemId,
+          )
         : awardSolutions,
-    [awardForm.problemId, awardSolutions],
+    [awardForm.draftProblemId, awardForm.problemId, awardSolutions],
   );
 
   const awardParticipantMap = useMemo(
@@ -253,7 +269,7 @@ export function AdminContestsView({ problems, initialDraftProblems = [] }: { pro
   );
 
   const awardSolutionMap = useMemo(
-    () => new Map(awardSolutions.map((solution) => [solution.id, solution])),
+    () => new Map(awardSolutions.map((solution) => [`${solution.source}:${solution.id}`, solution])),
     [awardSolutions],
   );
 
@@ -296,13 +312,13 @@ export function AdminContestsView({ problems, initialDraftProblems = [] }: { pro
       const [submissionsRes, solutionsRes] = await Promise.all([
         supabase
           .from("submissions")
-          .select("user_id")
+          .select("id, title, user_id, problem_id, draft_problem_id, contest_problem_key, contest_solution_type, status, created_at")
           .eq("contest_slug", contestForOptions.slug)
           .eq("submission_type", "solution")
           .neq("status", "rejected"),
         supabase
           .from("solutions")
-          .select("id, title, author, author_id, problem_id, contest_problem_key")
+          .select("id, title, author, author_id, problem_id, source_submission_id, contest_problem_key, contest_solution_type")
           .eq("contest_slug", contestForOptions.slug)
           .order("created_at", { ascending: false }),
       ]);
@@ -340,16 +356,41 @@ export function AdminContestsView({ problems, initialDraftProblems = [] }: { pro
           }))
           .sort((a, b) => a.label.localeCompare(b.label)),
       );
-      setAwardSolutions(
-        (solutionsRes.data ?? []).map((solution) => ({
+      const publishedSourceSubmissionIds = new Set(
+        (solutionsRes.data ?? [])
+          .map((solution) => solution.source_submission_id as string | null)
+          .filter(Boolean) as string[],
+      );
+      const publishedSolutions: AwardSolutionOption[] = (solutionsRes.data ?? []).map((solution) => ({
           id: solution.id as string,
+          source: "solution",
           title: solution.title as string,
           author: solution.author as string,
           authorId: (solution.author_id as string | null) ?? null,
           problemId: (solution.problem_id as string | null) ?? null,
+          draftProblemId: null,
           contestProblemKey: (solution.contest_problem_key as string | null) ?? null,
-        })),
-      );
+          contestSolutionType: (solution.contest_solution_type as string | null) ?? null,
+        }));
+      const approvedContestSubmissions: AwardSolutionOption[] = (submissionsRes.data ?? [])
+        .filter((submission) => submission.status === "approved")
+        .filter((submission) => !publishedSourceSubmissionIds.has(submission.id as string))
+        .map((submission) => {
+          const authorId = (submission.user_id as string | null) ?? null;
+          return {
+            id: submission.id as string,
+            source: "submission",
+            title: submission.title as string,
+            author: authorId ? (profileNames.get(authorId) ?? `用户 ${authorId.slice(0, 8)}`) : "匿名",
+            authorId,
+            problemId: (submission.problem_id as string | null) ?? null,
+            draftProblemId: (submission.draft_problem_id as string | null) ?? null,
+            contestProblemKey: (submission.contest_problem_key as string | null) ?? null,
+            status: submission.status as string,
+            contestSolutionType: (submission.contest_solution_type as string | null) ?? null,
+          };
+        });
+      setAwardSolutions([...publishedSolutions, ...approvedContestSubmissions]);
       setAwardOptionsLoading(false);
     }
 
@@ -724,13 +765,20 @@ export function AdminContestsView({ problems, initialDraftProblems = [] }: { pro
     await loadContests();
   }
 
-  function updateAwardSolution(solutionId: string) {
-    const solution = awardSolutions.find((item) => item.id === solutionId);
+  function awardSolutionValue(solution: AwardSolutionOption) {
+    return `${solution.source}:${solution.id}`;
+  }
+
+  function updateAwardSolution(value: string) {
+    const [source, id] = value.split(":");
+    const solution = awardSolutions.find((item) => item.source === source && item.id === id);
     setAwardForm({
       ...awardForm,
-      solutionId,
+      solutionId: solution?.source === "solution" ? solution.id : "",
+      submissionId: solution?.source === "submission" ? solution.id : "",
       userId: solution?.authorId ?? awardForm.userId,
       problemId: solution?.problemId ?? awardForm.problemId,
+      draftProblemId: solution?.draftProblemId ?? awardForm.draftProblemId,
       title: awardForm.title || solution?.title || "",
     });
   }
@@ -744,7 +792,9 @@ export function AdminContestsView({ problems, initialDraftProblems = [] }: { pro
     const { error: insertError } = await supabase.from("awards").insert({
       contest_id: selectedContest.id,
       problem_id: awardForm.problemId || null,
+      draft_problem_id: awardForm.draftProblemId || null,
       solution_id: awardForm.solutionId.trim() || null,
+      submission_id: awardForm.submissionId.trim() || null,
       user_id: awardForm.userId.trim() || null,
       type: awardForm.type,
       title: awardForm.title.trim() || contestAwardMeta[awardForm.type],
@@ -1549,11 +1599,12 @@ export function AdminContestsView({ problems, initialDraftProblems = [] }: { pro
                     <div>
                       <p className="font-bold text-amber-100">{award.title}</p>
                       <p className="mt-1 text-xs text-zinc-500">{contestAwardMeta[award.type]} · {award.points} 分</p>
-                      {(award.user_id || award.solution_id) && (
+                      {(award.user_id || award.solution_id || award.submission_id) && (
                         <p className="mt-1 text-xs text-zinc-500">
                           {award.user_id && `获奖人：${awardParticipantMap.get(award.user_id)?.label ?? award.user_id.slice(0, 8)}`}
-                          {award.user_id && award.solution_id ? " · " : ""}
-                          {award.solution_id && `解法：${awardSolutionMap.get(award.solution_id)?.title ?? award.solution_id}`}
+                          {award.user_id && (award.solution_id || award.submission_id) ? " · " : ""}
+                          {award.solution_id && `正式解法：${awardSolutionMap.get(`solution:${award.solution_id}`)?.title ?? award.solution_id}`}
+                          {award.submission_id && `比赛解法：${awardSolutionMap.get(`submission:${award.submission_id}`)?.title ?? award.submission_id}`}
                         </p>
                       )}
                       <p className="mt-1 text-sm leading-6 text-zinc-500">{award.reason || "未填写理由"}</p>
@@ -1585,20 +1636,41 @@ export function AdminContestsView({ problems, initialDraftProblems = [] }: { pro
                 <label className="grid gap-2 text-sm">
                   <span className="font-bold text-white">关联题目</span>
                   <select
-                    value={awardForm.problemId}
+                    value={
+                      awardForm.problemId
+                        ? `problem:${awardForm.problemId}`
+                        : awardForm.draftProblemId
+                          ? `draft:${awardForm.draftProblemId}`
+                          : ""
+                    }
                     onChange={(event) => {
-                      const problemId = event.target.value;
-                      const selectedSolution = awardSolutions.find((solution) => solution.id === awardForm.solutionId);
+                      const [source, id] = event.target.value.split(":");
+                      const problemId = source === "problem" ? id : "";
+                      const draftProblemId = source === "draft" ? id : "";
+                      const selectedSolution = awardSolutions.find((solution) =>
+                        solution.source === "solution"
+                          ? solution.id === awardForm.solutionId
+                          : solution.id === awardForm.submissionId,
+                      );
+                      const selectedStillMatches = selectedSolution
+                        ? problemId
+                          ? selectedSolution.problemId === problemId
+                          : draftProblemId
+                            ? selectedSolution.draftProblemId === draftProblemId
+                            : true
+                        : true;
                       setAwardForm({
                         ...awardForm,
                         problemId,
-                        solutionId: selectedSolution && problemId && selectedSolution.problemId !== problemId ? "" : awardForm.solutionId,
+                        draftProblemId,
+                        solutionId: selectedStillMatches ? awardForm.solutionId : "",
+                        submissionId: selectedStillMatches ? awardForm.submissionId : "",
                       });
                     }}
                     className="h-11 border border-white/10 bg-black/20 px-3 text-sm text-white"
                   >
                     <option value="">全场奖项</option>
-                    {contestAwardProblemOptions.map((problem) => <option key={problem.id} value={problem.id}>{problem.label}</option>)}
+                    {contestAwardProblemOptions.map((problem) => <option key={problem.value} value={problem.value}>{problem.label}</option>)}
                   </select>
                 </label>
                 <TextField label="加分" type="number" value={String(awardForm.points)} onChange={(points) => setAwardForm({ ...awardForm, points: Number(points) })} />
@@ -1624,20 +1696,26 @@ export function AdminContestsView({ problems, initialDraftProblems = [] }: { pro
                 <label className="grid gap-2 text-sm">
                   <span className="font-bold text-white">获奖解法</span>
                   <select
-                    value={awardForm.solutionId}
+                    value={
+                      awardForm.solutionId
+                        ? `solution:${awardForm.solutionId}`
+                        : awardForm.submissionId
+                          ? `submission:${awardForm.submissionId}`
+                          : ""
+                    }
                     onChange={(event) => updateAwardSolution(event.target.value)}
                     className="h-11 border border-white/10 bg-black/20 px-3 text-sm text-white"
                   >
                     <option value="">不指定解法</option>
                     {filteredAwardSolutions.map((solution) => (
-                      <option key={solution.id} value={solution.id}>
-                        {solution.title} · {solution.author}
+                      <option key={awardSolutionValue(solution)} value={awardSolutionValue(solution)}>
+                        {solution.title} · {solution.author} · {solution.source === "solution" ? "正式解法" : "比赛解法"}
                       </option>
                     ))}
                   </select>
-                  {awardOptionsLoading && <span className="text-xs text-zinc-600">正在加载已发布解法...</span>}
+                  {awardOptionsLoading && <span className="text-xs text-zinc-600">正在加载解法...</span>}
                   {!awardOptionsLoading && filteredAwardSolutions.length === 0 && (
-                    <span className="text-xs text-zinc-600">本场还没有已发布的正式解法；可以先只标获奖人。</span>
+                    <span className="text-xs text-zinc-600">本场还没有可选解法；请先审核通过参赛解法，或只标获奖人。</span>
                   )}
                 </label>
                 <div className="md:col-span-2">

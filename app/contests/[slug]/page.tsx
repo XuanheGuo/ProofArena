@@ -62,6 +62,15 @@ function getProblemStatusLabel(effectiveStatus: string, contest: { status: strin
   return null;
 }
 
+function awardMatchesContestProblem(
+  award: { problemId?: string; draftProblemId?: string },
+  contestProblem: { problemId: string | null; draftProblemId?: string | null },
+) {
+  if (award.problemId && contestProblem.problemId) return award.problemId === contestProblem.problemId;
+  if (award.draftProblemId && contestProblem.draftProblemId) return award.draftProblemId === contestProblem.draftProblemId;
+  return false;
+}
+
 
 
 export default async function ContestDetailPage({ params }: PageProps) {
@@ -313,7 +322,7 @@ export default async function ContestDetailPage({ params }: PageProps) {
                           </div>
                           <div className="flex-1 px-3 py-2.5">
                             <strong className="block text-base font-bold text-amber-300">
-                              {contest.awards.filter((a) => a.problemId === contestProblem.problemId).length}
+                              {contest.awards.filter((award) => awardMatchesContestProblem(award, contestProblem)).length}
                             </strong>
                             <span className="text-[10px] text-zinc-500">获奖</span>
                           </div>
@@ -582,9 +591,7 @@ export default async function ContestDetailPage({ params }: PageProps) {
               <div className="mt-4 space-y-3">
                 {contest.awards.map((award) => {
                   const awardProblem = award.problemId ? problemMap.get(award.problemId) : undefined;
-                  const awardContestProblem = award.problemId
-                    ? contest.problems.find((cp) => cp.problemId === award.problemId)
-                    : undefined;
+                  const awardContestProblem = contest.problems.find((cp) => awardMatchesContestProblem(award, cp));
                   return (
                     <div key={award.id} className="border border-amber-400/25 bg-amber-400/[0.04] p-3">
                       <div className="flex items-start justify-between gap-2">
@@ -631,7 +638,7 @@ export default async function ContestDetailPage({ params }: PageProps) {
             {contest.status === "finished" && contest.awards.length > 0 ? (
               <div className="mt-4 space-y-3">
                 {contest.problems.map((contestProblem) => {
-                  const problemAwards = contest.awards.filter((a) => a.problemId === contestProblem.problemId);
+                  const problemAwards = contest.awards.filter((award) => awardMatchesContestProblem(award, contestProblem));
                   if (problemAwards.length === 0) return null;
                   const problem = contestProblem.problemId ? problemMap.get(contestProblem.problemId) : undefined;
                   return (

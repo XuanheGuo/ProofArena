@@ -267,7 +267,9 @@ export interface ContestAward {
   id: string;
   contestId: string;
   problemId?: string;
+  draftProblemId?: string;
   solutionId?: string;
+  submissionId?: string;
   userId?: string;
   type: ContestAwardType;
   title: string;
