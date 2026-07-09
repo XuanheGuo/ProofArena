@@ -13,6 +13,7 @@ import { formatContestDateTime } from "@/lib/format-contest-time";
 
 type RatingDraft = { clarity: number; insight: number; potential: number };
 type SortMode = "score" | "newest";
+const MAX_VISIBLE_THOUGHTS_PER_PROBLEM = 1;
 
 const ratingDims: Array<{ key: keyof RatingDraft; label: string }> = [
   { key: "clarity", label: "清晰" },
@@ -49,6 +50,10 @@ function getProblemLabel(
   if (thought.problemId) return problemTitles[thought.problemId] ?? thought.problemId;
   if (thought.draftProblemId) return problemTitles[thought.draftProblemId] ?? "未公开新题";
   return "未知题目";
+}
+
+function getThoughtProblemKey(thought: ContestThoughtEntry): string {
+  return thought.draftProblemId ?? thought.problemId ?? thought.contestProblemKey ?? thought.id;
 }
 
 // ─── Per-card state ───────────────────────────────────────────────────────────
@@ -106,7 +111,7 @@ export function ContestThoughtArena({
   // Load my existing ratings for all visible items when discussion opens.
   useEffect(() => {
     if (!discussionOpen) return;
-    const visibleIds = items.filter((t) => !t.isRedacted).map((t) => t.id);
+    const visibleIds = items.filter((t) => !t.isRedacted && !t.hideFromArena).map((t) => t.id);
     if (visibleIds.length === 0) return;
     supabase
       .from("contest_submission_ratings")
@@ -254,9 +259,9 @@ export function ContestThoughtArena({
       .filter((g) => g.entries.length > 0);
   }, [items, contest.problems]);
 
-  const visibleItems = useMemo(() => {
+  const sortedItems = useMemo(() => {
     let result = activeTab === "all" ? items : items.filter((t) => {
-      const key = t.draftProblemId ?? t.problemId ?? t.contestProblemKey;
+      const key = getThoughtProblemKey(t);
       return key === activeTab;
     });
 
@@ -264,14 +269,35 @@ export function ContestThoughtArena({
       result = [...result].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     } else {
       result = [...result].sort(
-        (a, b) => (b.rating?.total ?? 0) - (a.rating?.total ?? 0) || a.createdAt.localeCompare(b.createdAt),
+        (a, b) => (b.rating?.total ?? 0) - (a.rating?.total ?? 0) || b.createdAt.localeCompare(a.createdAt),
       );
     }
     return result;
   }, [items, activeTab, sortMode]);
 
+  const displayCandidates = useMemo(
+    () => sortedItems.filter((thought) => thought.isRedacted || !thought.hideFromArena),
+    [sortedItems],
+  );
+
+  const visibleItems = useMemo(() => {
+    const counts = new Map<string, number>();
+    return displayCandidates.filter((thought) => {
+      if (thought.isRedacted) return true;
+      const key = getThoughtProblemKey(thought);
+      const count = counts.get(key) ?? 0;
+      if (count >= MAX_VISIBLE_THOUGHTS_PER_PROBLEM) return false;
+      counts.set(key, count + 1);
+      return true;
+    });
+  }, [displayCandidates]);
+
   const totalNonRedacted = items.filter((t) => !t.isRedacted).length;
-  const hasImages = items.some((t) => !t.isRedacted && t.imageUrls.length > 0);
+  const selectedNonRedactedCount = sortedItems.filter((t) => !t.isRedacted).length;
+  const visibleNonRedactedCount = visibleItems.filter((t) => !t.isRedacted).length;
+  const displayCandidateCount = displayCandidates.filter((t) => !t.isRedacted).length;
+  const hiddenByLimitCount = displayCandidateCount - visibleNonRedactedCount;
+  const hasImages = visibleItems.some((t) => !t.isRedacted && t.imageUrls.length > 0);
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -285,7 +311,7 @@ export function ContestThoughtArena({
             比赛思路专区
           </div>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-400">
-            这里保留低门槛投稿：一个入口、一个观察、一张草稿图都可以先放进来。讨论和评分会帮助优秀思路慢慢沉淀成正式题解。
+            这里保留低门槛投稿：一个入口、一个观察、一张草稿图都可以先放进来。当前每题展示 {MAX_VISIBLE_THOUGHTS_PER_PROBLEM} 条，默认优先显示评分最高的思路。
           </p>
         </div>
         <div className="border border-white/10 bg-zinc-950 px-3 py-2 text-xs text-zinc-500">
@@ -327,11 +353,22 @@ export function ContestThoughtArena({
       {/* Items */}
       {visibleItems.length === 0 ? (
         <div className="mt-5 border border-white/10 bg-zinc-950 px-6 py-10 text-center">
-          <p className="text-sm font-bold text-white">还没有通过审核的比赛思路</p>
-          <p className="mt-2 text-sm leading-6 text-zinc-500">比赛投稿通过后会先进入这里，而不是立刻变成正式题解。</p>
+          <p className="text-sm font-bold text-white">
+            {selectedNonRedactedCount > 0 ? "暂无可公开展示的比赛思路" : "还没有通过审核的比赛思路"}
+          </p>
+          <p className="mt-2 text-sm leading-6 text-zinc-500">
+            {selectedNonRedactedCount > 0
+              ? "已收到的投稿仍会参与审核和比赛记录；勾选不展示的内容不会出现在公开卡片里。"
+              : "比赛投稿通过后会先进入这里，而不是立刻变成正式题解。"}
+          </p>
         </div>
       ) : (
         <div className="mt-5 space-y-4">
+          {hiddenByLimitCount > 0 && (
+            <p className="border border-white/10 bg-black/20 px-4 py-2 text-xs text-zinc-500">
+              已按每题精选规则收起 {hiddenByLimitCount} 条思路，可切换排序查看每题最新或最高分代表。
+            </p>
+          )}
           {visibleItems.map((thought, index) => {
             if (thought.isRedacted) {
               const label = getProblemLabel(thought, problemTitles);
@@ -343,7 +380,7 @@ export function ContestThoughtArena({
                       {label} 已收到 {thought.redactedCount ?? 0} 份思路，题目关闭后开放讨论
                     </p>
                     <p className="mt-1 text-xs leading-5 text-zinc-500">
-                      提交窗口关闭或比赛进入评审后，全部思路的正文、图片和评分将在此处公开。
+                      提交窗口关闭或比赛进入评审后，允许展示的思路正文、图片和评分会在此处公开。
                     </p>
                   </div>
                 </div>

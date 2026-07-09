@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { AlertCircle, CheckCircle2, FileImage, FilePlus2, Lightbulb, LogIn, RotateCcw, Send, X } from 'lucide-react';
+import { AlertCircle, CheckCircle2, EyeOff, FileImage, FilePlus2, Lightbulb, LogIn, RotateCcw, Send, X } from 'lucide-react';
 import type { User } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase-client';
 import { contestSolutionTypeMeta, contestSolutionTypeOptions } from '@/lib/contest-meta';
@@ -67,6 +67,7 @@ const initialSolutionForm = {
   title: '',
   kind: 'standard' as SolutionKind,
   contestSolutionType: 'standard' as ContestSolutionType,
+  hideFromArena: false,
   approach: '',
   keyTransform: '',
   steps: '',
@@ -91,6 +92,7 @@ function contestDraftKey(contestSlug: string, problemId: string) {
 type ContestDraft = {
   title: string;
   contestSolutionType: ContestSolutionType;
+  hideFromArena?: boolean;
   approach: string;
 };
 
@@ -252,6 +254,7 @@ ${problem ? `${problem.source} · ${problem.title}` : form.problemId}
 
 ## 参赛信息
 ${contestContext.contest.title}${contestContext.contestProblem ? ` · Day ${contestContext.contestProblem.dayIndex} ${contestContext.contestProblem.title}` : ''}
+${form.hideFromArena ? '\n展示设置：不进入比赛思路专区公开展示\n' : ''}
 
 ## 我的思路
 ${clampText(form.approach, MAX_CONTEST_THOUGHT_CHARS)}
@@ -444,7 +447,7 @@ export function SubmitForm({
 
   // ── Contest mode draft auto-save ──────────────────────────────────────────
   // Key: pa:cdraft:v1:{contestSlug}:{problemId or "any"}
-  // Saved fields: title, contestSolutionType, approach (no images).
+  // Saved fields: title, contestSolutionType, hideFromArena, approach (no images).
   // Debounce: 1500ms. Cleared on successful submit.
   const activeDraftKey = isContestMode && contestContext
     ? contestDraftKey(
@@ -467,7 +470,12 @@ export function SubmitForm({
 
   // Debounce-save contest form fields.
   const draftToSave = isContestMode
-    ? { title: solutionForm.title, contestSolutionType: solutionForm.contestSolutionType, approach: solutionForm.approach }
+    ? {
+        title: solutionForm.title,
+        contestSolutionType: solutionForm.contestSolutionType,
+        hideFromArena: solutionForm.hideFromArena,
+        approach: solutionForm.approach,
+      }
     : null;
   const draftToSaveStr = draftToSave ? JSON.stringify(draftToSave) : null;
   useEffect(() => {
@@ -492,6 +500,7 @@ export function SubmitForm({
       ...current,
       title: saved.title ?? current.title,
       contestSolutionType: saved.contestSolutionType ?? current.contestSolutionType,
+      hideFromArena: saved.hideFromArena ?? current.hideFromArena,
       approach: saved.approach ?? current.approach,
     }));
     setDraftRestored(true);
@@ -680,6 +689,7 @@ export function SubmitForm({
               contestProblemId: activeContestContext.contestProblem?.id,
               contestProblemTitle: activeContestContext.contestProblem?.title,
               contestSolutionType: solutionForm.contestSolutionType,
+              hideFromArena: solutionForm.hideFromArena,
               isPostContest,
             }
           : undefined,
@@ -998,6 +1008,23 @@ export function SubmitForm({
                   </select>
                 </label>
               </div>
+              <label className="flex items-start gap-3 border border-white/10 bg-black/20 px-4 py-3 text-sm">
+                <input
+                  type="checkbox"
+                  checked={solutionForm.hideFromArena}
+                  onChange={(event) => setSolutionForm({ ...solutionForm, hideFromArena: event.target.checked })}
+                  className="mt-1 size-4 accent-amber-400"
+                />
+                <span className="min-w-0">
+                  <span className="flex items-center gap-2 font-bold text-white">
+                    <EyeOff className="size-4 text-zinc-400" />
+                    不在比赛思路专区公开展示
+                  </span>
+                  <span className="mt-1 block text-xs leading-5 text-zinc-500">
+                    仍会提交给管理员审核和比赛记录；勾选后不会出现在公开思路卡片里。
+                  </span>
+                </span>
+              </label>
               <TextArea
                 required
                 label="你的思路"
