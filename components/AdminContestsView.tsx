@@ -3,13 +3,14 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { AlertTriangle, Award, BookMarked, CalendarDays, CheckCircle2, Clock, Database, Lock, LockOpen, Play, Plus, RefreshCw, Save, Trash2, Trophy, UploadCloud } from "lucide-react";
+import { AlertTriangle, Award, BookMarked, CalendarDays, CheckCircle2, Clock, Database, Lock, LockOpen, Play, Plus, RefreshCw, Save, Search, Trash2, Trophy, UploadCloud, Users } from "lucide-react";
 import { contests as seededContests } from "@/data/contests";
 import { weekly01DraftProblems, weekly01SprintAnswerKeys } from "@/data/weekly01-drafts";
-import { contestAwardMeta, contestProblemPhaseMeta, contestSolutionTypeMeta, contestStatusMeta } from "@/lib/contest-meta";
+import { accessModeMeta, contestAwardMeta, contestProblemPhaseMeta, contestRegistrationStatusMeta, contestSolutionTypeMeta, contestStatusMeta } from "@/lib/contest-meta";
 import { AdminContestScoringView } from "@/components/AdminContestScoringView";
 import { AdminSprintAnswerKeyEditor } from "@/components/AdminSprintAnswerKeyEditor";
-import type { ContestAnswerType, ContestAwardType, ContestProblemPhase, ContestScorePolicy, ContestStatus, Difficulty, ExamRegion, QuestionType } from "@/lib/types";
+import type { ContestAccessMode, ContestAnswerType, ContestAwardType, ContestProblemPhase, ContestRegistrationStatus, ContestScorePolicy, ContestStatus, ContestVisibility, Difficulty, ExamRegion, QuestionType } from "@/lib/types";
+import { inviteContestParticipant, reviewContestRegistration } from "@/lib/contest-registration-actions";
 import { createClient } from "@/lib/supabase-client";
 import { formatContestDateTime } from "@/lib/format-contest-time";
 import { promoteProblemDraft } from "@/lib/promote-problem-draft";
@@ -32,6 +33,8 @@ type DbContest = {
   tagline: string;
   rules: string[];
   status: ContestStatus;
+  access_mode: ContestAccessMode;
+  visibility: ContestVisibility;
   start_at: string;
   end_at: string;
   discussion_start_at: string | null;
@@ -116,6 +119,15 @@ type AwardParticipantOption = {
   submissionCount: number;
 };
 
+type RegistrationOption = {
+  id: string;
+  userId: string;
+  label: string;
+  status: ContestRegistrationStatus;
+  note: string;
+  createdAt: string;
+};
+
 type AwardSolutionOption = {
   id: string;
   source: "solution" | "submission";
@@ -136,6 +148,8 @@ const emptyContest = {
   tagline: "",
   rules: "",
   status: "draft" as ContestStatus,
+  accessMode: "approval" as ContestAccessMode,
+  visibility: "public" as ContestVisibility,
   startAt: "",
   endAt: "",
   discussionStartAt: "",
@@ -213,6 +227,13 @@ export function AdminContestsView({ problems, initialDraftProblems = [] }: { pro
   const [awardParticipants, setAwardParticipants] = useState<AwardParticipantOption[]>([]);
   const [awardSolutions, setAwardSolutions] = useState<AwardSolutionOption[]>([]);
   const [awardOptionsLoading, setAwardOptionsLoading] = useState(false);
+  const [registrations, setRegistrations] = useState<RegistrationOption[]>([]);
+  const [registrationsLoading, setRegistrationsLoading] = useState(false);
+  const [reviewingRegistrationId, setReviewingRegistrationId] = useState<string | null>(null);
+  const [inviteQuery, setInviteQuery] = useState("");
+  const [inviteResults, setInviteResults] = useState<Array<{ id: string; label: string }>>([]);
+  const [inviteSearching, setInviteSearching] = useState(false);
+  const [invitingUserId, setInvitingUserId] = useState<string | null>(null);
   const [draftProblems, setDraftProblems] = useState<DbProblemDraft[]>(initialDraftProblems);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -292,6 +313,8 @@ export function AdminContestsView({ problems, initialDraftProblems = [] }: { pro
       tagline: selectedContest.tagline,
       rules: selectedContest.rules.join("\n"),
       status: selectedContest.status,
+      accessMode: selectedContest.access_mode,
+      visibility: selectedContest.visibility,
       startAt: toInputDate(selectedContest.start_at),
       endAt: toInputDate(selectedContest.end_at),
       discussionStartAt: toInputDate(selectedContest.discussion_start_at ?? ""),
@@ -399,6 +422,105 @@ export function AdminContestsView({ problems, initialDraftProblems = [] }: { pro
       cancelled = true;
     };
   }, [selectedContest]);
+
+  async function loadRegistrations(contestId: string) {
+    setRegistrationsLoading(true);
+    const { data } = await supabase
+      .from("contest_registrations")
+      .select("id, user_id, status, note, created_at")
+      .eq("contest_id", contestId)
+      .order("created_at", { ascending: false });
+
+    const userIds = [...new Set((data ?? []).map((row) => row.user_id as string))];
+    const profileNames = new Map<string, string>();
+    if (userIds.length > 0) {
+      const { data: profiles } = await supabase
+        .from("user_profiles")
+        .select("id, display_name, username")
+        .in("id", userIds);
+      for (const profile of profiles ?? []) {
+        const id = profile.id as string;
+        profileNames.set(id, (profile.display_name as string) || (profile.username as string) || `用户 ${id.slice(0, 8)}`);
+      }
+    }
+
+    setRegistrations(
+      (data ?? []).map((row) => ({
+        id: row.id as string,
+        userId: row.user_id as string,
+        label: profileNames.get(row.user_id as string) ?? `用户 ${(row.user_id as string).slice(0, 8)}`,
+        status: row.status as ContestRegistrationStatus,
+        note: (row.note as string) ?? "",
+        createdAt: row.created_at as string,
+      })),
+    );
+    setRegistrationsLoading(false);
+  }
+
+  useEffect(() => {
+    setRegistrations([]);
+    setInviteQuery("");
+    setInviteResults([]);
+    if (!selectedContest) return;
+    void loadRegistrations(selectedContest.id);
+  }, [selectedContest]);
+
+  async function handleReviewRegistration(registrationId: string, nextStatus: ContestRegistrationStatus) {
+    setReviewingRegistrationId(registrationId);
+    setError("");
+    setMessage("");
+    const result = await reviewContestRegistration({ registrationId, nextStatus });
+    setReviewingRegistrationId(null);
+    if (!result.success) {
+      setError(result.error || "更新报名状态失败。");
+      return;
+    }
+    setMessage("报名状态已更新。");
+    if (selectedContest) await loadRegistrations(selectedContest.id);
+  }
+
+  async function searchInviteCandidates() {
+    const query = inviteQuery.trim();
+    if (!query) {
+      setInviteResults([]);
+      return;
+    }
+    setInviteSearching(true);
+    const { data } = await supabase
+      .from("user_profiles")
+      .select("id, username, display_name")
+      .or(`username.ilike.%${query}%,display_name.ilike.%${query}%`)
+      .limit(8);
+    setInviteResults(
+      (data ?? []).map((row) => {
+        const id = row.id as string;
+        const username = row.username as string | null;
+        const displayName = row.display_name as string | null;
+        return {
+          id,
+          label: `${displayName || username || `用户 ${id.slice(0, 8)}`}${username ? ` · @${username}` : ""}`,
+        };
+      }),
+    );
+    setInviteSearching(false);
+  }
+
+  async function handleInvite(userId: string) {
+    if (!selectedContest) return;
+    setInvitingUserId(userId);
+    setError("");
+    setMessage("");
+    const result = await inviteContestParticipant({ contestId: selectedContest.id, userId });
+    setInvitingUserId(null);
+    if (!result.success) {
+      setError(result.error || "邀请用户失败。");
+      return;
+    }
+    setMessage("已发出邀请。");
+    setInviteQuery("");
+    setInviteResults([]);
+    await loadRegistrations(selectedContest.id);
+  }
 
   async function loadContests() {
     setLoading(true);
@@ -676,6 +798,8 @@ export function AdminContestsView({ problems, initialDraftProblems = [] }: { pro
       tagline: contestForm.tagline.trim(),
       rules: splitRules(contestForm.rules),
       status: contestForm.status,
+      access_mode: contestForm.accessMode,
+      visibility: contestForm.visibility,
       start_at: fromInputDate(contestForm.startAt),
       end_at: fromInputDate(contestForm.endAt),
       discussion_start_at: contestForm.discussionStartAt ? fromInputDate(contestForm.discussionStartAt) : null,
@@ -1187,6 +1311,19 @@ export function AdminContestsView({ problems, initialDraftProblems = [] }: { pro
                   <option key={value} value={value}>{meta.label}</option>
                 ))}
               </select>
+            </label>
+            <label className="grid gap-2 text-sm">
+              <span className="font-bold text-white">参赛准入</span>
+              <select
+                value={contestForm.accessMode}
+                onChange={(event) => setContestForm({ ...contestForm, accessMode: event.target.value as ContestAccessMode })}
+                className="h-11 border border-white/10 bg-black/20 px-3 text-white outline-none"
+              >
+                {Object.entries(accessModeMeta).map(([value, meta]) => (
+                  <option key={value} value={value}>{meta.label}</option>
+                ))}
+              </select>
+              <span className="text-xs text-zinc-500">{accessModeMeta[contestForm.accessMode].description}</span>
             </label>
             <TextField label="简介" value={contestForm.description} onChange={(description) => setContestForm({ ...contestForm, description })} />
             <TextField label="开始时间" type="datetime-local" value={contestForm.startAt} onChange={(startAt) => setContestForm({ ...contestForm, startAt })} />
@@ -1731,6 +1868,146 @@ export function AdminContestsView({ problems, initialDraftProblems = [] }: { pro
                 <CheckCircle2 className="size-4" />
                 标记奖项
               </button>
+            </section>
+
+            <section className="border border-white/10 bg-zinc-950 p-5">
+              <div className="mb-2 flex items-center gap-2 text-sm font-bold text-white">
+                <Users className="size-4 text-cyan-300" />
+                参赛报名管理
+              </div>
+              <p className="mb-5 text-xs text-zinc-500">
+                {accessModeMeta[selectedContest.access_mode].description}
+                {selectedContest.access_mode === "open" && " 下面只会列出被邀请或被暂停/移除等特殊状态的用户。"}
+              </p>
+
+              <div className="space-y-2">
+                {registrationsLoading && <p className="text-xs text-zinc-600">正在加载报名记录...</p>}
+                {!registrationsLoading && registrations.length === 0 && (
+                  <p className="text-xs text-zinc-600">还没有报名或邀请记录。</p>
+                )}
+                {registrations.map((registration) => {
+                  const meta = contestRegistrationStatusMeta[registration.status];
+                  const busy = reviewingRegistrationId === registration.id;
+                  return (
+                    <div
+                      key={registration.id}
+                      className="flex flex-col gap-3 border border-white/[0.07] bg-black/20 p-4 sm:flex-row sm:items-center sm:justify-between"
+                    >
+                      <div>
+                        <p className="font-bold text-white">{registration.label}</p>
+                        <div className="mt-1 flex flex-wrap items-center gap-2">
+                          <span className={`inline-flex items-center gap-1 border px-2 py-0.5 text-[11px] font-bold ${meta.className}`}>
+                            {meta.label}
+                          </span>
+                          <span className="text-xs text-zinc-600">{formatContestDateTime(registration.createdAt)}</span>
+                        </div>
+                        {registration.note && <p className="mt-1 text-xs text-zinc-500">备注：{registration.note}</p>}
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {registration.status === "pending" && (
+                          <>
+                            <button
+                              type="button"
+                              disabled={busy}
+                              onClick={() => handleReviewRegistration(registration.id, "approved")}
+                              className="inline-flex h-8 items-center gap-1 border border-emerald-400/30 px-3 text-xs font-bold text-emerald-300 disabled:opacity-50"
+                            >
+                              批准
+                            </button>
+                            <button
+                              type="button"
+                              disabled={busy}
+                              onClick={() => handleReviewRegistration(registration.id, "rejected")}
+                              className="inline-flex h-8 items-center gap-1 border border-red-400/30 px-3 text-xs font-bold text-red-300 disabled:opacity-50"
+                            >
+                              拒绝
+                            </button>
+                          </>
+                        )}
+                        {(registration.status === "approved" || registration.status === "invited") && (
+                          <button
+                            type="button"
+                            disabled={busy}
+                            onClick={() => handleReviewRegistration(registration.id, "suspended")}
+                            className="inline-flex h-8 items-center gap-1 border border-orange-400/30 px-3 text-xs font-bold text-orange-300 disabled:opacity-50"
+                          >
+                            暂停提交
+                          </button>
+                        )}
+                        {registration.status !== "removed" && (
+                          <button
+                            type="button"
+                            disabled={busy}
+                            onClick={() => handleReviewRegistration(registration.id, "removed")}
+                            className="inline-flex h-8 items-center gap-1 border border-zinc-500/30 px-3 text-xs font-bold text-zinc-400 disabled:opacity-50"
+                          >
+                            移除
+                          </button>
+                        )}
+                        {(registration.status === "suspended" || registration.status === "removed" || registration.status === "rejected") && (
+                          <button
+                            type="button"
+                            disabled={busy}
+                            onClick={() => handleReviewRegistration(registration.id, "approved")}
+                            className="inline-flex h-8 items-center gap-1 border border-cyan-400/30 px-3 text-xs font-bold text-cyan-300 disabled:opacity-50"
+                          >
+                            恢复（批准）
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="mt-5 border-t border-white/10 pt-5">
+                <p className="text-sm font-bold text-white">邀请用户</p>
+                <p className="mt-1 text-xs text-zinc-500">按用户名或昵称搜索，直接邀请，不需要对方先申请。</p>
+                <div className="mt-3 flex gap-2">
+                  <input
+                    type="text"
+                    value={inviteQuery}
+                    onChange={(event) => setInviteQuery(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") {
+                        event.preventDefault();
+                        void searchInviteCandidates();
+                      }
+                    }}
+                    placeholder="用户名或昵称"
+                    className="h-10 flex-1 border border-white/10 bg-black/20 px-3 text-sm text-white outline-none focus:border-cyan-400/50"
+                  />
+                  <button
+                    type="button"
+                    onClick={searchInviteCandidates}
+                    disabled={inviteSearching || !inviteQuery.trim()}
+                    className="inline-flex h-10 items-center gap-2 border border-cyan-400/30 px-4 text-xs font-bold text-cyan-300 disabled:opacity-50"
+                  >
+                    <Search className="size-3.5" />
+                    搜索
+                  </button>
+                </div>
+                {inviteResults.length > 0 && (
+                  <div className="mt-3 space-y-2">
+                    {inviteResults.map((result) => (
+                      <div key={result.id} className="flex items-center justify-between gap-3 border border-white/[0.07] bg-black/20 px-3 py-2">
+                        <span className="text-sm text-zinc-300">{result.label}</span>
+                        <button
+                          type="button"
+                          disabled={invitingUserId === result.id}
+                          onClick={() => handleInvite(result.id)}
+                          className="inline-flex h-8 items-center gap-1 border border-cyan-400/30 px-3 text-xs font-bold text-cyan-300 disabled:opacity-50"
+                        >
+                          邀请
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {!inviteSearching && inviteQuery.trim() && inviteResults.length === 0 && (
+                  <p className="mt-3 text-xs text-zinc-600">没有找到匹配的用户。</p>
+                )}
+              </div>
             </section>
           </>
         )}
