@@ -34,6 +34,7 @@ export default async function AdminPage() {
     { count: approvedCount },
     { count: rejectedCount },
     { count: needsRevisionCount },
+    { count: precheckFailedCount },
     { count: totalSubmissions },
     { count: totalProblems },
     { count: draftingCount },
@@ -47,6 +48,7 @@ export default async function AdminPage() {
     supabase.from("submissions").select("*", { count: "exact", head: true }).eq("status", "approved"),
     supabase.from("submissions").select("*", { count: "exact", head: true }).eq("status", "rejected"),
     supabase.from("submissions").select("*", { count: "exact", head: true }).eq("status", "needs_revision"),
+    supabase.from("submissions").select("*", { count: "exact", head: true }).eq("status", "precheck_failed"),
     supabase.from("submissions").select("*", { count: "exact", head: true }),
     supabase.from("problems").select("*", { count: "exact", head: true }),
     supabase.from("problem_drafts").select("*", { count: "exact", head: true }).eq("status", "drafting"),
@@ -63,6 +65,7 @@ export default async function AdminPage() {
       approved: approvedCount ?? 0,
       rejected: rejectedCount ?? 0,
       needsRevision: needsRevisionCount ?? 0,
+      precheckFailed: precheckFailedCount ?? 0,
       total: totalSubmissions ?? 0,
     },
     problems: {

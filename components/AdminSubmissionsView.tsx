@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { publishSubmission } from '@/lib/publish-submission';
 import { createClient } from '@/lib/supabase-client';
@@ -28,6 +28,7 @@ import { ScoreBar } from '@/components/ScoreBar';
 import { convertPlainMathTextToLatex } from '@/lib/math-normalizer';
 import { getSolutionKindMeta } from '@/lib/solution-kinds';
 import { contestSolutionTypeMeta } from '@/lib/contest-meta';
+import { clearSubmissionCooldown } from '@/lib/submission-rate-limit-actions';
 import type { ContestSolutionType, SolutionScores } from '@/lib/types';
 
 type SubmissionStatus = 'pending' | 'approved' | 'rejected' | 'needs_revision' | 'precheck_failed';
@@ -376,6 +377,18 @@ function contentFromForm(submission: Submission, form: ReviewForm): SubmissionCo
   };
 }
 
+// Mirrors the scope_key computation in enforce_submission_rate_limit() /
+// enforce_submission_screening() (023_submission_rate_limit_enforcement.sql).
+// contest_problem_key is set by enforce_contest_submission_window() to the
+// same contest_problems.id used there, so it doubles as contest_problem_id
+// here without a separate column.
+function computeSubmissionScopeKey(submission: Submission): string {
+  if (submission.contest_problem_key) return `contest_problem:${submission.contest_problem_key}`;
+  if (submission.problem_id) return `problem:${submission.problem_id}`;
+  if (submission.draft_problem_id) return `draft_problem:${submission.draft_problem_id}`;
+  return 'general';
+}
+
 export function AdminSubmissionsView() {
   const searchParams = useSearchParams();
   const contestParam = searchParams.get('contest');
@@ -396,6 +409,12 @@ export function AdminSubmissionsView() {
   const [scoringContest, setScoringContest] = useState<ScoringContest | null>(null);
   const [scoringLoading, setScoringLoading] = useState(false);
   const [scoringError, setScoringError] = useState('');
+  // precheck_failed submissions never entered review — kept out of the
+  // default queue view (they'd otherwise clutter the main list moderators
+  // triage), visible via this toggle instead.
+  const [showPrecheckFailed, setShowPrecheckFailed] = useState(false);
+  const [rateLimitLookup, setRateLimitLookup] = useState<{ consecutiveFailures: number; cooldownUntil: string | null } | null>(null);
+  const [clearingCooldown, setClearingCooldown] = useState(false);
   const supabase = createClient();
 
   useEffect(() => {
@@ -630,6 +649,7 @@ export function AdminSubmissionsView() {
   }, [selectedSubmission, form]);
   const visibleSubmissions = useMemo(() => {
     let result = submissions;
+    if (!showPrecheckFailed) result = result.filter((s) => s.status !== 'precheck_failed');
     if (scopeFilter === 'regular') result = result.filter((s) => !s.contest_slug);
     else if (scopeFilter === 'contest') result = result.filter((s) => Boolean(s.contest_slug));
     if (contestSlugFilter) {
@@ -649,7 +669,48 @@ export function AdminSubmissionsView() {
       });
     }
     return result;
-  }, [scopeFilter, submissions, contestSlugFilter, contestProblemKeyFilter]);
+  }, [showPrecheckFailed, scopeFilter, submissions, contestSlugFilter, contestProblemKeyFilter]);
+
+  const precheckFailedCount = useMemo(
+    () => submissions.filter((s) => s.status === 'precheck_failed').length,
+    [submissions],
+  );
+
+  const loadRateLimitLookup = useCallback(async (submission: Submission) => {
+    const { data } = await supabase
+      .from('submission_rate_limits')
+      .select('consecutive_failures, cooldown_until')
+      .eq('user_id', submission.user_id)
+      .eq('scope_key', computeSubmissionScopeKey(submission))
+      .maybeSingle();
+    setRateLimitLookup(
+      data ? { consecutiveFailures: data.consecutive_failures as number, cooldownUntil: data.cooldown_until as string | null } : null,
+    );
+  }, [supabase]);
+
+  useEffect(() => {
+    if (!selectedSubmission) {
+      setRateLimitLookup(null);
+      return;
+    }
+    void loadRateLimitLookup(selectedSubmission);
+  }, [selectedSubmission, loadRateLimitLookup]);
+
+  async function handleClearCooldown() {
+    if (!selectedSubmission) return;
+    setClearingCooldown(true);
+    const result = await clearSubmissionCooldown({
+      userId: selectedSubmission.user_id,
+      scopeKey: computeSubmissionScopeKey(selectedSubmission),
+    });
+    setClearingCooldown(false);
+    if (!result.success) {
+      setError(result.error || '解除冷却失败。');
+      return;
+    }
+    setMessage('已解除冷却。');
+    await loadRateLimitLookup(selectedSubmission);
+  }
 
   if (loading) {
     return (
@@ -680,14 +741,30 @@ export function AdminSubmissionsView() {
               </a>
             </div>
           </div>
-          <div className="flex gap-2 text-xs">
-            <span className="text-zinc-500">
-              待审核 <span className="font-bold text-amber-300">{submissions.filter((s) => s.status === 'pending').length}</span>
-            </span>
-            <span className="text-zinc-600">|</span>
-            <span className="text-zinc-500">
-              总计 <span className="font-bold text-white">{submissions.length}</span>
-            </span>
+          <div className="flex flex-col items-end gap-2">
+            <div className="flex gap-2 text-xs">
+              <span className="text-zinc-500">
+                待审核 <span className="font-bold text-amber-300">{submissions.filter((s) => s.status === 'pending').length}</span>
+              </span>
+              <span className="text-zinc-600">|</span>
+              <span className="text-zinc-500">
+                总计 <span className="font-bold text-white">{submissions.length}</span>
+              </span>
+            </div>
+            {precheckFailedCount > 0 && (
+              <button
+                type="button"
+                onClick={() => setShowPrecheckFailed((v) => !v)}
+                className={`inline-flex items-center gap-1.5 border px-2.5 py-1 text-xs font-bold transition ${
+                  showPrecheckFailed
+                    ? 'border-orange-400 bg-orange-400/10 text-orange-300'
+                    : 'border-white/10 text-zinc-500 hover:border-orange-400/30 hover:text-orange-300'
+                }`}
+              >
+                <AlertCircle className="size-3" />
+                {showPrecheckFailed ? '隐藏' : '显示'}预筛未通过（{precheckFailedCount}）
+              </button>
+            )}
           </div>
         </div>
 
@@ -858,6 +935,22 @@ export function AdminSubmissionsView() {
                   </div>
                   <h2 className="truncate text-xl font-black text-white">{form.title || selectedSubmission.title}</h2>
                   <p className="mt-1 text-sm text-zinc-500">{getTypeLabel(selectedSubmission)} · {getTargetLabel(selectedSubmission)}</p>
+                  {rateLimitLookup && (rateLimitLookup.consecutiveFailures > 0 || rateLimitLookup.cooldownUntil) && (
+                    <div className="mt-2 flex flex-wrap items-center gap-2 border border-orange-400/25 bg-orange-400/[0.05] px-2.5 py-1.5 text-xs text-orange-300">
+                      <span>连续预筛失败 {rateLimitLookup.consecutiveFailures} 次</span>
+                      {rateLimitLookup.cooldownUntil && new Date(rateLimitLookup.cooldownUntil).getTime() > Date.now() && (
+                        <span>· 冷却至 {new Date(rateLimitLookup.cooldownUntil).toLocaleString('zh-CN')}</span>
+                      )}
+                      <button
+                        type="button"
+                        onClick={handleClearCooldown}
+                        disabled={clearingCooldown}
+                        className="ml-1 inline-flex h-6 items-center border border-orange-400/30 px-2 font-bold text-orange-200 transition hover:bg-orange-400/10 disabled:opacity-50"
+                      >
+                        {clearingCooldown ? '处理中...' : '解除冷却'}
+                      </button>
+                    </div>
+                  )}
                 </div>
                 <button
                   type="button"

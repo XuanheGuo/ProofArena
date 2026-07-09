@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import {
+  AlertCircle,
   ShieldCheck,
   Trophy,
   NetworkIcon,
@@ -23,6 +24,7 @@ interface AdminStats {
     approved: number;
     rejected: number;
     needsRevision: number;
+    precheckFailed: number;
     total: number;
   };
   problems: {
@@ -173,6 +175,16 @@ export function AdminPanel({ stats, userEmail }: AdminPanelProps) {
             accent="text-emerald-400"
           />
         </div>
+        {stats.submissions.precheckFailed > 0 && (
+          <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <StatCard
+              label="预筛未通过"
+              value={stats.submissions.precheckFailed}
+              icon={AlertCircle}
+              accent="text-orange-400"
+            />
+          </div>
+        )}
       </section>
 
       {/* Entry cards */}
