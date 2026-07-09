@@ -11,7 +11,9 @@ function canAccessAdmin(role?: string | null) {
 
 export default async function NewProblemDraftPage() {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   if (!user) redirect("/auth/login");
 

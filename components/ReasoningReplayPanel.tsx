@@ -1,7 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, Eye, GitBranch, ShieldAlert, Sparkles, Wrench } from "lucide-react";
+import {
+  ChevronDown,
+  Eye,
+  GitBranch,
+  ShieldAlert,
+  Sparkles,
+  Wrench,
+} from "lucide-react";
 import { MathBlock } from "@/components/MathBlock";
 import type {
   Problem,
@@ -30,13 +37,17 @@ function Step({
   return (
     <div className="grid grid-cols-[2rem_minmax(0,1fr)] gap-3">
       <div className="flex flex-col items-center gap-1">
-        <div className={`flex size-8 items-center justify-center rounded-full border text-xs font-bold ${accent}`}>
+        <div
+          className={`flex size-8 items-center justify-center border text-xs font-bold ${accent}`}
+        >
           {index}
         </div>
         <div className="w-px flex-1 bg-white/10" />
       </div>
       <div className="pb-6">
-        <div className={`mb-2 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide ${accent.replace("border-", "text-").replace("/30", "/80").replace("bg-", "")}`}>
+        <div
+          className={`mb-2 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide ${accent.replace("border-", "text-").replace("/30", "/80").replace("bg-", "")}`}
+        >
           <Icon className="size-3.5" />
           {label}
         </div>
@@ -48,11 +59,15 @@ function Step({
 
 // ── Step 1: observations ──────────────────────────────────────────────────────
 
-function ObservationsStep({ observations }: { observations: ProofObservation[] }) {
+function ObservationsStep({
+  observations,
+}: {
+  observations: ProofObservation[];
+}) {
   return (
     <ul className="space-y-2">
       {observations.map((obs) => (
-        <li key={obs.id} className="rounded border border-white/10 bg-zinc-950 p-3">
+        <li key={obs.id} className="border border-white/10 bg-zinc-950 p-3">
           <p className="text-sm font-bold text-zinc-200">
             <MathBlock>{obs.title}</MathBlock>
           </p>
@@ -87,7 +102,10 @@ function BranchesStep({
           .map((id) => boundaryMap.get(id))
           .filter((b): b is ProofMethodBoundary => b !== undefined);
         return (
-          <div key={branch.id} className="rounded border border-cyan-400/15 bg-cyan-400/[0.04] p-3">
+          <div
+            key={branch.id}
+            className="border border-cyan-400/15 bg-cyan-400/[0.04] p-3"
+          >
             <p className="text-sm font-bold text-zinc-200">
               <MathBlock>{branch.title}</MathBlock>
             </p>
@@ -98,13 +116,17 @@ function BranchesStep({
             )}
             <div className="mt-2 grid gap-1.5 sm:grid-cols-2">
               <div className="border-l-2 border-emerald-400/40 pl-2">
-                <span className="text-[10px] font-bold text-emerald-400/70">优势</span>
+                <span className="text-[10px] font-bold text-emerald-400/70">
+                  优势
+                </span>
                 <p className="mt-0.5 text-xs leading-5 text-zinc-400">
                   <MathBlock>{branch.promise}</MathBlock>
                 </p>
               </div>
               <div className="border-l-2 border-red-400/40 pl-2">
-                <span className="text-[10px] font-bold text-red-400/70">风险</span>
+                <span className="text-[10px] font-bold text-red-400/70">
+                  风险
+                </span>
                 <p className="mt-0.5 text-xs leading-5 text-zinc-400">
                   <MathBlock>{branch.risk}</MathBlock>
                 </p>
@@ -137,14 +159,16 @@ function MethodBoundaryItem({ boundary }: { boundary: ProofMethodBoundary }) {
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="rounded border border-amber-400/20 bg-amber-400/[0.04]">
+    <div className="border border-amber-400/20 bg-amber-400/[0.04]">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
         className="flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left"
       >
         <div className="min-w-0">
-          <p className="text-sm font-bold text-zinc-200">{boundary.methodName}</p>
+          <p className="text-sm font-bold text-zinc-200">
+            {boundary.methodName}
+          </p>
           <p className="mt-0.5 truncate text-xs text-zinc-500">
             <MathBlock>{boundary.whyTempting}</MathBlock>
           </p>
@@ -156,19 +180,25 @@ function MethodBoundaryItem({ boundary }: { boundary: ProofMethodBoundary }) {
       {open && (
         <div className="grid gap-2 border-t border-amber-400/10 p-3 sm:grid-cols-2">
           <div>
-            <span className="text-[10px] font-bold text-red-400/70">为什么不优先</span>
+            <span className="text-[10px] font-bold text-red-400/70">
+              为什么不优先
+            </span>
             <p className="mt-1 text-xs leading-5 text-zinc-400">
               <MathBlock>{boundary.whyNotPriority}</MathBlock>
             </p>
           </div>
           <div>
-            <span className="text-[10px] font-bold text-amber-400/70">在哪里卡住</span>
+            <span className="text-[10px] font-bold text-amber-400/70">
+              在哪里卡住
+            </span>
             <p className="mt-1 text-xs leading-5 text-zinc-400">
               <MathBlock>{boundary.whereItBreaks}</MathBlock>
             </p>
           </div>
           <div className="sm:col-span-2">
-            <span className="text-[10px] font-bold text-emerald-400/70">什么时候变成好方法</span>
+            <span className="text-[10px] font-bold text-emerald-400/70">
+              什么时候变成好方法
+            </span>
             <p className="mt-1 text-xs leading-5 text-zinc-400">
               <MathBlock>{boundary.whenItWorks}</MathBlock>
             </p>
@@ -179,7 +209,11 @@ function MethodBoundaryItem({ boundary }: { boundary: ProofMethodBoundary }) {
   );
 }
 
-function MethodBoundariesStep({ boundaries }: { boundaries: ProofMethodBoundary[] }) {
+function MethodBoundariesStep({
+  boundaries,
+}: {
+  boundaries: ProofMethodBoundary[];
+}) {
   return (
     <div className="space-y-2">
       {boundaries.map((b) => (
@@ -191,16 +225,20 @@ function MethodBoundariesStep({ boundaries }: { boundaries: ProofMethodBoundary[
 
 // ── Step 4: key transformations ───────────────────────────────────────────────
 
-function TransformationsStep({ transformations }: { transformations: ProofTransformation[] }) {
+function TransformationsStep({
+  transformations,
+}: {
+  transformations: ProofTransformation[];
+}) {
   return (
     <div className="space-y-2">
       {transformations.map((t) => (
-        <div key={t.id} className="rounded border border-white/10 bg-zinc-950 p-3">
+        <div key={t.id} className="border border-white/10 bg-zinc-950 p-3">
           <p className="text-sm font-bold text-zinc-200">
             <MathBlock>{t.title}</MathBlock>
           </p>
           <div className="mt-2 flex items-start gap-2 text-xs">
-            <span className="shrink-0 rounded border border-zinc-700 px-1.5 py-0.5 font-mono text-zinc-500">
+            <span className="shrink-0 border border-zinc-700 px-1.5 py-0.5 font-mono text-zinc-500">
               从
             </span>
             <p className="leading-5 text-zinc-400">
@@ -208,7 +246,7 @@ function TransformationsStep({ transformations }: { transformations: ProofTransf
             </p>
           </div>
           <div className="mt-1 flex items-start gap-2 text-xs">
-            <span className="shrink-0 rounded border border-cyan-700/50 px-1.5 py-0.5 font-mono text-cyan-500">
+            <span className="shrink-0 border border-cyan-700/50 px-1.5 py-0.5 font-mono text-cyan-500">
               到
             </span>
             <p className="leading-5 text-zinc-300">
@@ -246,9 +284,11 @@ const stepTypeTone: Record<ProofVerificationStep["type"], string> = {
 
 function VerificationStep({ step }: { step: ProofVerificationStep }) {
   return (
-    <div className="rounded border border-white/10 bg-zinc-950 p-3">
+    <div className="border border-white/10 bg-zinc-950 p-3">
       <div className="mb-1.5 flex items-center gap-2">
-        <span className={`border px-1.5 py-0.5 text-[10px] font-bold ${stepTypeTone[step.type]}`}>
+        <span
+          className={`border px-1.5 py-0.5 text-[10px] font-bold ${stepTypeTone[step.type]}`}
+        >
           {stepTypeLabel[step.type]}
         </span>
       </div>
@@ -310,7 +350,13 @@ export function ReasoningReplayPanel({ problem }: { problem: Problem }) {
       label: "可能想到哪些路线",
       icon: GitBranch,
       accent: "border-violet-400/30 bg-violet-400/[0.08] text-violet-300",
-      content: <BranchesStep branches={pg.branches} observations={pg.observations} methodBoundaries={pg.methodBoundaries} />,
+      content: (
+        <BranchesStep
+          branches={pg.branches}
+          observations={pg.observations}
+          methodBoundaries={pg.methodBoundaries}
+        />
+      ),
     },
     pg.methodBoundaries.length > 0 && {
       key: "boundaries",

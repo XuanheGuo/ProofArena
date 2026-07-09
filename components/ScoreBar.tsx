@@ -20,7 +20,9 @@ export function ScoreBar({ label, value, tone = "cyan" }: ScoreBarProps) {
           style={{ width: `${Math.min(100, value * 10)}%` }}
         />
       </div>
-      <span className="font-mono text-xs font-semibold tabular-nums text-zinc-100">{value.toFixed(1)}</span>
+      <span className="font-mono text-xs font-semibold tabular-nums text-zinc-100">
+        {value.toFixed(1)}
+      </span>
     </div>
   );
 }

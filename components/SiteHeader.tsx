@@ -3,16 +3,51 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BookOpenCheck, Code2, Crosshair, Info, Menu, Send, Swords, Trophy, X } from "lucide-react";
+import {
+  BookOpenCheck,
+  Code2,
+  Crosshair,
+  Info,
+  Menu,
+  Send,
+  Swords,
+  Trophy,
+  X,
+} from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { AuthButton } from "@/components/AuthButton";
 
 const navigation = [
-  { href: "/problems", label: "题目", description: "浏览真题并进入解法对比", icon: Swords },
-  { href: "/contests", label: "比赛", description: "进入思路擂台和活动合集", icon: Trophy },
-  { href: "/library", label: "思路库", description: "查看知识点、方法边界和关联题", icon: BookOpenCheck },
-  { href: "/submit", label: "投稿", description: "提交题目、解法或改进建议", icon: Send },
-  { href: "/about", label: "关于", description: "了解 ProofArena 的组织方式", icon: Info },
+  {
+    href: "/problems",
+    label: "题目",
+    description: "浏览真题并进入解法对比",
+    icon: Swords,
+  },
+  {
+    href: "/contests",
+    label: "比赛",
+    description: "进入思路擂台和活动合集",
+    icon: Trophy,
+  },
+  {
+    href: "/library",
+    label: "思路库",
+    description: "查看知识点、方法边界和关联题",
+    icon: BookOpenCheck,
+  },
+  {
+    href: "/submit",
+    label: "投稿",
+    description: "提交题目、解法或改进建议",
+    icon: Send,
+  },
+  {
+    href: "/about",
+    label: "关于",
+    description: "了解 ProofArena 的组织方式",
+    icon: Info,
+  },
 ];
 
 export function SiteHeader() {
@@ -26,11 +61,16 @@ export function SiteHeader() {
   return (
     <header className="sticky top-0 z-50 border-b border-white/10 bg-zinc-950/90 backdrop-blur-xl">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-3 px-3 sm:px-4 md:px-6">
-        <Link href="/" className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3 md:flex-none">
-          <span className="grid size-8 shrink-0 place-items-center bg-cyan-400 text-zinc-950">
+        <Link
+          href="/"
+          className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3 md:flex-none"
+        >
+          <span className="pill-button grid size-8 shrink-0 place-items-center bg-cyan-400 text-zinc-950 shadow-sm shadow-cyan-400/20">
             <Crosshair className="size-5" />
           </span>
-          <span className="font-display min-w-fit text-base font-black text-white sm:text-lg">ProofArena</span>
+          <span className="font-display min-w-fit text-base font-black text-white sm:text-lg">
+            ProofArena
+          </span>
           <span className="hidden border-l border-white/10 pl-3 text-xs text-zinc-500 sm:inline">
             高中数学解法竞技场
           </span>
@@ -42,7 +82,11 @@ export function SiteHeader() {
               href={href}
               aria-label={label}
               title={label}
-              className="inline-flex size-9 shrink-0 items-center justify-center text-zinc-400 transition hover:bg-white/[0.03] hover:text-white md:w-auto md:gap-2 md:px-3"
+              className={`pressable inline-flex size-9 shrink-0 items-center justify-center  text-zinc-400 hover:bg-white/[0.06] hover:text-white md:w-auto md:gap-2 md:px-3 ${
+                pathname === href || pathname.startsWith(`${href}/`)
+                  ? "bg-white/10 text-white"
+                  : ""
+              }`}
             >
               <Icon className="size-4" />
               <span className="hidden md:inline">{label}</span>
@@ -66,29 +110,34 @@ export function SiteHeader() {
           onClick={() => setOpen((value) => !value)}
           aria-expanded={open}
           aria-controls="mobile-site-menu"
-          className="inline-flex h-10 shrink-0 items-center gap-2 border border-white/10 bg-black/20 px-3 text-sm font-bold text-zinc-200 transition hover:border-cyan-400/35 hover:text-white md:hidden"
+          className="pressable pill-button inline-flex h-10 shrink-0 items-center gap-2 border border-white/10 bg-black/20 px-3 text-sm font-bold text-zinc-200 hover:border-cyan-400/35 hover:text-white md:hidden"
         >
           {open ? <X className="size-4" /> : <Menu className="size-4" />}
           菜单
         </button>
       </div>
       {open && (
-        <div id="mobile-site-menu" className="border-t border-white/10 bg-zinc-950/95 px-3 py-3 shadow-xl md:hidden">
+        <div
+          id="mobile-site-menu"
+          className="border-t border-white/10 bg-zinc-950/95 px-3 py-3 shadow-xl md:hidden"
+        >
           <div className="grid gap-2">
             {navigation.map(({ href, label, description, icon: Icon }) => (
               <Link
                 key={href}
                 href={href}
-                className="flex min-h-14 items-center gap-3 border border-white/10 bg-black/20 px-3 py-2 transition hover:border-cyan-400/35"
+                className="pressable surface-panel-subtle flex min-h-14 items-center gap-3 px-3 py-2 hover:border-cyan-400/35"
               >
-                <span className="grid size-9 shrink-0 place-items-center border border-white/10 bg-zinc-950 text-cyan-300">
+                <span className="grid size-9 shrink-0 place-items-center  border border-white/10 bg-zinc-950 text-cyan-300">
                   <Icon className="size-4" />
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="flex items-center gap-2 text-sm font-bold text-white">
                     {label}
                   </span>
-                  <span className="mt-0.5 block text-xs leading-5 text-zinc-500">{description}</span>
+                  <span className="mt-0.5 block text-xs leading-5 text-zinc-500">
+                    {description}
+                  </span>
                 </span>
               </Link>
             ))}
@@ -98,12 +147,12 @@ export function SiteHeader() {
                 href="https://github.com/XuanheGuo/ProofArena"
                 target="_blank"
                 rel="noreferrer"
-                className="flex min-h-11 items-center gap-3 border border-white/10 bg-black/20 px-3 text-sm font-bold text-zinc-300 transition hover:border-cyan-400/35 hover:text-white"
+                className="pressable surface-panel-subtle flex min-h-11 items-center gap-3 px-3 text-sm font-bold text-zinc-300 hover:border-cyan-400/35 hover:text-white"
               >
                 <Code2 className="size-4 shrink-0 text-zinc-500" />
                 <span>GitHub 仓库</span>
               </a>
-              <div className="flex items-center justify-between border border-white/10 bg-black/20 px-3 py-2">
+              <div className="surface-panel-subtle flex items-center justify-between px-3 py-2">
                 <span className="text-sm font-bold text-zinc-300">主题</span>
                 <ThemeToggle />
               </div>

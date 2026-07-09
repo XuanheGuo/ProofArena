@@ -39,7 +39,13 @@ function kindLabel(kind: Solution["kind"]) {
   return map[kind] ?? kind;
 }
 
-function KeyTransformCell({ solution, problem }: { solution: Solution; problem: Problem }) {
+function KeyTransformCell({
+  solution,
+  problem,
+}: {
+  solution: Solution;
+  problem: Problem;
+}) {
   // Prefer the first matching transformation from proofGraph
   const proofTransform = problem.proofGraph?.transformations.find(
     (t) => t.solutionId === solution.id,
@@ -58,7 +64,10 @@ function RiskCell({ solution }: { solution: Solution }) {
   return (
     <ul className="space-y-1">
       {items.map((item) => (
-        <li key={item} className="line-clamp-2 border-l border-red-400/30 pl-2 text-xs leading-5 text-zinc-400 [word-break:keep-all]">
+        <li
+          key={item}
+          className="line-clamp-2 border-l border-red-400/30 pl-2 text-xs leading-5 text-zinc-400 [word-break:keep-all]"
+        >
           <MathBlock>{item}</MathBlock>
         </li>
       ))}
@@ -100,15 +109,26 @@ function DesktopMatrix({ problem }: { problem: Problem }) {
         </colgroup>
         <thead>
           <tr className="border-b border-white/10">
-            <th className="whitespace-nowrap px-3 py-2 text-xs font-bold text-zinc-500">解法</th>
+            <th className="whitespace-nowrap px-3 py-2 text-xs font-bold text-zinc-500">
+              解法
+            </th>
             {SCORE_COLS.map((col) => (
-              <th key={col.key} className="whitespace-nowrap px-2 py-2 text-center text-xs font-bold text-zinc-500">
+              <th
+                key={col.key}
+                className="whitespace-nowrap px-2 py-2 text-center text-xs font-bold text-zinc-500"
+              >
                 {col.label}
               </th>
             ))}
-            <th className="whitespace-nowrap px-3 py-2 text-xs font-bold text-zinc-500">关键转化</th>
-            <th className="whitespace-nowrap px-3 py-2 text-xs font-bold text-zinc-500">代价 / 风险</th>
-            <th className="whitespace-nowrap px-3 py-2 text-xs font-bold text-zinc-500">最适合</th>
+            <th className="whitespace-nowrap px-3 py-2 text-xs font-bold text-zinc-500">
+              关键转化
+            </th>
+            <th className="whitespace-nowrap px-3 py-2 text-xs font-bold text-zinc-500">
+              代价 / 风险
+            </th>
+            <th className="whitespace-nowrap px-3 py-2 text-xs font-bold text-zinc-500">
+              最适合
+            </th>
           </tr>
         </thead>
         <tbody className="divide-y divide-white/5">
@@ -129,7 +149,9 @@ function DesktopMatrix({ problem }: { problem: Problem }) {
               </td>
               {SCORE_COLS.map((col) => (
                 <td key={col.key} className="px-2 py-3 text-center align-top">
-                  <span className={`text-sm font-bold tabular-nums ${scoreColor(sol.scores[col.key])}`}>
+                  <span
+                    className={`text-sm font-bold tabular-nums ${scoreColor(sol.scores[col.key])}`}
+                  >
                     {sol.scores[col.key].toFixed(1)}
                   </span>
                 </td>
@@ -153,38 +175,60 @@ function DesktopMatrix({ problem }: { problem: Problem }) {
 
 // ── Mobile: card per solution ─────────────────────────────────────────────────
 
-function MobileCard({ solution, problem }: { solution: Solution; problem: Problem }) {
+function MobileCard({
+  solution,
+  problem,
+}: {
+  solution: Solution;
+  problem: Problem;
+}) {
   return (
     <div className="border border-white/10 bg-zinc-950 p-4">
       <div className="mb-3 flex items-center gap-2">
-        <span className={`border px-2 py-0.5 text-[10px] font-bold ${kindBadgeClass(solution.kind)}`}>
+        <span
+          className={`border px-2 py-0.5 text-[10px] font-bold ${kindBadgeClass(solution.kind)}`}
+        >
           {kindLabel(solution.kind)}
         </span>
-        <a href={`#${solution.id}`} className="text-sm font-bold text-zinc-200 hover:text-cyan-300">
+        <a
+          href={`#${solution.id}`}
+          className="text-sm font-bold text-zinc-200 hover:text-cyan-300"
+        >
           <MathBlock>{solution.title}</MathBlock>
         </a>
       </div>
       <div className="mb-3 grid grid-cols-2 gap-x-4 gap-y-1.5 sm:grid-cols-3">
         {SCORE_COLS.map((col) => (
-          <ScoreBar key={col.key} label={col.label} value={solution.scores[col.key]} tone="cyan" />
+          <ScoreBar
+            key={col.key}
+            label={col.label}
+            value={solution.scores[col.key]}
+            tone="cyan"
+          />
         ))}
       </div>
       <div className="space-y-2 border-t border-white/5 pt-2">
         <div>
-          <span className="text-[10px] font-bold uppercase tracking-wide text-cyan-400/70">关键转化</span>
+          <span className="text-[10px] font-bold uppercase tracking-wide text-cyan-400/70">
+            关键转化
+          </span>
           <div className="mt-1">
             <KeyTransformCell solution={solution} problem={problem} />
           </div>
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <span className="text-[10px] font-bold uppercase tracking-wide text-red-400/70">风险</span>
+            <span className="text-[10px] font-bold uppercase tracking-wide text-red-400/70">
+              风险
+            </span>
             <div className="mt-1">
               <RiskCell solution={solution} />
             </div>
           </div>
           <div>
-            <span className="text-[10px] font-bold uppercase tracking-wide text-emerald-400/70">最适合</span>
+            <span className="text-[10px] font-bold uppercase tracking-wide text-emerald-400/70">
+              最适合
+            </span>
             <div className="mt-1">
               <SuitableForCell solution={solution} />
             </div>

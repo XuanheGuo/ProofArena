@@ -6,9 +6,21 @@ import { ProblemDetailExperience } from "@/components/ProblemDetailExperience";
 import { ContestSprintPanel } from "@/components/ContestSprintPanel";
 import { getProblem, getProblemSummaries } from "@/lib/db";
 import { getContestForProblem, getContests } from "@/lib/contests";
-import { getKnowledgeNodesForProblem, getRelatedProblemSummaries, redactLockedProblem } from "@/lib/problem-detail-helpers";
-import { adaptProblemDraftToProblem, getProblemDraftForContestDisplay } from "@/lib/problem-drafts";
-import { isContestProblemLocked, type Contest, type ContestProblem, type Problem } from "@/lib/types";
+import {
+  getKnowledgeNodesForProblem,
+  getRelatedProblemSummaries,
+  redactLockedProblem,
+} from "@/lib/problem-detail-helpers";
+import {
+  adaptProblemDraftToProblem,
+  getProblemDraftForContestDisplay,
+} from "@/lib/problem-drafts";
+import {
+  isContestProblemLocked,
+  type Contest,
+  type ContestProblem,
+  type Problem,
+} from "@/lib/types";
 import { formatContestDateTime } from "@/lib/format-contest-time";
 
 // This page decides locked-vs-open server-side. Keep it dynamic so scheduled
@@ -20,11 +32,15 @@ export async function generateStaticParams() {
   const contests = await getContests();
   return contests.flatMap((contest) =>
     contest.problems
-      .filter((contestProblem) => contestProblem.problemId || contestProblem.draftProblemId)
+      .filter(
+        (contestProblem) =>
+          contestProblem.problemId || contestProblem.draftProblemId,
+      )
       .map((contestProblem) => ({
         slug: contest.slug,
-        id: (contestProblem.problemId ?? contestProblem.draftProblemId) as string,
-      }))
+        id: (contestProblem.problemId ??
+          contestProblem.draftProblemId) as string,
+      })),
   );
 }
 
@@ -34,12 +50,17 @@ export async function generateStaticParams() {
 // the draft branch does a trusted, RLS-bypassing read (see
 // getProblemDraftForContestDisplay's own doc comment for why that's safe
 // here but never safe from a client component).
-async function resolveContestProblem(contestProblem: ContestProblem, id: string): Promise<Problem | null> {
+async function resolveContestProblem(
+  contestProblem: ContestProblem,
+  id: string,
+): Promise<Problem | null> {
   if (contestProblem.problemId) {
     return getProblem(id);
   }
   if (contestProblem.draftProblemId) {
-    const draft = await getProblemDraftForContestDisplay(contestProblem.draftProblemId);
+    const draft = await getProblemDraftForContestDisplay(
+      contestProblem.draftProblemId,
+    );
     return draft ? adaptProblemDraftToProblem(draft) : null;
   }
   return null;
@@ -59,7 +80,12 @@ export async function generateMetadata({
   // source / link previews) even though the page body itself already gates
   // on the same check. Bail out before ever resolving the underlying
   // problem/draft — a locked page has no legitimate reason to read it.
-  if (isContestProblemLocked(contestContext.contest, contestContext.contestProblem)) {
+  if (
+    isContestProblemLocked(
+      contestContext.contest,
+      contestContext.contestProblem,
+    )
+  ) {
     return {
       title: `Day ${contestContext.contestProblem.dayIndex} · ${contestContext.contest.title} | ProofArena`,
       description: "这道赛题还未解锁，暂不公开题干。",
@@ -79,12 +105,17 @@ export async function generateMetadata({
     };
   }
 
-  const problem = await resolveContestProblem(contestContext.contestProblem, id);
+  const problem = await resolveContestProblem(
+    contestContext.contestProblem,
+    id,
+  );
   if (!problem) return {};
 
   const rawDescription = problem.statement[0]?.replace(/\$/g, "") ?? "";
   const description =
-    rawDescription.length > 120 ? `${rawDescription.slice(0, 120)}…` : rawDescription;
+    rawDescription.length > 120
+      ? `${rawDescription.slice(0, 120)}…`
+      : rawDescription;
 
   return {
     title: `${problem.title} · ${contestContext.contest.title} | ProofArena`,
@@ -110,7 +141,9 @@ function LockedContestProblem({
         <h1 className="mt-3 text-xl font-black text-white">
           {isDraft ? "比赛尚未开始" : "这道赛题还没有解锁"}
         </h1>
-        <p className="mx-auto mt-3 max-w-sm text-sm leading-6 text-zinc-500">{contestProblem.theme}</p>
+        <p className="mx-auto mt-3 max-w-sm text-sm leading-6 text-zinc-500">
+          {contestProblem.theme}
+        </p>
         <p className="mt-3 text-xs text-zinc-600">
           {isDraft
             ? `比赛开始（${formatContestDateTime(contest.startAt)}（北京时间））后，赛题会按开放时间陆续解锁。`
@@ -159,21 +192,37 @@ function SprintContestProblem({
         </Link>
 
         <div className="mt-6 flex flex-wrap items-center gap-2 text-xs">
-          <span className="bg-cyan-400 px-2.5 py-1 font-bold text-zinc-950">Day {contestProblem.dayIndex}</span>
+          <span className="bg-cyan-400 px-2.5 py-1 font-bold text-zinc-950">
+            Day {contestProblem.dayIndex}
+          </span>
           <span className="border border-amber-400/30 bg-amber-400/10 px-2.5 py-1 font-bold text-amber-300">
             计时题
           </span>
-          <span className="border border-white/15 px-2.5 py-1 text-zinc-400">{contestProblem.title}</span>
+          <span className="border border-white/15 px-2.5 py-1 text-zinc-400">
+            {contestProblem.title}
+          </span>
         </div>
 
-        <h1 className="mt-4 text-2xl font-black leading-snug text-white">{contestProblem.theme}</h1>
+        <h1 className="mt-4 text-2xl font-black leading-snug text-white">
+          {contestProblem.theme}
+        </h1>
         <p className="mt-2 text-sm leading-6 text-zinc-500">
           解锁后题面立即显示，计时同时开始。满分{" "}
-          <span className="font-bold text-amber-300">{contestProblem.scoreMax} 分</span>
-          {contestProblem.timeLimitSeconds
-            ? <>，限时 <span className="font-bold text-amber-300">{contestProblem.timeLimitSeconds} 秒</span>。</>
-            : "。"}
-          {" "}答错或超时不计分，不影响其他题型的挑战倍率。
+          <span className="font-bold text-amber-300">
+            {contestProblem.scoreMax} 分
+          </span>
+          {contestProblem.timeLimitSeconds ? (
+            <>
+              ，限时{" "}
+              <span className="font-bold text-amber-300">
+                {contestProblem.timeLimitSeconds} 秒
+              </span>
+              。
+            </>
+          ) : (
+            "。"
+          )}{" "}
+          答错或超时不计分，不影响其他题型的挑战倍率。
         </p>
 
         <div className="mt-6">
@@ -205,8 +254,18 @@ export default async function ContestProblemDetailPage({
   // in a Problem Vault draft id) must not be enough to see a later day's
   // statement ahead of schedule, and a draft contest hasn't committed to its
   // schedule yet at all.
-  if (isContestProblemLocked(contestContext.contest, contestContext.contestProblem)) {
-    return <LockedContestProblem contest={contestContext.contest} contestProblem={contestContext.contestProblem} />;
+  if (
+    isContestProblemLocked(
+      contestContext.contest,
+      contestContext.contestProblem,
+    )
+  ) {
+    return (
+      <LockedContestProblem
+        contest={contestContext.contest}
+        contestProblem={contestContext.contestProblem}
+      />
+    );
   }
 
   // Sprint problems are a quick choice/fill-blank check against a timer, not
@@ -218,7 +277,12 @@ export default async function ContestProblemDetailPage({
   // (personal unlock happens client-side, through the sprint API routes) —
   // see SprintContestProblem's own doc comment.
   if (contestContext.contestProblem.problemPhase === "sprint") {
-    return <SprintContestProblem contest={contestContext.contest} contestProblem={contestContext.contestProblem} />;
+    return (
+      <SprintContestProblem
+        contest={contestContext.contest}
+        contestProblem={contestContext.contestProblem}
+      />
+    );
   }
 
   const isDraftProblem = Boolean(contestContext.contestProblem.draftProblemId);
@@ -234,7 +298,9 @@ export default async function ContestProblemDetailPage({
   const hideSolutions = contestContext.contest.status === "active";
   const safeProblem = hideSolutions ? redactLockedProblem(problem) : problem;
   const knowledgeNodes = getKnowledgeNodesForProblem(safeProblem);
-  const relatedProblems = isDraftProblem ? [] : getRelatedProblemSummaries(problem, allSummaries);
+  const relatedProblems = isDraftProblem
+    ? []
+    : getRelatedProblemSummaries(problem, allSummaries);
 
   return (
     <ProblemDetailExperience

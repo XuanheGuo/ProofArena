@@ -1,9 +1,16 @@
 import { NextResponse } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient, createServiceClient } from "@/lib/supabase-server";
-import { isWithinWindow, loadSprintContestProblem, resolveSprintProblemDisplay, type ContestProblemRow } from "@/lib/contest-sprint";
+import {
+  isWithinWindow,
+  loadSprintContestProblem,
+  resolveSprintProblemDisplay,
+  type ContestProblemRow,
+} from "@/lib/contest-sprint";
 
-type RouteContext = { params: Promise<{ slug: string; contestProblemId: string }> };
+type RouteContext = {
+  params: Promise<{ slug: string; contestProblemId: string }>;
+};
 
 type AttemptFields = {
   unlock_at: string;
@@ -23,7 +30,9 @@ async function serializeAttempt(
   attempt: AttemptFields | null,
   contestProblem: ContestProblemRow,
 ) {
-  const display = attempt ? await resolveSprintProblemDisplay(contestProblem) : null;
+  const display = attempt
+    ? await resolveSprintProblemDisplay(contestProblem)
+    : null;
   return {
     unlocked: attempt !== null,
     unlockAt: attempt?.unlock_at ?? null,
@@ -40,7 +49,11 @@ async function serializeAttempt(
   };
 }
 
-async function findOwnAttempt(supabase: SupabaseClient, contestProblemId: string, userId: string) {
+async function findOwnAttempt(
+  supabase: SupabaseClient,
+  contestProblemId: string,
+  userId: string,
+) {
   const { data } = await supabase
     .from("contest_sprint_attempts")
     .select("unlock_at, submitted_at, elapsed_ms, is_correct, score")
@@ -65,17 +78,29 @@ export async function GET(_req: Request, context: RouteContext) {
   const { data: authData } = await authClient.auth.getUser();
   const user = authData.user;
   if (!user) {
-    return NextResponse.json({ error: "需要登录后才能查看计时题状态。" }, { status: 401 });
+    return NextResponse.json(
+      { error: "需要登录后才能查看计时题状态。" },
+      { status: 401 },
+    );
   }
 
   const supabase = createServiceClient();
-  const loaded = await loadSprintContestProblem(supabase, slug, contestProblemId);
+  const loaded = await loadSprintContestProblem(
+    supabase,
+    slug,
+    contestProblemId,
+  );
   if (!loaded.ok) {
-    return NextResponse.json({ error: loaded.error }, { status: loaded.status });
+    return NextResponse.json(
+      { error: loaded.error },
+      { status: loaded.status },
+    );
   }
 
   const existing = await findOwnAttempt(supabase, contestProblemId, user.id);
-  return NextResponse.json(await serializeAttempt(supabase, existing, loaded.contestProblem));
+  return NextResponse.json(
+    await serializeAttempt(supabase, existing, loaded.contestProblem),
+  );
 }
 
 // Unlocking is the only user-triggered write against contest_sprint_attempts
@@ -91,13 +116,23 @@ export async function POST(_req: Request, context: RouteContext) {
   const { data: authData } = await authClient.auth.getUser();
   const user = authData.user;
   if (!user) {
-    return NextResponse.json({ error: "需要登录后才能解锁计时题。" }, { status: 401 });
+    return NextResponse.json(
+      { error: "需要登录后才能解锁计时题。" },
+      { status: 401 },
+    );
   }
 
   const supabase = createServiceClient();
-  const loaded = await loadSprintContestProblem(supabase, slug, contestProblemId);
+  const loaded = await loadSprintContestProblem(
+    supabase,
+    slug,
+    contestProblemId,
+  );
   if (!loaded.ok) {
-    return NextResponse.json({ error: loaded.error }, { status: loaded.status });
+    return NextResponse.json(
+      { error: loaded.error },
+      { status: loaded.status },
+    );
   }
   const { contest, contestProblem } = loaded;
 
@@ -107,7 +142,9 @@ export async function POST(_req: Request, context: RouteContext) {
   // constraint below, so a racing double-insert can't ever create two rows.
   const existing = await findOwnAttempt(supabase, contestProblemId, user.id);
   if (existing) {
-    return NextResponse.json(await serializeAttempt(supabase, existing, contestProblem));
+    return NextResponse.json(
+      await serializeAttempt(supabase, existing, contestProblem),
+    );
   }
 
   // Only a brand-new attempt requires the contest to currently be active and
@@ -116,10 +153,16 @@ export async function POST(_req: Request, context: RouteContext) {
   // re-checks these, so a window closing mid-attempt can't strand a timer
   // that's already running.
   if (contest.status !== "active") {
-    return NextResponse.json({ error: "比赛当前不在进行中，无法解锁计时题。" }, { status: 403 });
+    return NextResponse.json(
+      { error: "比赛当前不在进行中，无法解锁计时题。" },
+      { status: 403 },
+    );
   }
   if (!isWithinWindow(contestProblem.open_at, contestProblem.close_at)) {
-    return NextResponse.json({ error: "这道计时题当前不在开放时间内。" }, { status: 403 });
+    return NextResponse.json(
+      { error: "这道计时题当前不在开放时间内。" },
+      { status: 403 },
+    );
   }
 
   const { data: inserted, error: insertError } = await supabase
@@ -142,14 +185,21 @@ export async function POST(_req: Request, context: RouteContext) {
     if (insertError.code === "23505") {
       const raced = await findOwnAttempt(supabase, contestProblemId, user.id);
       if (raced) {
-        return NextResponse.json(await serializeAttempt(supabase, raced, contestProblem));
+        return NextResponse.json(
+          await serializeAttempt(supabase, raced, contestProblem),
+        );
       }
     }
-    return NextResponse.json({ error: insertError.message || "解锁失败，请重试。" }, { status: 500 });
+    return NextResponse.json(
+      { error: insertError.message || "解锁失败，请重试。" },
+      { status: 500 },
+    );
   }
   if (!inserted) {
     return NextResponse.json({ error: "解锁失败，请重试。" }, { status: 500 });
   }
 
-  return NextResponse.json(await serializeAttempt(supabase, inserted as AttemptFields, contestProblem));
+  return NextResponse.json(
+    await serializeAttempt(supabase, inserted as AttemptFields, contestProblem),
+  );
 }

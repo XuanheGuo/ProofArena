@@ -53,7 +53,9 @@ function DigitBlock({ value, label }: { value: string; label: string }) {
       <span className="font-mono text-3xl font-black tabular-nums leading-none tracking-tight text-white">
         {value}
       </span>
-      <span className="mt-1 text-[10px] uppercase tracking-widest text-zinc-600">{label}</span>
+      <span className="mt-1 text-[10px] uppercase tracking-widest text-zinc-600">
+        {label}
+      </span>
     </div>
   );
 }
@@ -91,10 +93,14 @@ function BigCountdown({
   }[accent];
 
   return (
-    <div className={`border ${borderColor} bg-black/20 px-4 py-4`}>
+    <div
+      className={`surface-panel-subtle ${borderColor} bg-black/20 px-4 py-4`}
+    >
       <div className="mb-3 flex items-center gap-2">
-        <span className={`size-1.5 rounded-full ${dotColor}`} />
-        <span className={`text-[11px] font-bold uppercase tracking-widest ${labelColor}`}>
+        <span className={`size-1.5 ${dotColor}`} />
+        <span
+          className={`text-[11px] font-bold uppercase tracking-widest ${labelColor}`}
+        >
           {label}
         </span>
       </div>
@@ -102,13 +108,19 @@ function BigCountdown({
         {days > 0 && (
           <>
             <DigitBlock value={String(days)} label="天" />
-            <span className="mb-5 font-mono text-xl font-black text-zinc-600">:</span>
+            <span className="mb-5 font-mono text-xl font-black text-zinc-600">
+              :
+            </span>
           </>
         )}
         <DigitBlock value={pad(hours)} label="时" />
-        <span className="mb-5 font-mono text-xl font-black text-zinc-600">:</span>
+        <span className="mb-5 font-mono text-xl font-black text-zinc-600">
+          :
+        </span>
         <DigitBlock value={pad(minutes)} label="分" />
-        <span className="mb-5 font-mono text-xl font-black text-zinc-600">:</span>
+        <span className="mb-5 font-mono text-xl font-black text-zinc-600">
+          :
+        </span>
         <DigitBlock value={pad(seconds)} label="秒" />
       </div>
     </div>
@@ -123,7 +135,12 @@ type CountdownItem = {
   accent: "cyan" | "amber" | "emerald" | "zinc";
 };
 
-function SmallPill({ label, targetMs, now, accent }: CountdownItem & { now: number }) {
+function SmallPill({
+  label,
+  targetMs,
+  now,
+  accent,
+}: CountdownItem & { now: number }) {
   const remaining = targetMs - now;
   const text =
     remaining > 0
@@ -140,9 +157,13 @@ function SmallPill({ label, targetMs, now, accent }: CountdownItem & { now: numb
   }[accent];
 
   return (
-    <div className={`flex items-center justify-between gap-3 border-b border-white/[0.05] px-3 py-2 last:border-0`}>
+    <div
+      className={`flex items-center justify-between gap-3 border-b border-white/[0.05] px-3 py-2 last:border-0`}
+    >
       <span className="text-xs text-zinc-500">{label}</span>
-      <span className={`font-mono text-xs font-bold tabular-nums ${cls}`}>{text}</span>
+      <span className={`font-mono text-xs font-bold tabular-nums ${cls}`}>
+        {text}
+      </span>
     </div>
   );
 }
@@ -151,16 +172,23 @@ function SmallPill({ label, targetMs, now, accent }: CountdownItem & { now: numb
 
 export function ContestCountdown({ contest }: { contest: Contest }) {
   const router = useRouter();
-  const [now, setNow] = useState(() => Date.now());
+  const [now, setNow] = useState<number | null>(null);
   const refreshedAt = useRef<number | null>(null);
 
   useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 1_000);
+    const tick = () => setNow(Date.now());
+    tick();
+    const id = setInterval(tick, 1_000);
     return () => clearInterval(id);
   }, []);
 
   // Primary countdown: the most important upcoming timestamp.
-  const primary = useMemo<{ ms: number; label: string; accent: "cyan" | "amber" | "emerald" } | null>(() => {
+  const primary = useMemo<{
+    ms: number;
+    label: string;
+    accent: "cyan" | "amber" | "emerald";
+  } | null>(() => {
+    if (now === null) return null;
     const startMs = new Date(contest.startAt).getTime();
     const endMs = new Date(contest.endAt).getTime();
     if (contest.status === "draft" && startMs > now) {
@@ -170,28 +198,44 @@ export function ContestCountdown({ contest }: { contest: Contest }) {
       return { ms: endMs - now, label: "距比赛结束", accent: "amber" };
     }
     if (contest.status === "judging") {
-      const discussEnd = contest.discussionEndAt ? new Date(contest.discussionEndAt).getTime() : endMs;
-      if (discussEnd > now) return { ms: discussEnd - now, label: "讨论期结束", accent: "emerald" };
+      const discussEnd = contest.discussionEndAt
+        ? new Date(contest.discussionEndAt).getTime()
+        : endMs;
+      if (discussEnd > now)
+        return { ms: discussEnd - now, label: "讨论期结束", accent: "emerald" };
     }
     return null;
   }, [contest, now]);
 
   // Secondary pills: next problem to open or close.
   const secondary = useMemo<CountdownItem[]>(() => {
+    if (now === null) return [];
     if (contest.status !== "active") return [];
     const nowDate = new Date(now);
     const items: CountdownItem[] = [];
     const openProblems = contest.problems
       .filter((cp) => getEffectiveProblemStatus(cp, nowDate) === "open")
-      .sort((a, b) => new Date(a.closeAt).getTime() - new Date(b.closeAt).getTime());
+      .sort(
+        (a, b) => new Date(a.closeAt).getTime() - new Date(b.closeAt).getTime(),
+      );
     const lockedProblems = contest.problems
       .filter((cp) => getEffectiveProblemStatus(cp, nowDate) === "locked")
-      .sort((a, b) => new Date(a.openAt).getTime() - new Date(b.openAt).getTime());
+      .sort(
+        (a, b) => new Date(a.openAt).getTime() - new Date(b.openAt).getTime(),
+      );
     for (const cp of openProblems.slice(0, 2)) {
-      items.push({ label: `${cp.title}（Day ${cp.dayIndex}）截止`, targetMs: new Date(cp.closeAt).getTime(), accent: "emerald" });
+      items.push({
+        label: `${cp.title}（Day ${cp.dayIndex}）截止`,
+        targetMs: new Date(cp.closeAt).getTime(),
+        accent: "emerald",
+      });
     }
     for (const cp of lockedProblems.slice(0, 1)) {
-      items.push({ label: `${cp.title}（Day ${cp.dayIndex}）解锁`, targetMs: new Date(cp.openAt).getTime(), accent: "cyan" });
+      items.push({
+        label: `${cp.title}（Day ${cp.dayIndex}）解锁`,
+        targetMs: new Date(cp.openAt).getTime(),
+        accent: "cyan",
+      });
     }
     return items;
   }, [contest, now]);
@@ -210,7 +254,10 @@ export function ContestCountdown({ contest }: { contest: Contest }) {
   }, [contest]);
 
   useEffect(() => {
-    const upcoming = milestoneMs.filter((ms) => ms > now).sort((a, b) => a - b)[0];
+    if (now === null) return;
+    const upcoming = milestoneMs
+      .filter((ms) => ms > now)
+      .sort((a, b) => a - b)[0];
     if (!upcoming) return;
     const delay = upcoming - now + 2_000;
     const id = setTimeout(() => {
@@ -223,14 +270,34 @@ export function ContestCountdown({ contest }: { contest: Contest }) {
   }, [now, milestoneMs, router]);
 
   if (contest.status === "finished") return null;
+  if (now === null) {
+    return (
+      <div className="space-y-3" aria-label="比赛倒计时加载中">
+        <div className="surface-panel-subtle border-amber-400/25 bg-black/20 px-4 py-4">
+          <div className="mb-3 flex items-center gap-2">
+            <span className="size-1.5 bg-amber-400" />
+            <span className="text-[11px] font-bold uppercase tracking-widest text-amber-400">
+              同步倒计时
+            </span>
+          </div>
+          <div className="h-8 w-48 max-w-full animate-pulse bg-white/[0.05]" />
+        </div>
+        <div className="surface-panel h-32 animate-pulse" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-3">
       {primary && (
-        <BigCountdown ms={primary.ms} label={primary.label} accent={primary.accent} />
+        <BigCountdown
+          ms={primary.ms}
+          label={primary.label}
+          accent={primary.accent}
+        />
       )}
       {secondary.length > 0 && (
-        <div className="border border-white/10 bg-zinc-950">
+        <div className="surface-panel overflow-hidden">
           {secondary.map((item) => (
             <SmallPill key={item.label} {...item} now={now} />
           ))}
@@ -248,7 +315,9 @@ function ProblemTimeline({ contest, now }: { contest: Contest; now: number }) {
   if (contest.problems.length === 0) return null;
 
   // Deduplicate days (keep one entry per unique dayIndex).
-  const days = [...new Set(contest.problems.map((cp) => cp.dayIndex))].sort((a, b) => a - b);
+  const days = [...new Set(contest.problems.map((cp) => cp.dayIndex))].sort(
+    (a, b) => a - b,
+  );
   const byDay = new Map<number, typeof contest.problems>();
   for (const cp of contest.problems) {
     if (!byDay.has(cp.dayIndex)) byDay.set(cp.dayIndex, []);
@@ -258,7 +327,7 @@ function ProblemTimeline({ contest, now }: { contest: Contest; now: number }) {
   const nowDate = new Date(now);
 
   return (
-    <div className="border border-white/10 bg-zinc-950">
+    <div className="surface-panel overflow-hidden">
       <div className="flex items-center gap-2 border-b border-white/[0.07] px-4 py-2.5">
         <CalendarDays className="size-3.5 text-cyan-400" />
         <span className="text-xs font-bold text-zinc-400">题目时间轴</span>
@@ -267,10 +336,14 @@ function ProblemTimeline({ contest, now }: { contest: Contest; now: number }) {
       <div className="divide-y divide-white/[0.05]">
         {days.map((day) => {
           const problems = byDay.get(day)!;
-          // The day is "open" if any of its problems is open right now.
-          const dayStatus = problems.some((cp) => getEffectiveProblemStatus(cp, nowDate) === "open")
+          // The day is"open" if any of its problems is open right now.
+          const dayStatus = problems.some(
+            (cp) => getEffectiveProblemStatus(cp, nowDate) === "open",
+          )
             ? "open"
-            : problems.every((cp) => getEffectiveProblemStatus(cp, nowDate) === "closed")
+            : problems.every(
+                  (cp) => getEffectiveProblemStatus(cp, nowDate) === "closed",
+                )
               ? "closed"
               : "locked";
           // Use the first problem's times for the day header.
@@ -280,7 +353,12 @@ function ProblemTimeline({ contest, now }: { contest: Contest; now: number }) {
           // Find nearest milestone for this day.
           const openMs = new Date(firstCp.openAt).getTime();
           const closeMs = new Date(firstCp.closeAt).getTime();
-          const remainingMs = dayStatus === "open" ? closeMs - now : dayStatus === "locked" ? openMs - now : 0;
+          const remainingMs =
+            dayStatus === "open"
+              ? closeMs - now
+              : dayStatus === "locked"
+                ? openMs - now
+                : 0;
 
           return (
             <div
@@ -289,12 +367,16 @@ function ProblemTimeline({ contest, now }: { contest: Contest; now: number }) {
             >
               {/* Day header row */}
               <div className="flex items-center gap-3 text-xs">
-                <span className="w-12 shrink-0 font-mono font-bold text-cyan-400">Day {day}</span>
+                <span className="w-12 shrink-0 font-mono font-bold text-cyan-400">
+                  Day {day}
+                </span>
                 <StatusDot status={dayStatus} />
                 <span className="min-w-0 flex-1 text-zinc-500">
-                  {openParts.month}/{openParts.day} {pad(openParts.hour)}:{pad(openParts.minute)}
-                  {" – "}
-                  {closeParts.month}/{closeParts.day} {pad(closeParts.hour)}:{pad(closeParts.minute)}
+                  {openParts.month}/{openParts.day} {pad(openParts.hour)}:
+                  {pad(openParts.minute)}
+                  {" –"}
+                  {closeParts.month}/{closeParts.day} {pad(closeParts.hour)}:
+                  {pad(closeParts.minute)}
                 </span>
                 {dayStatus === "open" && remainingMs > 0 && (
                   <span className="shrink-0 font-mono text-xs font-bold text-emerald-400">
@@ -335,8 +417,10 @@ function ProblemTimeline({ contest, now }: { contest: Contest; now: number }) {
 
 function StatusDot({ status }: { status: "open" | "closed" | "locked" }) {
   if (status === "open")
-    return <span className="flex size-2 shrink-0 rounded-full bg-emerald-400 shadow-[0_0_6px] shadow-emerald-400/60" />;
+    return (
+      <span className="flex size-2 shrink-0 bg-emerald-400 shadow-[0_0_6px] shadow-emerald-400/60" />
+    );
   if (status === "locked")
     return <Lock className="size-3 shrink-0 text-zinc-700" />;
-  return <span className="flex size-2 shrink-0 rounded-full bg-zinc-700" />;
+  return <span className="flex size-2 shrink-0 bg-zinc-700" />;
 }

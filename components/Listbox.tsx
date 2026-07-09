@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Check, ChevronDown } from "lucide-react";
 
 // Minimal dependency-free replacement for the browser's native <select>,
-// which renders with the OS's own rounded/white chrome regardless of theme —
+// which renders with the OS's own /white chrome regardless of theme —
 // this instead reuses the same border/surface language as the rest of the
 // site (sharp corners, border-white/10, [data-theme] token colors) so it
 // doesn't visually break from the surrounding UI.
@@ -56,17 +56,21 @@ export function Listbox<T extends string>({
         onClick={() => setOpen((current) => !current)}
         className={
           buttonClassName ??
-          "flex h-11 w-full items-center justify-between border border-white/10 bg-zinc-950 pl-3 pr-3 text-sm text-zinc-300 outline-none transition active:translate-y-px focus-visible:border-cyan-400/50"
+          "pressable pill-button flex h-11 w-full items-center justify-between border border-white/10 bg-zinc-950 pl-3 pr-3 text-sm text-zinc-300 outline-none hover:border-cyan-400/35 focus-visible:border-cyan-400/50"
         }
       >
-        <span className="min-w-0 truncate">{renderOption ? renderOption(value) : value}</span>
-        <ChevronDown className={`size-4 shrink-0 text-zinc-500 transition-transform ${open ? "rotate-180" : ""}`} />
+        <span className="min-w-0 truncate">
+          {renderOption ? renderOption(value) : value}
+        </span>
+        <ChevronDown
+          className={`size-4 shrink-0 text-zinc-500 transition-transform ${open ? "rotate-180" : ""}`}
+        />
       </button>
       {open && (
         <ul
           role="listbox"
           aria-label={label}
-          className="absolute left-0 right-0 top-[calc(100%+4px)] z-20 max-h-72 overflow-y-auto border border-white/10 bg-zinc-950 py-1 shadow-2xl shadow-black/40"
+          className="surface-panel absolute left-0 right-0 top-[calc(100%+6px)] z-20 max-h-72 overflow-y-auto py-1"
         >
           {options.map((option) => (
             <li key={option}>
@@ -78,12 +82,18 @@ export function Listbox<T extends string>({
                   onChange(option);
                   setOpen(false);
                 }}
-                className={`flex h-9 w-full items-center justify-between gap-2 px-3 text-left text-sm transition ${
-                  option === value ? "bg-white/10 text-white" : "text-zinc-400 hover:bg-white/5 hover:text-white"
+                className={`pressable flex h-9 w-full items-center justify-between gap-2 px-3 text-left text-sm ${
+                  option === value
+                    ? "bg-white/10 text-white"
+                    : "text-zinc-400 hover:bg-white/5 hover:text-white"
                 }`}
               >
-                <span className="min-w-0 truncate">{renderOption ? renderOption(option) : option}</span>
-                {option === value && <Check className="size-3.5 shrink-0 text-cyan-300" />}
+                <span className="min-w-0 truncate">
+                  {renderOption ? renderOption(option) : option}
+                </span>
+                {option === value && (
+                  <Check className="size-3.5 shrink-0 text-cyan-300" />
+                )}
               </button>
             </li>
           ))}

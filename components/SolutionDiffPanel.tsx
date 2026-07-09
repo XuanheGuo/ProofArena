@@ -7,7 +7,14 @@ import { ChevronDown, GitBranch, GitCompare } from "lucide-react";
 import { MathBlock } from "@/components/MathBlock";
 import { Listbox } from "@/components/Listbox";
 import { stripMathDelimiters } from "@/lib/math-normalizer";
-import type { Problem, ProofChallengeEdge, ProofObservation, ProofStrategyBranch, ProofTransformation, Solution } from "@/lib/types";
+import type {
+  Problem,
+  ProofChallengeEdge,
+  ProofObservation,
+  ProofStrategyBranch,
+  ProofTransformation,
+  Solution,
+} from "@/lib/types";
 
 // ── score config ──────────────────────────────────────────────────────────────
 
@@ -27,7 +34,8 @@ function sharedObservations(
   bId: string,
 ): ProofObservation[] {
   return observations.filter(
-    (o) => o.relatedSolutionIds.includes(aId) && o.relatedSolutionIds.includes(bId),
+    (o) =>
+      o.relatedSolutionIds.includes(aId) && o.relatedSolutionIds.includes(bId),
   );
 }
 
@@ -35,7 +43,10 @@ function firstFork(
   branches: ProofStrategyBranch[],
   aId: string,
   bId: string,
-): { branchA: ProofStrategyBranch | null; branchB: ProofStrategyBranch | null } {
+): {
+  branchA: ProofStrategyBranch | null;
+  branchB: ProofStrategyBranch | null;
+} {
   const aOnly = branches.filter(
     (b) => b.solutionIds.includes(aId) && !b.solutionIds.includes(bId),
   );
@@ -70,17 +81,23 @@ function challengeEdgeBetween(
 
 function SourceBadge({ source }: { source: "graph" | "field" }) {
   return source === "graph" ? (
-    <span className="rounded border border-violet-400/30 bg-violet-400/[0.06] px-1.5 py-0.5 text-[9px] font-bold text-violet-300">
+    <span className="border border-violet-400/30 bg-violet-400/[0.06] px-1.5 py-0.5 text-[9px] font-bold text-violet-300">
       来自推理图谱
     </span>
   ) : (
-    <span className="rounded border border-white/10 px-1.5 py-0.5 text-[9px] text-zinc-600">
+    <span className="border border-white/10 px-1.5 py-0.5 text-[9px] text-zinc-600">
       来自解法字段
     </span>
   );
 }
 
-function SectionHeader({ title, source }: { title: string; source: "graph" | "field" }) {
+function SectionHeader({
+  title,
+  source,
+}: {
+  title: string;
+  source: "graph" | "field";
+}) {
   return (
     <div className="flex flex-wrap items-center gap-2 border-b border-white/10 pb-2">
       <h4 className="text-xs font-bold text-zinc-300">{title}</h4>
@@ -90,7 +107,9 @@ function SectionHeader({ title, source }: { title: string; source: "graph" | "fi
 }
 
 function KeyTransformSection({
-  solA, solB, transforms,
+  solA,
+  solB,
+  transforms,
 }: {
   solA: Solution;
   solB: Solution;
@@ -104,8 +123,10 @@ function KeyTransformSection({
     <div className="space-y-2">
       <SectionHeader title="关键转化" source={source} />
       <div className="grid gap-3 sm:grid-cols-2">
-        <div className="rounded border border-white/5 bg-black/20 p-3">
-          <p className="mb-1 text-[10px] font-bold text-zinc-500"><MathBlock>{solA.title}</MathBlock></p>
+        <div className="border border-white/5 bg-black/20 p-3">
+          <p className="mb-1 text-[10px] font-bold text-zinc-500">
+            <MathBlock>{solA.title}</MathBlock>
+          </p>
           {tA.length > 0 ? (
             <ul className="space-y-1">
               {tA.map((t) => (
@@ -120,8 +141,10 @@ function KeyTransformSection({
             </p>
           )}
         </div>
-        <div className="rounded border border-white/5 bg-black/20 p-3">
-          <p className="mb-1 text-[10px] font-bold text-zinc-500"><MathBlock>{solB.title}</MathBlock></p>
+        <div className="border border-white/5 bg-black/20 p-3">
+          <p className="mb-1 text-[10px] font-bold text-zinc-500">
+            <MathBlock>{solB.title}</MathBlock>
+          </p>
           {tB.length > 0 ? (
             <ul className="space-y-1">
               {tB.map((t) => (
@@ -145,35 +168,56 @@ function ScoresSection({ solA, solB }: { solA: Solution; solB: Solution }) {
   return (
     <div className="space-y-2">
       <SectionHeader title="五维评分对比" source="field" />
-      <div className="rounded border border-white/5 bg-black/20 p-3">
+      <div className="border border-white/5 bg-black/20 p-3">
         <div className="mb-2 grid grid-cols-[4rem_minmax(0,1fr)_minmax(0,1fr)] gap-2 text-[10px] font-bold text-zinc-600">
           <span>维度</span>
-          <span className="truncate text-cyan-300"><MathBlock>{solA.title}</MathBlock></span>
-          <span className="truncate text-amber-300"><MathBlock>{solB.title}</MathBlock></span>
+          <span className="truncate text-cyan-300">
+            <MathBlock>{solA.title}</MathBlock>
+          </span>
+          <span className="truncate text-amber-300">
+            <MathBlock>{solB.title}</MathBlock>
+          </span>
         </div>
         <div className="space-y-1.5">
           {SCORE_ROWS.map((row) => {
             const a = solA.scores[row.key] ?? 0;
             const b = solB.scores[row.key] ?? 0;
             return (
-              <div key={row.key} className="grid grid-cols-[4rem_minmax(0,1fr)_minmax(0,1fr)] items-center gap-2 text-[11px]">
+              <div
+                key={row.key}
+                className="grid grid-cols-[4rem_minmax(0,1fr)_minmax(0,1fr)] items-center gap-2 text-[11px]"
+              >
                 <span className="text-zinc-500">{row.label}</span>
                 <div className="min-w-0">
                   <div className="mb-0.5 flex items-center justify-between gap-1">
                     <span className="truncate text-zinc-500">A</span>
-                    <span className="font-bold text-cyan-300">{a.toFixed(1)}</span>
+                    <span className="font-bold text-cyan-300">
+                      {a.toFixed(1)}
+                    </span>
                   </div>
-                  <div className="h-1.5 overflow-hidden rounded-full bg-white/10">
-                    <div className="h-full rounded-full bg-cyan-300" style={{ width: `${Math.max(0, Math.min(100, a * 10))}%` }} />
+                  <div className="h-1.5 overflow-hidden bg-white/10">
+                    <div
+                      className="h-full bg-cyan-300"
+                      style={{
+                        width: `${Math.max(0, Math.min(100, a * 10))}%`,
+                      }}
+                    />
                   </div>
                 </div>
                 <div className="min-w-0">
                   <div className="mb-0.5 flex items-center justify-between gap-1">
                     <span className="truncate text-zinc-500">B</span>
-                    <span className="font-bold text-amber-300">{b.toFixed(1)}</span>
+                    <span className="font-bold text-amber-300">
+                      {b.toFixed(1)}
+                    </span>
                   </div>
-                  <div className="h-1.5 overflow-hidden rounded-full bg-white/10">
-                    <div className="h-full rounded-full bg-amber-300" style={{ width: `${Math.max(0, Math.min(100, b * 10))}%` }} />
+                  <div className="h-1.5 overflow-hidden bg-white/10">
+                    <div
+                      className="h-full bg-amber-300"
+                      style={{
+                        width: `${Math.max(0, Math.min(100, b * 10))}%`,
+                      }}
+                    />
                   </div>
                 </div>
               </div>
@@ -194,29 +238,43 @@ function TradeoffsSection({ solA, solB }: { solA: Solution; solB: Solution }) {
     <div className="space-y-2">
       <SectionHeader title="代价与局限" source="field" />
       <div className="grid gap-3 sm:grid-cols-2">
-        <div className="rounded border border-white/5 bg-black/20 p-3">
-          <p className="mb-2 text-[10px] font-bold text-zinc-500"><MathBlock>{solA.title}</MathBlock></p>
+        <div className="border border-white/5 bg-black/20 p-3">
+          <p className="mb-2 text-[10px] font-bold text-zinc-500">
+            <MathBlock>{solA.title}</MathBlock>
+          </p>
           {itemsA.length ? (
             <ul className="space-y-1">
               {itemsA.slice(0, 4).map((item) => (
-                <li key={item} className="border-l border-red-400/30 pl-2 text-xs leading-5 text-zinc-400">
+                <li
+                  key={item}
+                  className="border-l border-red-400/30 pl-2 text-xs leading-5 text-zinc-400"
+                >
                   <MathBlock>{item}</MathBlock>
                 </li>
               ))}
             </ul>
-          ) : <p className="text-xs text-zinc-600">—</p>}
+          ) : (
+            <p className="text-xs text-zinc-600">—</p>
+          )}
         </div>
-        <div className="rounded border border-white/5 bg-black/20 p-3">
-          <p className="mb-2 text-[10px] font-bold text-zinc-500"><MathBlock>{solB.title}</MathBlock></p>
+        <div className="border border-white/5 bg-black/20 p-3">
+          <p className="mb-2 text-[10px] font-bold text-zinc-500">
+            <MathBlock>{solB.title}</MathBlock>
+          </p>
           {itemsB.length ? (
             <ul className="space-y-1">
               {itemsB.slice(0, 4).map((item) => (
-                <li key={item} className="border-l border-red-400/30 pl-2 text-xs leading-5 text-zinc-400">
+                <li
+                  key={item}
+                  className="border-l border-red-400/30 pl-2 text-xs leading-5 text-zinc-400"
+                >
                   <MathBlock>{item}</MathBlock>
                 </li>
               ))}
             </ul>
-          ) : <p className="text-xs text-zinc-600">—</p>}
+          ) : (
+            <p className="text-xs text-zinc-600">—</p>
+          )}
         </div>
       </div>
     </div>
@@ -245,15 +303,22 @@ export function SolutionDiffPanel({ problem }: { problem: Problem }) {
   const solB = solutions.find((s) => s.id === bId) ?? solutions[1];
   const pg = problem.proofGraph;
 
-  const shared = pg ? sharedObservations(pg.observations, solA.id, solB.id) : [];
+  const shared = pg
+    ? sharedObservations(pg.observations, solA.id, solB.id)
+    : [];
   const { branchA, branchB } = pg
     ? firstFork(pg.branches, solA.id, solB.id)
     : { branchA: null, branchB: null };
   const transforms = pg?.transformations ?? [];
-  const edge = pg ? challengeEdgeBetween(pg.challengeEdges, solA.id, solB.id) : null;
+  const edge = pg
+    ? challengeEdgeBetween(pg.challengeEdges, solA.id, solB.id)
+    : null;
 
   const kindLabel: Record<string, string> = {
-    standard: "标准", insight: "启发", robust: "稳健", teaching: "教学",
+    standard: "标准",
+    insight: "启发",
+    robust: "稳健",
+    teaching: "教学",
   };
 
   return (
@@ -263,7 +328,9 @@ export function SolutionDiffPanel({ problem }: { problem: Problem }) {
           <GitCompare className="size-4 text-zinc-400" />
           解法 Diff
         </h3>
-        <p className="mt-0.5 text-[11px] text-zinc-600">选择两条解法，比较路线差异。</p>
+        <p className="mt-0.5 text-[11px] text-zinc-600">
+          选择两条解法，比较路线差异。
+        </p>
       </div>
 
       <div className="p-4">
@@ -278,9 +345,11 @@ export function SolutionDiffPanel({ problem }: { problem: Problem }) {
               options={solutions.filter((s) => s.id !== bId).map((s) => s.id)}
               renderOption={(id) => {
                 const s = solutions.find((item) => item.id === id);
-                return s ? `[${kindLabel[s.kind] ?? s.kind}] ${stripMathDelimiters(s.title)}` : id;
+                return s
+                  ? `[${kindLabel[s.kind] ?? s.kind}] ${stripMathDelimiters(s.title)}`
+                  : id;
               }}
-              buttonClassName="flex h-9 w-full min-w-0 items-center justify-between rounded border border-white/10 bg-zinc-900 px-2 text-xs text-white outline-none transition active:translate-y-px focus-visible:border-cyan-400/50"
+              buttonClassName="flex h-9 w-full min-w-0 items-center justify-between border border-white/10 bg-zinc-900 px-2 text-xs text-white outline-none transition active:translate-y-px focus-visible:border-cyan-400/50"
             />
           </div>
           <div className="grid min-w-0 gap-1 text-xs">
@@ -292,9 +361,11 @@ export function SolutionDiffPanel({ problem }: { problem: Problem }) {
               options={solutions.filter((s) => s.id !== aId).map((s) => s.id)}
               renderOption={(id) => {
                 const s = solutions.find((item) => item.id === id);
-                return s ? `[${kindLabel[s.kind] ?? s.kind}] ${stripMathDelimiters(s.title)}` : id;
+                return s
+                  ? `[${kindLabel[s.kind] ?? s.kind}] ${stripMathDelimiters(s.title)}`
+                  : id;
               }}
-              buttonClassName="flex h-9 w-full min-w-0 items-center justify-between rounded border border-white/10 bg-zinc-900 px-2 text-xs text-white outline-none transition active:translate-y-px focus-visible:border-amber-400/50"
+              buttonClassName="flex h-9 w-full min-w-0 items-center justify-between border border-white/10 bg-zinc-900 px-2 text-xs text-white outline-none transition active:translate-y-px focus-visible:border-amber-400/50"
             />
           </div>
         </div>
@@ -306,7 +377,10 @@ export function SolutionDiffPanel({ problem }: { problem: Problem }) {
               <SectionHeader title="共同观察" source="graph" />
               <ul className="space-y-1">
                 {shared.map((o) => (
-                  <li key={o.id} className="rounded border border-cyan-400/10 bg-cyan-400/[0.04] px-3 py-2 text-xs leading-5 text-zinc-300">
+                  <li
+                    key={o.id}
+                    className="border border-cyan-400/10 bg-cyan-400/[0.04] px-3 py-2 text-xs leading-5 text-zinc-300"
+                  >
                     <MathBlock>{o.title}</MathBlock>
                   </li>
                 ))}
@@ -319,23 +393,39 @@ export function SolutionDiffPanel({ problem }: { problem: Problem }) {
             <div className="space-y-2">
               <SectionHeader title="第一个分叉点" source="graph" />
               <div className="grid gap-3 sm:grid-cols-2">
-                <div className="rounded border border-cyan-400/10 bg-black/20 p-3">
-                  <p className="mb-1 text-[10px] font-bold text-cyan-400/70">路线 A 选择</p>
+                <div className="border border-cyan-400/10 bg-black/20 p-3">
+                  <p className="mb-1 text-[10px] font-bold text-cyan-400/70">
+                    路线 A 选择
+                  </p>
                   {branchA ? (
                     <>
-                      <p className="text-xs font-bold text-zinc-300"><MathBlock>{branchA.title}</MathBlock></p>
-                      <p className="mt-1 text-[11px] leading-5 text-zinc-500"><MathBlock>{branchA.promise}</MathBlock></p>
+                      <p className="text-xs font-bold text-zinc-300">
+                        <MathBlock>{branchA.title}</MathBlock>
+                      </p>
+                      <p className="mt-1 text-[11px] leading-5 text-zinc-500">
+                        <MathBlock>{branchA.promise}</MathBlock>
+                      </p>
                     </>
-                  ) : <p className="text-xs text-zinc-600">与路线 B 共享此分支</p>}
+                  ) : (
+                    <p className="text-xs text-zinc-600">与路线 B 共享此分支</p>
+                  )}
                 </div>
-                <div className="rounded border border-amber-400/10 bg-black/20 p-3">
-                  <p className="mb-1 text-[10px] font-bold text-amber-400/70">路线 B 选择</p>
+                <div className="border border-amber-400/10 bg-black/20 p-3">
+                  <p className="mb-1 text-[10px] font-bold text-amber-400/70">
+                    路线 B 选择
+                  </p>
                   {branchB ? (
                     <>
-                      <p className="text-xs font-bold text-zinc-300"><MathBlock>{branchB.title}</MathBlock></p>
-                      <p className="mt-1 text-[11px] leading-5 text-zinc-500"><MathBlock>{branchB.promise}</MathBlock></p>
+                      <p className="text-xs font-bold text-zinc-300">
+                        <MathBlock>{branchB.title}</MathBlock>
+                      </p>
+                      <p className="mt-1 text-[11px] leading-5 text-zinc-500">
+                        <MathBlock>{branchB.promise}</MathBlock>
+                      </p>
                     </>
-                  ) : <p className="text-xs text-zinc-600">与路线 A 共享此分支</p>}
+                  ) : (
+                    <p className="text-xs text-zinc-600">与路线 A 共享此分支</p>
+                  )}
                 </div>
               </div>
             </div>
@@ -347,7 +437,11 @@ export function SolutionDiffPanel({ problem }: { problem: Problem }) {
           <details className="group border border-white/10">
             <DetailSummary>展开关键转化与代价</DetailSummary>
             <div className="space-y-4 p-3">
-              <KeyTransformSection solA={solA} solB={solB} transforms={transforms} />
+              <KeyTransformSection
+                solA={solA}
+                solB={solB}
+                transforms={transforms}
+              />
               <TradeoffsSection solA={solA} solB={solB} />
             </div>
           </details>
@@ -359,21 +453,33 @@ export function SolutionDiffPanel({ problem }: { problem: Problem }) {
               </DetailSummary>
               <div className="space-y-2 p-3">
                 <SectionHeader title="已记录的挑战关系" source="graph" />
-                <div className="rounded border border-amber-400/20 bg-amber-400/[0.04] p-3">
+                <div className="border border-amber-400/20 bg-amber-400/[0.04] p-3">
                   <div className="mb-2 flex flex-wrap items-center gap-1.5 text-xs">
                     <span className="border border-cyan-400/30 px-1.5 py-0.5 font-bold text-cyan-200">
-                      <MathBlock>{solutions.find((s) => s.id === edge.challengerSolutionId)?.title ?? edge.challengerSolutionId}</MathBlock>
+                      <MathBlock>
+                        {solutions.find(
+                          (s) => s.id === edge.challengerSolutionId,
+                        )?.title ?? edge.challengerSolutionId}
+                      </MathBlock>
                     </span>
                     <span className="text-zinc-600">挑战</span>
                     <span className="border border-white/10 px-1.5 py-0.5 text-zinc-400">
-                      <MathBlock>{solutions.find((s) => s.id === edge.targetSolutionId)?.title ?? edge.targetSolutionId}</MathBlock>
+                      <MathBlock>
+                        {solutions.find((s) => s.id === edge.targetSolutionId)
+                          ?.title ?? edge.targetSolutionId}
+                      </MathBlock>
                     </span>
                   </div>
-                  <p className="text-xs leading-5 text-zinc-300"><MathBlock>{edge.claim}</MathBlock></p>
+                  <p className="text-xs leading-5 text-zinc-300">
+                    <MathBlock>{edge.claim}</MathBlock>
+                  </p>
                   {edge.advantages.length > 0 && (
                     <ul className="mt-2 space-y-0.5">
                       {edge.advantages.map((adv) => (
-                        <li key={adv} className="border-l border-emerald-400/30 pl-2 text-[11px] leading-5 text-zinc-400">
+                        <li
+                          key={adv}
+                          className="border-l border-emerald-400/30 pl-2 text-[11px] leading-5 text-zinc-400"
+                        >
                           <MathBlock>{adv}</MathBlock>
                         </li>
                       ))}

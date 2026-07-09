@@ -1,7 +1,13 @@
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
-import { BarChart2, Crosshair, Expand, MousePointer2, RotateCcw } from "lucide-react";
+import {
+  BarChart2,
+  Crosshair,
+  Expand,
+  MousePointer2,
+  RotateCcw,
+} from "lucide-react";
 import { MathBlock } from "@/components/MathBlock";
 import type { FunctionGraphSpec, GraphColor } from "@/lib/types";
 
@@ -67,8 +73,20 @@ export function FunctionGraphPanel({ spec }: { spec: FunctionGraphSpec }) {
           pan: { enabled: true },
           zoom: { wheel: true },
           defaultAxes: {
-            x: { strokeColor: axisColor, ticks: { strokeColor: tickColor, label: { color: dark ? "#a1a1aa" : "#52525b" } } },
-            y: { strokeColor: axisColor, ticks: { strokeColor: tickColor, label: { color: dark ? "#a1a1aa" : "#52525b" } } },
+            x: {
+              strokeColor: axisColor,
+              ticks: {
+                strokeColor: tickColor,
+                label: { color: dark ? "#a1a1aa" : "#52525b" },
+              },
+            },
+            y: {
+              strokeColor: axisColor,
+              ticks: {
+                strokeColor: tickColor,
+                label: { color: dark ? "#a1a1aa" : "#52525b" },
+              },
+            },
           },
         });
         localBoard = board;
@@ -79,7 +97,7 @@ export function FunctionGraphPanel({ spec }: { spec: FunctionGraphSpec }) {
         const w = xMax - xMin;
         const h = yMax - yMin;
         const sliderX1 = xMin + 0.04 * w;
-        const sliderX2 = xMin + 0.40 * w;
+        const sliderX2 = xMin + 0.4 * w;
         const sliderStartY = yMax - 0.07 * h;
         const sliderStep = 0.11 * h;
 
@@ -91,7 +109,11 @@ export function FunctionGraphPanel({ spec }: { spec: FunctionGraphSpec }) {
           const color = c.cyan;
           const slider = board.create(
             "slider",
-            [[sliderX1, y], [sliderX2, y], [s.min, s.initial, s.max]],
+            [
+              [sliderX1, y],
+              [sliderX2, y],
+              [s.min, s.initial, s.max],
+            ],
             {
               name: s.label,
               snapWidth: s.step,
@@ -131,8 +153,16 @@ export function FunctionGraphPanel({ spec }: { spec: FunctionGraphSpec }) {
 
         // Draw optional fixed/dynamic points
         for (const pt of spec.points ?? []) {
-          const px = typeof pt.x === "function" ? () => (pt.x as (p: Record<string, number>) => number)(getParams()) : pt.x;
-          const py = typeof pt.y === "function" ? () => (pt.y as (p: Record<string, number>) => number)(getParams()) : pt.y;
+          const px =
+            typeof pt.x === "function"
+              ? () =>
+                  (pt.x as (p: Record<string, number>) => number)(getParams())
+              : pt.x;
+          const py =
+            typeof pt.y === "function"
+              ? () =>
+                  (pt.y as (p: Record<string, number>) => number)(getParams())
+              : pt.y;
           const color = c[pt.color ?? "amber"];
           board.create("point", [px, py], {
             name: pt.label ?? "",
@@ -158,7 +188,10 @@ export function FunctionGraphPanel({ spec }: { spec: FunctionGraphSpec }) {
     void initialize();
 
     const observer = new MutationObserver(() => void initialize());
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["data-theme"],
+    });
 
     return () => {
       disposed = true;
@@ -191,7 +224,9 @@ export function FunctionGraphPanel({ spec }: { spec: FunctionGraphSpec }) {
           </span>
           <div>
             <h2 className="text-sm font-bold text-white">{spec.title}</h2>
-            <span className="font-mono text-[10px] uppercase tracking-widest text-zinc-600">动态图像</span>
+            <span className="font-mono text-[10px] uppercase tracking-widest text-zinc-600">
+              动态图像
+            </span>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -215,7 +250,10 @@ export function FunctionGraphPanel({ spec }: { spec: FunctionGraphSpec }) {
 
       <div className="grid lg:grid-cols-[1fr_19rem]">
         <div className="relative min-h-96 border-b border-white/10 bg-black/20 lg:min-h-[34rem] lg:border-r lg:border-b-0">
-          <div id={boardId} className="jxgbox absolute inset-0 size-full border-0 bg-transparent" />
+          <div
+            id={boardId}
+            className="jxgbox absolute inset-0 size-full border-0 bg-transparent"
+          />
           {!ready && (
             <div className="absolute inset-0 grid place-items-center text-sm text-zinc-500">
               正在绘制...
@@ -248,9 +286,14 @@ export function FunctionGraphPanel({ spec }: { spec: FunctionGraphSpec }) {
           )}
           <div className="mt-5 space-y-2">
             {spec.sliders.map((s) => (
-              <div key={s.name} className="flex items-center justify-between text-xs text-zinc-500">
+              <div
+                key={s.name}
+                className="flex items-center justify-between text-xs text-zinc-500"
+              >
                 <span className="font-mono text-cyan-400">{s.label}</span>
-                <span>[{s.min}, {s.max}]，步长 {s.step}</span>
+                <span>
+                  [{s.min}, {s.max}]，步长 {s.step}
+                </span>
               </div>
             ))}
           </div>

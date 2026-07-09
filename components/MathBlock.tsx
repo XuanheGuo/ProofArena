@@ -18,7 +18,9 @@ interface MathBlockProps {
 }
 
 function renderMixedMath(content: string) {
-  const parts = wrapBareLatexCommands(content).split(mathTokenPattern).filter((part) => part.length > 0);
+  const parts = wrapBareLatexCommands(content)
+    .split(mathTokenPattern)
+    .filter((part) => part.length > 0);
 
   return parts.map((part, index) => {
     if (exactMathTokenPattern.test(part)) {
@@ -42,7 +44,11 @@ function renderMixedMath(content: string) {
   });
 }
 
-export function MathBlock({ children, block = false, className = "" }: MathBlockProps) {
+export function MathBlock({
+  children,
+  block = false,
+  className = "",
+}: MathBlockProps) {
   if (block) {
     return (
       <div className={`math-scroll ${className}`}>

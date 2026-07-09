@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light" />
+    <meta name="supported-color-schemes" content="light" />
+    <title>邀请你加入 ProofArena</title>
+  </head>
+  <body
+    style="
+      margin: 0;
+      padding: 0;
+      background-color: #f4f5f7;
+      font-family:
+        -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;,
+        &quot;PingFang SC&quot;, &quot;Microsoft YaHei&quot;, sans-serif;
+    "
+  >
+    <table
+      role="presentation"
+      width="100%"
+      cellpadding="0"
+      cellspacing="0"
+      style="background-color: #f4f5f7"
+    >
+      <tr>
+        <td align="center" style="padding: 32px 16px">
+          <table
+            role="presentation"
+            width="480"
+            cellpadding="0"
+            cellspacing="0"
+            style="
+              width: 480px;
+              max-width: 100%;
+              background-color: #ffffff;
+              border-radius: 0;
+              overflow: hidden;
+              box-shadow:
+                0 1px 2px rgba(17, 24, 39, 0.04),
+                0 16px 42px rgba(17, 24, 39, 0.07);
+            "
+          >
+            <tr>
+              <td style="background-color: #111318; padding: 28px 32px">
+                <table role="presentation" cellpadding="0" cellspacing="0">
+                  <tr>
+                    <td
+                      style="
+                        width: 32px;
+                        height: 32px;
+                        background-color: #4f46e5;
+                        border-radius: 0;
+                        text-align: center;
+                        vertical-align: middle;
+                        font-size: 13px;
+                        font-weight: 800;
+                        color: #ffffff;
+                        font-family: Arial, sans-serif;
+                      "
+                    >
+                      PA
+                    </td>
+                    <td
+                      style="
+                        padding-left: 10px;
+                        font-size: 16px;
+                        font-weight: 800;
+                        color: #ffffff;
+                        letter-spacing: 0.2px;
+                        font-family: Arial, sans-serif;
+                      "
+                    >
+                      ProofArena
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 36px 32px 8px">
+                <h1
+                  style="
+                    margin: 0 0 12px;
+                    font-size: 20px;
+                    line-height: 1.4;
+                    color: #111827;
+                    font-weight: 800;
+                  "
+                >
+                  你被邀请加入 ProofArena
+                </h1>
+                <p
+                  style="
+                    margin: 0 0 24px;
+                    font-size: 14px;
+                    line-height: 1.75;
+                    color: #4b5563;
+                  "
+                >
+                  ProofArena 团队邀请你以
+                  <strong style="color: #111827">{{ .Email }}</strong>
+                  加入协作，参与题目审核与解法评测。点击下方按钮接受邀请并设置密码。
+                </p>
+                <table role="presentation" cellpadding="0" cellspacing="0">
+                  <tr>
+                    <td style="border-radius: 0; background-color: #4f46e5">
+                      <a
+                        href="{{ .ConfirmationURL }}"
+                        style="
+                          display: inline-block;
+                          padding: 12px 28px;
+                          font-size: 14px;
+                          font-weight: 700;
+                          color: #ffffff;
+                          text-decoration: none;
+                        "
+                        >接受邀请</a
+                      >
+                    </td>
+                  </tr>
+                </table>
+                <p
+                  style="
+                    margin: 24px 0 0;
+                    font-size: 12px;
+                    line-height: 1.7;
+                    color: #9ca3af;
+                  "
+                >
+                  按钮无法点击时，请复制以下链接到浏览器打开：<br />
+                  <a
+                    href="{{ .ConfirmationURL }}"
+                    style="color: #4f46e5; word-break: break-all"
+                    >{{ .ConfirmationURL }}</a
+                  >
+                </p>
+                <p
+                  style="
+                    margin: 20px 0 0;
+                    font-size: 12px;
+                    line-height: 1.7;
+                    color: #9ca3af;
+                  "
+                >
+                  邀请链接 7 天内有效。如果你并不了解这次邀请，可以忽略此邮件。
+                </p>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 24px 32px 32px">
+                <hr
+                  style="
+                    border: none;
+                    border-top: 1px solid #e5e7eb;
+                    margin: 0 0 20px;
+                  "
+                />
+                <p
+                  style="
+                    margin: 0;
+                    font-size: 12px;
+                    line-height: 1.7;
+                    color: #9ca3af;
+                  "
+                >
+                  ProofArena · 高中数学解法竞技场<br />
+                  同一道题，多种解法，正面交锋。<br />
+                  此邮件由系统自动发送，请勿回复。
+                </p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

@@ -20,14 +20,16 @@ function ChallengeCard({
   const targetTitle = solutionTitle(solutions, edge.targetSolutionId);
 
   return (
-    <div className="rounded border border-amber-400/20 bg-amber-400/[0.04] p-4">
+    <div className="border border-amber-400/20 bg-amber-400/[0.04] p-4">
       {/* Header */}
       <div className="mb-3 flex flex-wrap items-center gap-2 text-xs">
         <span className="border border-cyan-400/30 bg-cyan-400/[0.06] px-2 py-1 font-bold text-cyan-200">
           {challengerTitle}
         </span>
         <Swords className="size-3.5 shrink-0 text-amber-400" />
-        <span className="border border-white/10 px-2 py-1 text-zinc-400">{targetTitle}</span>
+        <span className="border border-white/10 px-2 py-1 text-zinc-400">
+          {targetTitle}
+        </span>
       </div>
 
       {/* Claim */}
@@ -43,7 +45,10 @@ function ChallengeCard({
           </span>
           <ul className="mt-1.5 space-y-1">
             {edge.advantages.map((adv) => (
-              <li key={adv} className="border-l-2 border-emerald-400/40 pl-2 text-xs leading-5 text-zinc-400">
+              <li
+                key={adv}
+                className="border-l-2 border-emerald-400/40 pl-2 text-xs leading-5 text-zinc-400"
+              >
                 <MathBlock>{adv}</MathBlock>
               </li>
             ))}
@@ -95,12 +100,18 @@ export function ProofChallengeEdges({ problem }: { problem: Problem }) {
             哪条路线在特定维度上优于另一条，以及它的代价是什么。
           </p>
         </div>
-        <ChevronDown className={`size-4 shrink-0 text-zinc-500 transition ${open ? "rotate-180" : ""}`} />
+        <ChevronDown
+          className={`size-4 shrink-0 text-zinc-500 transition ${open ? "rotate-180" : ""}`}
+        />
       </button>
       {open && (
         <div className="space-y-px border-t border-white/10 p-4">
           {edges.map((edge) => (
-            <ChallengeCard key={edge.id} edge={edge} solutions={problem.solutions} />
+            <ChallengeCard
+              key={edge.id}
+              edge={edge}
+              solutions={problem.solutions}
+            />
           ))}
         </div>
       )}

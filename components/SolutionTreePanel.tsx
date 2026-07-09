@@ -16,7 +16,9 @@ function SolutionMethodNode({
 }) {
   const linkedSolutions = (method.solutionIds ?? [])
     .map((id) => problem.solutions.find((solution) => solution.id === id))
-    .filter((solution): solution is NonNullable<typeof solution> => Boolean(solution));
+    .filter((solution): solution is NonNullable<typeof solution> =>
+      Boolean(solution),
+    );
   const hasChildren = Boolean(method.children?.length);
 
   return (
@@ -27,9 +29,15 @@ function SolutionMethodNode({
             <span className="flex size-6 shrink-0 items-center justify-center border border-emerald-400/25 bg-emerald-400/5 font-mono text-[10px] text-emerald-300">
               {depth + 1}
             </span>
-            <h4 className="text-sm font-bold text-white"><MathBlock>{method.title}</MathBlock></h4>
+            <h4 className="text-sm font-bold text-white">
+              <MathBlock>{method.title}</MathBlock>
+            </h4>
           </div>
-          {method.description && <p className="mt-2 text-xs leading-5 text-zinc-500">{method.description}</p>}
+          {method.description && (
+            <p className="mt-2 text-xs leading-5 text-zinc-500">
+              {method.description}
+            </p>
+          )}
         </div>
 
         {linkedSolutions.length > 0 && (
@@ -41,7 +49,9 @@ function SolutionMethodNode({
                 className="inline-flex h-8 items-center gap-1.5 border border-cyan-400/20 bg-cyan-400/5 px-2.5 text-xs font-bold text-cyan-100 transition hover:border-cyan-300/50 hover:text-cyan-200"
               >
                 {solution.badge}
-                <span className="max-w-32 truncate text-zinc-300"><MathBlock>{solution.title}</MathBlock></span>
+                <span className="max-w-32 truncate text-zinc-300">
+                  <MathBlock>{solution.title}</MathBlock>
+                </span>
                 <ArrowUpRight className="size-3 shrink-0 text-cyan-300" />
               </a>
             ))}
@@ -52,7 +62,12 @@ function SolutionMethodNode({
       {hasChildren && (
         <ol className="ml-4 mt-3 space-y-3 border-l border-white/10 pl-4">
           {method.children?.map((child) => (
-            <SolutionMethodNode key={child.id} method={child} problem={problem} depth={depth + 1} />
+            <SolutionMethodNode
+              key={child.id}
+              method={child}
+              problem={problem}
+              depth={depth + 1}
+            />
           ))}
         </ol>
       )}
@@ -64,16 +79,28 @@ export function SolutionTreePanel({ problem }: { problem: Problem }) {
   const [expanded, setExpanded] = useState(false);
   const totalMethodCount = useMemo(() => {
     function count(methods: SolutionTreeMethod[]): number {
-      return methods.reduce((sum, method) => sum + 1 + count(method.children ?? []), 0);
+      return methods.reduce(
+        (sum, method) => sum + 1 + count(method.children ?? []),
+        0,
+      );
     }
 
-    return problem.solutionTree?.roots.reduce((sum, root) => sum + count(root.methods), 0) ?? 0;
+    return (
+      problem.solutionTree?.roots.reduce(
+        (sum, root) => sum + count(root.methods),
+        0,
+      ) ?? 0
+    );
   }, [problem.solutionTree]);
 
-  if (!problem.solutionTree || problem.solutionTree.roots.length === 0) return null;
+  if (!problem.solutionTree || problem.solutionTree.roots.length === 0)
+    return null;
 
   return (
-    <section id="solution-tree" className="mt-5 scroll-mt-32 border border-emerald-400/25 bg-zinc-950">
+    <section
+      id="solution-tree"
+      className="mt-5 scroll-mt-32 border border-emerald-400/25 bg-zinc-950"
+    >
       <button
         type="button"
         aria-expanded={expanded}
@@ -83,13 +110,18 @@ export function SolutionTreePanel({ problem }: { problem: Problem }) {
         <span className="flex items-center gap-3">
           <TreePine className="size-4 text-emerald-300" />
           <span>
-            <span className="block text-sm font-bold text-white">🌳 思路树</span>
+            <span className="block text-sm font-bold text-white">
+              🌳 思路树
+            </span>
             <span className="mt-1 block font-mono text-[10px] uppercase tracking-widest text-zinc-600">
-              {problem.solutionTree.roots.length} 个思维入口 · {totalMethodCount} 条方法分支
+              {problem.solutionTree.roots.length} 个思维入口 ·{" "}
+              {totalMethodCount} 条方法分支
             </span>
           </span>
         </span>
-        <ChevronDown className={`size-4 shrink-0 text-zinc-500 transition ${expanded ? "rotate-180" : ""}`} />
+        <ChevronDown
+          className={`size-4 shrink-0 text-zinc-500 transition ${expanded ? "rotate-180" : ""}`}
+        />
       </button>
 
       {expanded && (
@@ -101,14 +133,22 @@ export function SolutionTreePanel({ problem }: { problem: Problem }) {
                   <GitBranch className="size-4 text-emerald-300" />
                 </span>
                 <div>
-                  <h3 className="text-base font-bold text-white"><MathBlock>{root.title}</MathBlock></h3>
-                  <p className="mt-2 text-sm leading-6 text-zinc-500">{root.description}</p>
+                  <h3 className="text-base font-bold text-white">
+                    <MathBlock>{root.title}</MathBlock>
+                  </h3>
+                  <p className="mt-2 text-sm leading-6 text-zinc-500">
+                    {root.description}
+                  </p>
                 </div>
               </div>
 
               <ol className="mt-4 space-y-3">
                 {root.methods.map((method) => (
-                  <SolutionMethodNode key={method.id} method={method} problem={problem} />
+                  <SolutionMethodNode
+                    key={method.id}
+                    method={method}
+                    problem={problem}
+                  />
                 ))}
               </ol>
             </div>

@@ -8,7 +8,9 @@ function canAccessAdmin(role?: string | null) {
 
 export default async function AdminPage() {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   if (!user) redirect("/auth/login");
 
@@ -44,19 +46,46 @@ export default async function AdminPage() {
     { count: activeContests },
     { count: draftContests },
   ] = await Promise.all([
-    supabase.from("submissions").select("*", { count: "exact", head: true }).eq("status", "pending"),
-    supabase.from("submissions").select("*", { count: "exact", head: true }).eq("status", "approved"),
-    supabase.from("submissions").select("*", { count: "exact", head: true }).eq("status", "rejected"),
-    supabase.from("submissions").select("*", { count: "exact", head: true }).eq("status", "needs_revision"),
-    supabase.from("submissions").select("*", { count: "exact", head: true }).eq("status", "precheck_failed"),
+    supabase
+      .from("submissions")
+      .select("*", { count: "exact", head: true })
+      .eq("status", "pending"),
+    supabase
+      .from("submissions")
+      .select("*", { count: "exact", head: true })
+      .eq("status", "approved"),
+    supabase
+      .from("submissions")
+      .select("*", { count: "exact", head: true })
+      .eq("status", "rejected"),
+    supabase
+      .from("submissions")
+      .select("*", { count: "exact", head: true })
+      .eq("status", "needs_revision"),
+    supabase
+      .from("submissions")
+      .select("*", { count: "exact", head: true })
+      .eq("status", "precheck_failed"),
     supabase.from("submissions").select("*", { count: "exact", head: true }),
     supabase.from("problems").select("*", { count: "exact", head: true }),
-    supabase.from("problem_drafts").select("*", { count: "exact", head: true }).eq("status", "drafting"),
-    supabase.from("problem_drafts").select("*", { count: "exact", head: true }).eq("status", "promoted"),
+    supabase
+      .from("problem_drafts")
+      .select("*", { count: "exact", head: true })
+      .eq("status", "drafting"),
+    supabase
+      .from("problem_drafts")
+      .select("*", { count: "exact", head: true })
+      .eq("status", "promoted"),
     supabase.from("problem_drafts").select("*", { count: "exact", head: true }),
     supabase.from("contests").select("*", { count: "exact", head: true }),
-    supabase.from("contests").select("*", { count: "exact", head: true }).eq("status", "active"),
-    supabase.from("contests").select("*", { count: "exact", head: true }).eq("status", "draft"),
+    supabase
+      .from("contests")
+      .select("*", { count: "exact", head: true })
+      .eq("status", "active"),
+    supabase
+      .from("contests")
+      .select("*", { count: "exact", head: true })
+      .eq("status", "draft"),
   ]);
 
   const stats = {

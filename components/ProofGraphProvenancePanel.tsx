@@ -1,9 +1,23 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, GitBranch, GitCommitHorizontal, Link2, Swords, Users } from "lucide-react";
+import {
+  ChevronDown,
+  GitBranch,
+  GitCommitHorizontal,
+  Link2,
+  Swords,
+  Users,
+} from "lucide-react";
 import { MathBlock } from "@/components/MathBlock";
-import type { Problem, ProofChallengeEdge, ProofMethodBoundary, ProofObservation, ProofTransformation, Solution } from "@/lib/types";
+import type {
+  Problem,
+  ProofChallengeEdge,
+  ProofMethodBoundary,
+  ProofObservation,
+  ProofTransformation,
+  Solution,
+} from "@/lib/types";
 
 function solutionTitle(solutions: Solution[], id: string) {
   return solutions.find((s) => s.id === id)?.title ?? id;
@@ -38,11 +52,17 @@ function SectionBlock({
 
 // ── 观察 · 关联解法 ──────────────────────────────────────────────────────────
 
-function ObservationProvenance({ observations, solutions }: { observations: ProofObservation[]; solutions: Solution[] }) {
+function ObservationProvenance({
+  observations,
+  solutions,
+}: {
+  observations: ProofObservation[];
+  solutions: Solution[];
+}) {
   return (
     <>
       {observations.map((obs) => (
-        <div key={obs.id} className="rounded border border-white/10 bg-zinc-950 p-3">
+        <div key={obs.id} className="border border-white/10 bg-zinc-950 p-3">
           <p className="text-sm font-bold text-zinc-200">
             <MathBlock>{obs.title}</MathBlock>
           </p>
@@ -72,11 +92,20 @@ function ObservationProvenance({ observations, solutions }: { observations: Proo
 
 // ── 转化 · 来自路线 ──────────────────────────────────────────────────────────
 
-function TransformationProvenance({ transformations, solutions }: { transformations: ProofTransformation[]; solutions: Solution[] }) {
+function TransformationProvenance({
+  transformations,
+  solutions,
+}: {
+  transformations: ProofTransformation[];
+  solutions: Solution[];
+}) {
   return (
     <>
       {transformations.map((t) => (
-        <div key={t.id} className="flex flex-wrap items-start justify-between gap-2 rounded border border-white/10 bg-zinc-950 p-3">
+        <div
+          key={t.id}
+          className="flex flex-wrap items-start justify-between gap-2 border border-white/10 bg-zinc-950 p-3"
+        >
           <p className="min-w-0 flex-1 text-xs leading-5 text-zinc-300">
             <MathBlock>{t.title}</MathBlock>
           </p>
@@ -91,11 +120,17 @@ function TransformationProvenance({ transformations, solutions }: { transformati
 
 // ── 挑战关系 ─────────────────────────────────────────────────────────────────
 
-function ChallengeProvenance({ edges, solutions }: { edges: ProofChallengeEdge[]; solutions: Solution[] }) {
+function ChallengeProvenance({
+  edges,
+  solutions,
+}: {
+  edges: ProofChallengeEdge[];
+  solutions: Solution[];
+}) {
   return (
     <>
       {edges.map((e) => (
-        <div key={e.id} className="rounded border border-white/10 bg-zinc-950 p-3">
+        <div key={e.id} className="border border-white/10 bg-zinc-950 p-3">
           <div className="flex flex-wrap items-center gap-1.5 text-xs">
             <span className="border border-cyan-400/30 bg-cyan-400/[0.06] px-1.5 py-0.5 font-bold text-cyan-200">
               {solutionTitle(solutions, e.challengerSolutionId)}
@@ -116,11 +151,18 @@ function ChallengeProvenance({ edges, solutions }: { edges: ProofChallengeEdge[]
 
 // ── 编辑沉淀 ─────────────────────────────────────────────────────────────────
 
-function MethodBoundaryProvenance({ boundaries }: { boundaries: ProofMethodBoundary[] }) {
+function MethodBoundaryProvenance({
+  boundaries,
+}: {
+  boundaries: ProofMethodBoundary[];
+}) {
   return (
     <>
       {boundaries.map((b) => (
-        <div key={b.id} className="rounded border border-amber-400/20 bg-amber-400/[0.04] p-3">
+        <div
+          key={b.id}
+          className="border border-amber-400/20 bg-amber-400/[0.04] p-3"
+        >
           <p className="text-sm font-bold text-zinc-200">{b.methodName}</p>
           <p className="mt-0.5 text-xs leading-5 text-zinc-400">
             <MathBlock>{b.whyNotPriority}</MathBlock>
@@ -138,8 +180,14 @@ function ForkProvenance({ solutions }: { solutions: Solution[] }) {
   return (
     <>
       {forked.map((s) => (
-        <div key={s.id} className="flex flex-wrap items-center gap-2 rounded border border-white/10 bg-zinc-950 p-3 text-xs">
-          <a href={`#${s.id}`} className="border border-violet-400/30 bg-violet-400/[0.06] px-1.5 py-0.5 text-violet-300 hover:bg-violet-400/10">
+        <div
+          key={s.id}
+          className="flex flex-wrap items-center gap-2 border border-white/10 bg-zinc-950 p-3 text-xs"
+        >
+          <a
+            href={`#${s.id}`}
+            className="border border-violet-400/30 bg-violet-400/[0.06] px-1.5 py-0.5 text-violet-300 hover:bg-violet-400/10"
+          >
             <MathBlock>{s.title}</MathBlock>
           </a>
           <span className="text-zinc-600">← fork 自</span>
@@ -163,7 +211,9 @@ export function ProofGraphProvenancePanel({ problem }: { problem: Problem }) {
 
   if (!pg) return null;
 
-  const forkedSolutions = problem.solutions.filter((s) => s.thinkingCues?.forkOf);
+  const forkedSolutions = problem.solutions.filter(
+    (s) => s.thinkingCues?.forkOf,
+  );
 
   const hasContent =
     pg.observations.length > 0 ||
@@ -197,24 +247,37 @@ export function ProofGraphProvenancePanel({ problem }: { problem: Problem }) {
         <div className="space-y-5 border-t border-white/10 p-4 md:p-6">
           {pg.observations.length > 0 && (
             <SectionBlock icon={Users} title="观察 · 关联解法">
-              <ObservationProvenance observations={pg.observations} solutions={problem.solutions} />
+              <ObservationProvenance
+                observations={pg.observations}
+                solutions={problem.solutions}
+              />
             </SectionBlock>
           )}
 
           {pg.transformations.length > 0 && (
             <SectionBlock icon={GitCommitHorizontal} title="转化 · 来自路线">
-              <TransformationProvenance transformations={pg.transformations} solutions={problem.solutions} />
+              <TransformationProvenance
+                transformations={pg.transformations}
+                solutions={problem.solutions}
+              />
             </SectionBlock>
           )}
 
           {pg.challengeEdges.length > 0 && (
             <SectionBlock icon={Swords} title="挑战关系">
-              <ChallengeProvenance edges={pg.challengeEdges} solutions={problem.solutions} />
+              <ChallengeProvenance
+                edges={pg.challengeEdges}
+                solutions={problem.solutions}
+              />
             </SectionBlock>
           )}
 
           {pg.methodBoundaries.length > 0 && (
-            <SectionBlock icon={Link2} title="编辑沉淀" note="非解法关联，由编辑整理">
+            <SectionBlock
+              icon={Link2}
+              title="编辑沉淀"
+              note="非解法关联，由编辑整理"
+            >
               <MethodBoundaryProvenance boundaries={pg.methodBoundaries} />
             </SectionBlock>
           )}

@@ -4,7 +4,10 @@ import { useState } from "react";
 import Link from "next/link";
 import { ChevronDown, Save } from "lucide-react";
 import { saveProofGraph } from "@/lib/save-proof-graph";
-import { loadSolutionDrafts, type SolutionDraft } from "@/lib/load-solution-drafts";
+import {
+  loadSolutionDrafts,
+  type SolutionDraft,
+} from "@/lib/load-solution-drafts";
 import type { ProofGraphV1 } from "@/lib/types";
 import type { ProblemSummary } from "@/app/admin/proof-graph/page";
 
@@ -51,7 +54,7 @@ function validate(text: string): ValidationResult {
   const obj = parsed as Record<string, unknown>;
   const missing = REQUIRED_KEYS.filter((k) => !Array.isArray(obj[k]));
   if (missing.length) {
-    return { ok: false, error: `缺少必需的数组字段：${missing.join(", ")}` };
+    return { ok: false, error: `缺少必需的数组字段：${missing.join(",")}` };
   }
   const counts: Record<string, number> = {};
   for (const k of REQUIRED_KEYS) {
@@ -69,12 +72,18 @@ function insertIntoJson(
 ): string {
   const result = validate(currentText);
   if (!result.ok) return currentText;
-  const graph = structuredClone(result.parsed as unknown) as Record<string, unknown[]>;
+  const graph = structuredClone(result.parsed as unknown) as Record<
+    string,
+    unknown[]
+  >;
   (graph[targetKey] as unknown[]).push(item);
   return JSON.stringify(graph, null, 2);
 }
 
-function observationFromDraft(draft: SolutionDraft["draft"], solutionId: string) {
+function observationFromDraft(
+  draft: SolutionDraft["draft"],
+  solutionId: string,
+) {
   return {
     id: generateId("obs"),
     title: draft.observationSignal ?? "",
@@ -84,11 +93,16 @@ function observationFromDraft(draft: SolutionDraft["draft"], solutionId: string)
   };
 }
 
-function transformationFromDraft(draft: SolutionDraft["draft"], solutionId: string) {
+function transformationFromDraft(
+  draft: SolutionDraft["draft"],
+  solutionId: string,
+) {
   return {
     id: generateId("tr"),
     solutionId,
-    title: draft.transformationFrom ? `${draft.transformationFrom} → ${draft.transformationTo ?? ""}` : "",
+    title: draft.transformationFrom
+      ? `${draft.transformationFrom} → ${draft.transformationTo ?? ""}`
+      : "",
     from: draft.transformationFrom ?? "",
     to: draft.transformationTo ?? "",
     justification: draft.transformationJustification ?? "",
@@ -123,13 +137,18 @@ function DraftCard({
   const hasBoundary = !!draft.methodBoundaryName;
 
   const kindLabel: Record<string, string> = {
-    standard: "标准", insight: "启发", robust: "稳健", teaching: "教学",
+    standard: "标准",
+    insight: "启发",
+    robust: "稳健",
+    teaching: "教学",
   };
 
   return (
-    <div className="rounded border border-white/10 bg-zinc-950 p-3 text-xs">
+    <div className="border border-white/10 bg-zinc-950 p-3 text-xs">
       <div className="mb-2 flex items-center gap-2">
-        <span className="font-bold text-zinc-300">{solutionDraft.solutionTitle}</span>
+        <span className="font-bold text-zinc-300">
+          {solutionDraft.solutionTitle}
+        </span>
         <span className="border border-white/10 px-1.5 py-0.5 text-[10px] text-zinc-600">
           {kindLabel[solutionDraft.solutionKind] ?? solutionDraft.solutionKind}
         </span>
@@ -139,12 +158,19 @@ function DraftCard({
           <div className="flex items-start justify-between gap-3 border-l-2 border-cyan-400/30 pl-2">
             <div className="min-w-0">
               <span className="font-bold text-cyan-400/70">观察</span>
-              <p className="mt-0.5 line-clamp-2 text-zinc-500">{draft.observationSignal}</p>
+              <p className="mt-0.5 line-clamp-2 text-zinc-500">
+                {draft.observationSignal}
+              </p>
             </div>
             <button
               type="button"
-              onClick={() => onInsert("observations", observationFromDraft(draft, solutionDraft.solutionId))}
-              className="shrink-0 rounded border border-cyan-400/30 px-2 py-0.5 text-[10px] font-bold text-cyan-300 hover:bg-cyan-400/10"
+              onClick={() =>
+                onInsert(
+                  "observations",
+                  observationFromDraft(draft, solutionDraft.solutionId),
+                )
+              }
+              className="shrink-0 border border-cyan-400/30 px-2 py-0.5 text-[10px] font-bold text-cyan-300 hover:bg-cyan-400/10"
             >
               插入
             </button>
@@ -154,12 +180,19 @@ function DraftCard({
           <div className="flex items-start justify-between gap-3 border-l-2 border-emerald-400/30 pl-2">
             <div className="min-w-0">
               <span className="font-bold text-emerald-400/70">转化</span>
-              <p className="mt-0.5 line-clamp-2 text-zinc-500">{draft.transformationFrom}</p>
+              <p className="mt-0.5 line-clamp-2 text-zinc-500">
+                {draft.transformationFrom}
+              </p>
             </div>
             <button
               type="button"
-              onClick={() => onInsert("transformations", transformationFromDraft(draft, solutionDraft.solutionId))}
-              className="shrink-0 rounded border border-emerald-400/30 px-2 py-0.5 text-[10px] font-bold text-emerald-300 hover:bg-emerald-400/10"
+              onClick={() =>
+                onInsert(
+                  "transformations",
+                  transformationFromDraft(draft, solutionDraft.solutionId),
+                )
+              }
+              className="shrink-0 border border-emerald-400/30 px-2 py-0.5 text-[10px] font-bold text-emerald-300 hover:bg-emerald-400/10"
             >
               插入
             </button>
@@ -169,12 +202,16 @@ function DraftCard({
           <div className="flex items-start justify-between gap-3 border-l-2 border-amber-400/30 pl-2">
             <div className="min-w-0">
               <span className="font-bold text-amber-400/70">方法边界</span>
-              <p className="mt-0.5 line-clamp-2 text-zinc-500">{draft.methodBoundaryName}</p>
+              <p className="mt-0.5 line-clamp-2 text-zinc-500">
+                {draft.methodBoundaryName}
+              </p>
             </div>
             <button
               type="button"
-              onClick={() => onInsert("methodBoundaries", boundaryFromDraft(draft))}
-              className="shrink-0 rounded border border-amber-400/30 px-2 py-0.5 text-[10px] font-bold text-amber-300 hover:bg-amber-400/10"
+              onClick={() =>
+                onInsert("methodBoundaries", boundaryFromDraft(draft))
+              }
+              className="shrink-0 border border-amber-400/30 px-2 py-0.5 text-[10px] font-bold text-amber-300 hover:bg-amber-400/10"
             >
               插入
             </button>
@@ -200,7 +237,9 @@ export function ProofGraphEditor({ problems }: { problems: ProblemSummary[] }) {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"all" | "has" | "missing">("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "has" | "missing">(
+    "all",
+  );
 
   const filteredProblems = problems.filter((p) => {
     if (statusFilter === "has" && !p.proofGraph) return false;
@@ -217,10 +256,9 @@ export function ProofGraphEditor({ problems }: { problems: ProblemSummary[] }) {
   });
 
   // Auto-select first visible problem when the current selection is filtered out.
-  const effectiveId =
-    filteredProblems.some((p) => p.id === selectedId)
-      ? selectedId
-      : (filteredProblems[0]?.id ?? "");
+  const effectiveId = filteredProblems.some((p) => p.id === selectedId)
+    ? selectedId
+    : (filteredProblems[0]?.id ?? "");
 
   const validation = validate(jsonText);
 
@@ -260,7 +298,10 @@ export function ProofGraphEditor({ problems }: { problems: ProblemSummary[] }) {
     }
   }
 
-  function handleInsert(key: keyof ProofGraphV1, item: Record<string, unknown>) {
+  function handleInsert(
+    key: keyof ProofGraphV1,
+    item: Record<string, unknown>,
+  ) {
     setJsonText((current) => insertIntoJson(current, key, item));
     setMessage("");
     setError("");
@@ -283,8 +324,12 @@ export function ProofGraphEditor({ problems }: { problems: ProblemSummary[] }) {
   const selectedProblem = problems.find((p) => p.id === effectiveId);
 
   const LABEL_MAP: Partial<Record<keyof ProofGraphV1, string>> = {
-    observations: "观察", branches: "分支", transformations: "转化",
-    verificationSteps: "验证", methodBoundaries: "边界", challengeEdges: "挑战",
+    observations: "观察",
+    branches: "分支",
+    transformations: "转化",
+    verificationSteps: "验证",
+    methodBoundaries: "边界",
+    challengeEdges: "挑战",
   };
 
   return (
@@ -299,11 +344,16 @@ export function ProofGraphEditor({ problems }: { problems: ProblemSummary[] }) {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="搜索题目（标题、ID、地区、年份…）"
-              className="h-9 min-w-0 flex-1 rounded border border-white/10 bg-zinc-900 px-3 text-sm text-white outline-none placeholder:text-zinc-600 focus:border-cyan-400/50"
+              className="h-9 min-w-0 flex-1 border border-white/10 bg-zinc-900 px-3 text-sm text-white outline-none placeholder:text-zinc-600 focus:border-cyan-400/50"
             />
             <div className="flex gap-1">
               {(["all", "has", "missing"] as const).map((v) => {
-                const label = v === "all" ? "全部" : v === "has" ? "已有图谱 ✓" : "缺少图谱";
+                const label =
+                  v === "all"
+                    ? "全部"
+                    : v === "has"
+                      ? "已有图谱 ✓"
+                      : "缺少图谱";
                 return (
                   <button
                     key={v}
@@ -342,7 +392,7 @@ export function ProofGraphEditor({ problems }: { problems: ProblemSummary[] }) {
           <select
             value={effectiveId}
             onChange={(e) => selectProblem(e.target.value)}
-            className="h-11 rounded border border-white/10 bg-zinc-900 px-3 text-sm text-white outline-none focus:border-cyan-400/50"
+            className="h-11 border border-white/10 bg-zinc-900 px-3 text-sm text-white outline-none focus:border-cyan-400/50"
           >
             {filteredProblems.length === 0 ? (
               <option value="">（无匹配题目）</option>
@@ -367,21 +417,25 @@ export function ProofGraphEditor({ problems }: { problems: ProblemSummary[] }) {
           </span>
           <textarea
             value={jsonText}
-            onChange={(e) => { setJsonText(e.target.value); setMessage(""); setError(""); }}
+            onChange={(e) => {
+              setJsonText(e.target.value);
+              setMessage("");
+              setError("");
+            }}
             rows={28}
             spellCheck={false}
-            className="resize-y rounded border border-white/10 bg-black/30 px-4 py-3 font-mono text-xs leading-5 text-zinc-200 outline-none transition focus:border-cyan-400/50"
+            className="resize-y border border-white/10 bg-black/30 px-4 py-3 font-mono text-xs leading-5 text-zinc-200 outline-none transition focus:border-cyan-400/50"
           />
         </label>
 
         {/* Messages */}
         {message && (
-          <p className="rounded border border-emerald-400/30 bg-emerald-400/[0.06] px-3 py-2 text-sm text-emerald-300">
+          <p className="border border-emerald-400/30 bg-emerald-400/[0.06] px-3 py-2 text-sm text-emerald-300">
             {message}
           </p>
         )}
         {error && (
-          <p className="rounded border border-red-400/30 bg-red-400/[0.06] px-3 py-2 text-sm text-red-300">
+          <p className="border border-red-400/30 bg-red-400/[0.06] px-3 py-2 text-sm text-red-300">
             {error}
           </p>
         )}
@@ -391,7 +445,7 @@ export function ProofGraphEditor({ problems }: { problems: ProblemSummary[] }) {
           type="button"
           onClick={handleSave}
           disabled={!validation.ok || saving}
-          className="inline-flex h-11 w-full items-center justify-center gap-2 rounded bg-cyan-400 text-sm font-bold text-zinc-950 transition hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-40"
+          className="inline-flex h-11 w-full items-center justify-center gap-2 bg-cyan-400 text-sm font-bold text-zinc-950 transition hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-40"
         >
           <Save className="size-4" />
           {saving ? "保存中…" : "保存 proof_graph"}
@@ -401,15 +455,20 @@ export function ProofGraphEditor({ problems }: { problems: ProblemSummary[] }) {
       {/* ── Right sidebar ── */}
       <div className="space-y-4">
         {/* Validation strip */}
-        <section className="rounded border border-white/10 bg-black/20 p-4">
+        <section className="border border-white/10 bg-black/20 p-4">
           <h3 className="mb-3 text-sm font-bold text-white">JSON 验证</h3>
           {validation.ok ? (
             <div className="space-y-1.5">
               <p className="text-xs text-emerald-300">✓ 结构合法</p>
               {REQUIRED_KEYS.map((k) => (
-                <div key={k} className="flex items-center justify-between text-xs">
+                <div
+                  key={k}
+                  className="flex items-center justify-between text-xs"
+                >
                   <span className="text-zinc-500">{LABEL_MAP[k] ?? k}</span>
-                  <span className="font-bold text-zinc-300">{validation.counts[k]}</span>
+                  <span className="font-bold text-zinc-300">
+                    {validation.counts[k]}
+                  </span>
                 </div>
               ))}
             </div>
@@ -419,7 +478,7 @@ export function ProofGraphEditor({ problems }: { problems: ProblemSummary[] }) {
         </section>
 
         {/* Drafts panel */}
-        <section className="rounded border border-white/10 bg-black/20">
+        <section className="border border-white/10 bg-black/20">
           <button
             type="button"
             onClick={draftsOpen ? () => setDraftsOpen(false) : loadDrafts}
@@ -428,7 +487,7 @@ export function ProofGraphEditor({ problems }: { problems: ProblemSummary[] }) {
             <span className="font-bold text-white">
               解法草稿
               {drafts.length > 0 && (
-                <span className="ml-2 rounded border border-violet-400/30 px-1.5 py-0.5 text-[10px] text-violet-300">
+                <span className="ml-2 border border-violet-400/30 px-1.5 py-0.5 text-[10px] text-violet-300">
                   {drafts.length} 条
                 </span>
               )}
@@ -437,13 +496,17 @@ export function ProofGraphEditor({ problems }: { problems: ProblemSummary[] }) {
               <span className="text-[10px] text-zinc-600">
                 {draftsOpen ? "" : "点击加载"}
               </span>
-              <ChevronDown className={`size-4 text-zinc-500 transition-transform ${draftsOpen ? "rotate-180" : ""}`} />
+              <ChevronDown
+                className={`size-4 text-zinc-500 transition-transform ${draftsOpen ? "rotate-180" : ""}`}
+              />
             </div>
           </button>
           {draftsOpen && (
             <div className="border-t border-white/10 p-3">
               {draftsLoading ? (
-                <p className="py-4 text-center text-xs text-zinc-600">加载中…</p>
+                <p className="py-4 text-center text-xs text-zinc-600">
+                  加载中…
+                </p>
               ) : drafts.length === 0 ? (
                 <p className="py-4 text-center text-xs text-zinc-600">
                   该题目没有已发布解法的草稿数据。
@@ -451,10 +514,16 @@ export function ProofGraphEditor({ problems }: { problems: ProblemSummary[] }) {
               ) : (
                 <div className="space-y-3">
                   <p className="text-[10px] leading-5 text-zinc-600">
-                    点击「插入」将草稿字段作为新对象插入对应数组。ID 自动生成，请在 JSON 编辑器中补充其余字段（如 observationId、solutionIds 等）。
+                    点击「插入」将草稿字段作为新对象插入对应数组。ID
+                    自动生成，请在 JSON 编辑器中补充其余字段（如
+                    observationId、solutionIds 等）。
                   </p>
                   {drafts.map((d) => (
-                    <DraftCard key={d.solutionId} draft={d} onInsert={handleInsert} />
+                    <DraftCard
+                      key={d.solutionId}
+                      draft={d}
+                      onInsert={handleInsert}
+                    />
                   ))}
                 </div>
               )}
@@ -463,17 +532,36 @@ export function ProofGraphEditor({ problems }: { problems: ProblemSummary[] }) {
         </section>
 
         {/* Quick reference */}
-        <section className="rounded border border-white/10 bg-black/20 p-4">
+        <section className="border border-white/10 bg-black/20 p-4">
           <h3 className="mb-2 text-[10px] font-bold uppercase tracking-wide text-zinc-600">
             ProofGraphV1 字段参考
           </h3>
           <div className="space-y-1 text-[10px] leading-5 text-zinc-600">
-            <p><span className="text-zinc-400">observations</span>: id, title, signal, whyItMatters, relatedSolutionIds[]</p>
-            <p><span className="text-zinc-400">branches</span>: id, observationId, title, promise, risk, solutionIds[]</p>
-            <p><span className="text-zinc-400">transformations</span>: id, solutionId, title, from, to, justification, complexityReduction</p>
-            <p><span className="text-zinc-400">verificationSteps</span>: id, solutionId, type, statement, status, note</p>
-            <p><span className="text-zinc-400">methodBoundaries</span>: id, methodName, whyTempting, whyNotPriority, whereItBreaks, whenItWorks, relatedConcepts[]</p>
-            <p><span className="text-zinc-400">challengeEdges</span>: id, challengerSolutionId, targetSolutionId, claim, advantages[], risk</p>
+            <p>
+              <span className="text-zinc-400">observations</span>: id, title,
+              signal, whyItMatters, relatedSolutionIds[]
+            </p>
+            <p>
+              <span className="text-zinc-400">branches</span>: id,
+              observationId, title, promise, risk, solutionIds[]
+            </p>
+            <p>
+              <span className="text-zinc-400">transformations</span>: id,
+              solutionId, title, from, to, justification, complexityReduction
+            </p>
+            <p>
+              <span className="text-zinc-400">verificationSteps</span>: id,
+              solutionId, type, statement, status, note
+            </p>
+            <p>
+              <span className="text-zinc-400">methodBoundaries</span>: id,
+              methodName, whyTempting, whyNotPriority, whereItBreaks,
+              whenItWorks, relatedConcepts[]
+            </p>
+            <p>
+              <span className="text-zinc-400">challengeEdges</span>: id,
+              challengerSolutionId, targetSolutionId, claim, advantages[], risk
+            </p>
           </div>
         </section>
       </div>

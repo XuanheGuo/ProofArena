@@ -5,14 +5,15 @@ import { CheckCircle2, Star } from "lucide-react";
 import { createClient } from "@/lib/supabase-client";
 import type { User } from "@supabase/supabase-js";
 
-type RatingDim = "correctness" | "clarity" | "elegance" | "insight" | "exam_usability";
+type RatingDim =
+  "correctness" | "clarity" | "elegance" | "insight" | "exam_usability";
 
 const DIMS: Array<{ key: RatingDim; label: string; description: string }> = [
-  { key: "correctness",    label: "正确性",    description: "推理严密，结论可靠" },
-  { key: "clarity",        label: "清晰度",    description: "步骤清楚，容易跟读" },
-  { key: "elegance",       label: "优雅度",    description: "转化自然，结构简洁" },
-  { key: "insight",        label: "启发性",    description: "带来新的思考角度" },
-  { key: "exam_usability", label: "考试可用",  description: "考场中切实可行" },
+  { key: "correctness", label: "正确性", description: "推理严密，结论可靠" },
+  { key: "clarity", label: "清晰度", description: "步骤清楚，容易跟读" },
+  { key: "elegance", label: "优雅度", description: "转化自然，结构简洁" },
+  { key: "insight", label: "启发性", description: "带来新的思考角度" },
+  { key: "exam_usability", label: "考试可用", description: "考场中切实可行" },
 ];
 
 type RatingRow = Record<RatingDim, number>;
@@ -28,7 +29,7 @@ function StarInput({
   disabled?: boolean;
 }) {
   const [hovered, setHovered] = useState(0);
-  const display = disabled ? value : (hovered || value);
+  const display = disabled ? value : hovered || value;
 
   return (
     <div className="flex items-center gap-1">
@@ -59,15 +60,19 @@ function StarInput({
 function ScoreBadge({ value, label }: { value: number; label: string }) {
   const pct = value / 5;
   const color =
-    pct >= 0.8 ? "text-emerald-300" :
-    pct >= 0.6 ? "text-amber-300" :
-    "text-zinc-300";
+    pct >= 0.8
+      ? "text-emerald-300"
+      : pct >= 0.6
+        ? "text-amber-300"
+        : "text-zinc-300";
   return (
     <div className="flex flex-col items-center gap-1 py-3">
       <span className={`font-mono text-lg font-bold leading-none ${color}`}>
         {value.toFixed(1)}
       </span>
-      <span className="text-[10px] uppercase tracking-wide text-zinc-600">{label}</span>
+      <span className="text-[10px] uppercase tracking-wide text-zinc-600">
+        {label}
+      </span>
     </div>
   );
 }
@@ -80,20 +85,30 @@ export function SolutionRatingPanel({
   authorId?: string | null;
 }) {
   const supabase = createClient();
-  const [user, setUser]             = useState<User | null>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [loadingUser, setLoadingUser] = useState(true);
   const [loadingRatings, setLoadingRatings] = useState(true);
-  const [average, setAverage]       = useState<AverageRating | null>(null);
-  const [myRating, setMyRating]     = useState<RatingRow | null>(null);
-  const [draft, setDraft]           = useState<RatingRow>({ correctness: 0, clarity: 0, elegance: 0, insight: 0, exam_usability: 0 });
+  const [average, setAverage] = useState<AverageRating | null>(null);
+  const [myRating, setMyRating] = useState<RatingRow | null>(null);
+  const [draft, setDraft] = useState<RatingRow>({
+    correctness: 0,
+    clarity: 0,
+    elegance: 0,
+    insight: 0,
+    exam_usability: 0,
+  });
   const [submitting, setSubmitting] = useState(false);
-  const [submitted, setSubmitted]   = useState(false);
-  const [error, setError]           = useState("");
-  const [open, setOpen]             = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+  const [error, setError] = useState("");
+  const [open, setOpen] = useState(false);
 
-  const isOwn   = Boolean(user && authorId && user.id === authorId);
+  const isOwn = Boolean(user && authorId && user.id === authorId);
   const canRate = Boolean(user) && !isOwn;
-  const total   = average ? Object.values(average).slice(0, -1).reduce((s, v) => s + v, 0) : null;
+  const total = average
+    ? Object.values(average)
+        .slice(0, -1)
+        .reduce((s, v) => s + v, 0)
+    : null;
   const allFilled = DIMS.every((d) => draft[d.key] > 0);
 
   useEffect(() => {
@@ -103,7 +118,9 @@ export function SolutionRatingPanel({
     });
   }, [supabase]);
 
-  useEffect(() => { void refresh(); }, [solutionId]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    void refresh();
+  }, [solutionId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!user) return;
@@ -114,7 +131,10 @@ export function SolutionRatingPanel({
       .eq("user_id", user.id)
       .maybeSingle()
       .then(({ data }) => {
-        if (data) { setMyRating(data as RatingRow); setDraft(data as RatingRow); }
+        if (data) {
+          setMyRating(data as RatingRow);
+          setDraft(data as RatingRow);
+        }
       });
   }, [user, solutionId, supabase]);
 
@@ -125,14 +145,36 @@ export function SolutionRatingPanel({
       .select("correctness,clarity,elegance,insight,exam_usability")
       .eq("solution_id", solutionId);
     setLoadingRatings(false);
-    if (!data || data.length === 0) { setAverage(null); return; }
+    if (!data || data.length === 0) {
+      setAverage(null);
+      return;
+    }
     const count = data.length;
-    const zero: RatingRow = { correctness: 0, clarity: 0, elegance: 0, insight: 0, exam_usability: 0 };
+    const zero: RatingRow = {
+      correctness: 0,
+      clarity: 0,
+      elegance: 0,
+      insight: 0,
+      exam_usability: 0,
+    };
     const sum = data.reduce((acc, r) => {
       const row = r as RatingRow;
-      return { correctness: acc.correctness + row.correctness, clarity: acc.clarity + row.clarity, elegance: acc.elegance + row.elegance, insight: acc.insight + row.insight, exam_usability: acc.exam_usability + row.exam_usability };
+      return {
+        correctness: acc.correctness + row.correctness,
+        clarity: acc.clarity + row.clarity,
+        elegance: acc.elegance + row.elegance,
+        insight: acc.insight + row.insight,
+        exam_usability: acc.exam_usability + row.exam_usability,
+      };
     }, zero);
-    setAverage({ correctness: sum.correctness / count, clarity: sum.clarity / count, elegance: sum.elegance / count, insight: sum.insight / count, exam_usability: sum.exam_usability / count, count });
+    setAverage({
+      correctness: sum.correctness / count,
+      clarity: sum.clarity / count,
+      elegance: sum.elegance / count,
+      insight: sum.insight / count,
+      exam_usability: sum.exam_usability / count,
+      count,
+    });
   }
 
   async function handleSubmit() {
@@ -141,10 +183,17 @@ export function SolutionRatingPanel({
     setError("");
     const base = { solution_id: solutionId, user_id: user!.id, ...draft };
     const { error: err } = myRating
-      ? await supabase.from("solution_ratings").update({ ...draft, updated_at: new Date().toISOString() }).eq("solution_id", solutionId).eq("user_id", user!.id)
+      ? await supabase
+          .from("solution_ratings")
+          .update({ ...draft, updated_at: new Date().toISOString() })
+          .eq("solution_id", solutionId)
+          .eq("user_id", user!.id)
       : await supabase.from("solution_ratings").insert(base);
     setSubmitting(false);
-    if (err) { setError(err.message || "提交失败，请重试。"); return; }
+    if (err) {
+      setError(err.message || "提交失败，请重试。");
+      return;
+    }
     setMyRating(draft);
     setSubmitted(true);
     setOpen(false);
@@ -159,10 +208,12 @@ export function SolutionRatingPanel({
         <div className="flex items-center gap-3">
           <span className="text-sm font-bold text-zinc-200">社区评分</span>
           {loadingRatings ? (
-            <span className="h-4 w-20 animate-pulse rounded bg-white/10" />
+            <span className="h-4 w-20 animate-pulse  bg-white/10" />
           ) : average ? (
             <div className="flex items-baseline gap-1.5">
-              <span className="font-mono text-base font-bold text-amber-300">{total?.toFixed(1)}</span>
+              <span className="font-mono text-base font-bold text-amber-300">
+                {total?.toFixed(1)}
+              </span>
               <span className="text-xs text-zinc-600">/ 25</span>
               <span className="text-xs text-zinc-500">·</span>
               <span className="text-xs text-zinc-500">{average.count} 人</span>
@@ -172,7 +223,8 @@ export function SolutionRatingPanel({
           )}
           {submitted && (
             <span className="inline-flex items-center gap-1 text-xs text-emerald-400">
-              <CheckCircle2 className="size-3" />已提交
+              <CheckCircle2 className="size-3" />
+              已提交
             </span>
           )}
         </div>
@@ -182,14 +234,20 @@ export function SolutionRatingPanel({
             <span className="text-xs text-zinc-600">不可给自己的解法评分</span>
           )}
           {!loadingUser && !user && (
-            <a href="/auth/login" className="text-xs text-cyan-400 hover:text-cyan-300">
+            <a
+              href="/auth/login"
+              className="text-xs text-cyan-400 hover:text-cyan-300"
+            >
               登录后评分
             </a>
           )}
           {!loadingUser && canRate && (
             <button
               type="button"
-              onClick={() => { setOpen((v) => !v); setError(""); }}
+              onClick={() => {
+                setOpen((v) => !v);
+                setError("");
+              }}
               className={`inline-flex h-7 items-center gap-1.5 border px-3 text-xs font-bold transition ${
                 open
                   ? "border-amber-400/60 bg-amber-400/10 text-amber-200"
@@ -206,7 +264,11 @@ export function SolutionRatingPanel({
       {!loadingRatings && average && !open && (
         <div className="grid grid-cols-5 divide-x divide-white/[0.07] border-t border-white/[0.07]">
           {DIMS.map((dim) => (
-            <ScoreBadge key={dim.key} value={average[dim.key]} label={dim.label} />
+            <ScoreBadge
+              key={dim.key}
+              value={average[dim.key]}
+              label={dim.label}
+            />
           ))}
         </div>
       )}
@@ -219,27 +281,36 @@ export function SolutionRatingPanel({
               {myRating ? "你已评过分，修改后重新提交" : "五个维度各 1–5 颗星"}
             </p>
             {myRating && (
-              <span className="text-[10px] uppercase tracking-wide text-zinc-600">已评过</span>
+              <span className="text-[10px] uppercase tracking-wide text-zinc-600">
+                已评过
+              </span>
             )}
           </div>
 
           <div className="space-y-4">
             {DIMS.map((dim) => (
-              <div key={dim.key} className="grid grid-cols-[5rem_auto_1fr] items-center gap-3">
-                <span className="text-xs font-bold text-zinc-300">{dim.label}</span>
+              <div
+                key={dim.key}
+                className="grid grid-cols-[5rem_auto_1fr] items-center gap-3"
+              >
+                <span className="text-xs font-bold text-zinc-300">
+                  {dim.label}
+                </span>
                 <StarInput
                   value={draft[dim.key]}
-                  onChange={(v) => setDraft((prev) => ({ ...prev, [dim.key]: v }))}
+                  onChange={(v) =>
+                    setDraft((prev) => ({ ...prev, [dim.key]: v }))
+                  }
                   disabled={submitting}
                 />
-                <span className="hidden text-xs leading-none text-zinc-600 sm:block">{dim.description}</span>
+                <span className="hidden text-xs leading-none text-zinc-600 sm:block">
+                  {dim.description}
+                </span>
               </div>
             ))}
           </div>
 
-          {error && (
-            <p className="mt-3 text-xs text-red-400">{error}</p>
-          )}
+          {error && <p className="mt-3 text-xs text-red-400">{error}</p>}
 
           <div className="mt-5 flex items-center gap-3">
             <button
@@ -252,7 +323,10 @@ export function SolutionRatingPanel({
             </button>
             <button
               type="button"
-              onClick={() => { setOpen(false); setError(""); }}
+              onClick={() => {
+                setOpen(false);
+                setError("");
+              }}
               className="text-xs text-zinc-500 hover:text-zinc-200"
             >
               取消

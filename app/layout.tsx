@@ -11,7 +11,8 @@ const geist = Geist({
   display: "swap",
 });
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://proof-arena.guoxh.me";
+const siteUrl =
+  process.env.NEXT_PUBLIC_SITE_URL ?? "https://proof-arena.guoxh.me";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
@@ -27,7 +28,9 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default function RootLayout({
+  children,
+}: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="zh-CN" suppressHydrationWarning className={geist.variable}>
       <head>

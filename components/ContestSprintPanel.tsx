@@ -2,7 +2,16 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { AlertCircle, CheckCircle2, Clock, HelpCircle, LogIn, Timer, Unlock, XCircle } from "lucide-react";
+import {
+  AlertCircle,
+  CheckCircle2,
+  Clock,
+  HelpCircle,
+  LogIn,
+  Timer,
+  Unlock,
+  XCircle,
+} from "lucide-react";
 import { createClient } from "@/lib/supabase-client";
 import { MathBlock } from "@/components/MathBlock";
 import type { ContestAnswerType } from "@/lib/types";
@@ -38,9 +47,21 @@ type PanelState =
   | { phase: "error"; message: string }
   | { phase: "locked" }
   | { phase: "unlocked"; unlockAt: string; title: string; statement: string[] }
-  | { phase: "submitted"; isCorrect: boolean; elapsedMs: number; score: number; title: string; statement: string[] }
+  | {
+      phase: "submitted";
+      isCorrect: boolean;
+      elapsedMs: number;
+      score: number;
+      title: string;
+      statement: string[];
+    }
   // fill_blank answer received but didn't match any key — admin will review.
-  | { phase: "pending-review"; elapsedMs: number; title: string; statement: string[] };
+  | {
+      phase: "pending-review";
+      elapsedMs: number;
+      title: string;
+      statement: string[];
+    };
 
 function toPanelState(status: AttemptStatus): PanelState {
   if (!status.unlocked) return { phase: "locked" };
@@ -48,7 +69,12 @@ function toPanelState(status: AttemptStatus): PanelState {
   const statement = status.statement ?? [];
   if (status.submittedAt) {
     if (status.needsReview || status.isCorrect === null) {
-      return { phase: "pending-review", elapsedMs: status.elapsedMs ?? 0, title, statement };
+      return {
+        phase: "pending-review",
+        elapsedMs: status.elapsedMs ?? 0,
+        title,
+        statement,
+      };
     }
     return {
       phase: "submitted",
@@ -59,7 +85,12 @@ function toPanelState(status: AttemptStatus): PanelState {
       statement,
     };
   }
-  return { phase: "unlocked", unlockAt: status.unlockAt as string, title, statement };
+  return {
+    phase: "unlocked",
+    unlockAt: status.unlockAt as string,
+    title,
+    statement,
+  };
 }
 
 // Compact circular timer ring rendered with an SVG stroke-dashoffset trick.
@@ -68,15 +99,38 @@ function TimerRing({ remaining, total }: { remaining: number; total: number }) {
   const circumference = 2 * Math.PI * r;
   const fraction = total > 0 ? Math.max(0, remaining / total) : 0;
   const offset = circumference * (1 - fraction);
-  const color = fraction > 0.4 ? "text-amber-400" : fraction > 0.15 ? "text-orange-400" : "text-red-400";
+  const color =
+    fraction > 0.4
+      ? "text-amber-400"
+      : fraction > 0.15
+        ? "text-orange-400"
+        : "text-red-400";
   return (
-    <svg width={56} height={56} viewBox="0 0 56 56" className={color} aria-hidden>
+    <svg
+      width={56}
+      height={56}
+      viewBox="0 0 56 56"
+      className={color}
+      aria-hidden
+    >
       {/* track */}
-      <circle cx={28} cy={28} r={r} fill="none" stroke="currentColor" strokeWidth={3} opacity={0.15} />
+      <circle
+        cx={28}
+        cy={28}
+        r={r}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={3}
+        opacity={0.15}
+      />
       {/* progress */}
       <circle
-        cx={28} cy={28} r={r} fill="none"
-        stroke="currentColor" strokeWidth={3}
+        cx={28}
+        cy={28}
+        r={r}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={3}
         strokeLinecap="round"
         strokeDasharray={circumference}
         strokeDashoffset={offset}
@@ -130,13 +184,18 @@ export function ContestSprintPanel({
       .then(async (res) => {
         if (!res.ok) {
           const body = await res.json().catch(() => ({}));
-          setState({ phase: "error", message: body.error || "无法获取计时题状态。" });
+          setState({
+            phase: "error",
+            message: body.error || "无法获取计时题状态。",
+          });
           return;
         }
         const body = (await res.json()) as AttemptStatus;
         setState(toPanelState(body));
       })
-      .catch(() => setState({ phase: "error", message: "网络错误，无法获取计时题状态。" }));
+      .catch(() =>
+        setState({ phase: "error", message: "网络错误，无法获取计时题状态。" }),
+      );
   }, [userId, basePath]);
 
   useEffect(() => {
@@ -147,7 +206,8 @@ export function ContestSprintPanel({
 
   const remainingSeconds = useMemo(() => {
     if (state.phase !== "unlocked" || !timeLimitSeconds) return null;
-    const elapsedSeconds = (nowTick - new Date(state.unlockAt).getTime()) / 1000;
+    const elapsedSeconds =
+      (nowTick - new Date(state.unlockAt).getTime()) / 1000;
     return Math.max(0, Math.ceil(timeLimitSeconds - elapsedSeconds));
   }, [state, nowTick, timeLimitSeconds]);
 
@@ -157,7 +217,10 @@ export function ContestSprintPanel({
       const res = await fetch(basePath + "/unlock", { method: "POST" });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setState({ phase: "error", message: body.error || "解锁失败，请重试。" });
+        setState({
+          phase: "error",
+          message: body.error || "解锁失败，请重试。",
+        });
         return;
       }
       setState(toPanelState(body as AttemptStatus));
@@ -187,11 +250,19 @@ export function ContestSprintPanel({
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setState({ phase: "error", message: body.error || "提交失败，请重试。" });
+        setState({
+          phase: "error",
+          message: body.error || "提交失败，请重试。",
+        });
         return;
       }
       if (body.needsReview || body.isCorrect === null) {
-        setState({ phase: "pending-review", elapsedMs: body.elapsedMs ?? 0, title, statement });
+        setState({
+          phase: "pending-review",
+          elapsedMs: body.elapsedMs ?? 0,
+          title,
+          statement,
+        });
       } else {
         setState({
           phase: "submitted",
@@ -215,7 +286,9 @@ export function ContestSprintPanel({
       return;
     }
     setSelectedChoices((current) =>
-      current.includes(choice) ? current.filter((c) => c !== choice) : [...current, choice],
+      current.includes(choice)
+        ? current.filter((c) => c !== choice)
+        : [...current, choice],
     );
   }
 
@@ -225,14 +298,19 @@ export function ContestSprintPanel({
     state.phase === "pending-review";
 
   return (
-    <div className="overflow-hidden border border-amber-400/20 bg-zinc-950">
+    <div className="surface-panel overflow-hidden border-amber-400/20">
       {/* Header bar */}
       <div className="flex items-center gap-2 border-b border-amber-400/15 bg-amber-400/[0.04] px-5 py-3">
         <Timer className="size-4 text-amber-400" />
         <span className="text-sm font-bold text-amber-200">计时题</span>
         <span className="ml-auto font-mono text-xs text-zinc-500">
           满分 <span className="text-amber-300">{scoreMax}</span> 分
-          {timeLimitSeconds ? <> · 限时 <span className="text-amber-300">{timeLimitSeconds}s</span></> : null}
+          {timeLimitSeconds ? (
+            <>
+              {" "}
+              · 限时 <span className="text-amber-300">{timeLimitSeconds}s</span>
+            </>
+          ) : null}
         </span>
       </div>
 
@@ -240,13 +318,22 @@ export function ContestSprintPanel({
         {/* Problem face — only shown after personal unlock */}
         {showProblemFace && (
           <div className="mb-5 space-y-2 border-b border-white/[0.07] pb-5">
-            {(state.phase === "unlocked" || state.phase === "submitted" || state.phase === "pending-review") && state.title && (
-              <h2 className="text-base font-bold leading-snug text-white">{state.title}</h2>
-            )}
+            {(state.phase === "unlocked" ||
+              state.phase === "submitted" ||
+              state.phase === "pending-review") &&
+              state.title && (
+                <h2 className="text-base font-bold leading-snug text-white">
+                  {state.title}
+                </h2>
+              )}
             <div className="space-y-2 text-sm leading-7 text-zinc-200">
-              {(state.phase === "unlocked" || state.phase === "submitted" || state.phase === "pending-review") &&
+              {(state.phase === "unlocked" ||
+                state.phase === "submitted" ||
+                state.phase === "pending-review") &&
                 state.statement.map((line, index) => (
-                  <p key={index}><MathBlock>{line}</MathBlock></p>
+                  <p key={index}>
+                    <MathBlock>{line}</MathBlock>
+                  </p>
                 ))}
             </div>
           </div>
@@ -255,53 +342,62 @@ export function ContestSprintPanel({
         {/* State-specific body */}
         {state.phase === "checking-auth" || state.phase === "loading-status" ? (
           <div className="flex flex-col gap-2">
-            <div className="h-4 w-2/3 animate-pulse rounded bg-white/[0.05]" />
-            <div className="h-4 w-1/2 animate-pulse rounded bg-white/[0.04]" />
-            <div className="mt-2 h-10 w-32 animate-pulse rounded bg-white/[0.03]" />
+            <div className="h-4 w-2/3 animate-pulse  bg-white/[0.05]" />
+            <div className="h-4 w-1/2 animate-pulse  bg-white/[0.04]" />
+            <div className="mt-2 h-10 w-32 animate-pulse  bg-white/[0.03]" />
           </div>
-
         ) : state.phase === "logged-out" ? (
-          <div className="flex items-start gap-3 rounded border border-amber-400/20 bg-amber-400/[0.04] px-4 py-3.5">
+          <div className="surface-panel-subtle flex items-start gap-3 border-amber-400/20 bg-amber-400/[0.04] px-4 py-3.5">
             <LogIn className="mt-0.5 size-4 shrink-0 text-amber-400" />
             <p className="text-sm leading-6 text-zinc-400">
-              <Link href="/auth/login" className="font-bold text-cyan-300 hover:underline">登录</Link>
-              {" "}后可以解锁并作答计时题。解锁后计时即刻开始，期间不要刷新页面。
+              <Link
+                href="/auth/login"
+                className="font-bold text-cyan-300 hover:underline"
+              >
+                登录
+              </Link>{" "}
+              后可以解锁并作答计时题。解锁后计时即刻开始，期间不要刷新页面。
             </p>
           </div>
-
         ) : state.phase === "error" ? (
           <div className="flex items-center gap-2 text-sm text-red-300">
             <AlertCircle className="size-4 shrink-0" />
             {state.message}
           </div>
-
         ) : state.phase === "locked" ? (
           <div className="flex flex-col gap-4">
             <p className="text-sm leading-6 text-zinc-400">
-              点击下方按钮后，题面立即显示，<span className="text-amber-300">计时同步开始</span>。
+              点击下方按钮后，题面立即显示，
+              <span className="text-amber-300">计时同步开始</span>。
               确认准备好后再解锁，计时不可暂停。
             </p>
             <button
               type="button"
               onClick={handleUnlock}
               disabled={unlocking}
-              className="inline-flex h-11 w-fit items-center gap-2 bg-amber-400 px-6 text-sm font-bold text-zinc-950 transition hover:bg-amber-300 disabled:opacity-50"
+              className="pressable pill-button inline-flex h-11 w-fit items-center gap-2 bg-amber-400 px-6 text-sm font-bold text-zinc-950 hover:bg-amber-300 disabled:opacity-50"
             >
               <Unlock className="size-4" />
               {unlocking ? "解锁中…" : "解锁并开始计时"}
             </button>
           </div>
-
         ) : state.phase === "unlocked" ? (
           <div className="space-y-5">
             {/* Live countdown */}
             <div className="flex items-center gap-4">
               {timeLimitSeconds !== null && remainingSeconds !== null && (
                 <div className="relative">
-                  <TimerRing remaining={remainingSeconds} total={timeLimitSeconds} />
+                  <TimerRing
+                    remaining={remainingSeconds}
+                    total={timeLimitSeconds}
+                  />
                   <span
                     className={`absolute inset-0 flex items-center justify-center font-mono text-sm font-bold tabular-nums ${
-                      remainingSeconds === 0 ? "text-red-400" : remainingSeconds <= timeLimitSeconds * 0.15 ? "text-orange-400" : "text-amber-300"
+                      remainingSeconds === 0
+                        ? "text-red-400"
+                        : remainingSeconds <= timeLimitSeconds * 0.15
+                          ? "text-orange-400"
+                          : "text-amber-300"
                     }`}
                   >
                     {remainingSeconds}
@@ -311,11 +407,16 @@ export function ContestSprintPanel({
               <div>
                 {remainingSeconds === 0 ? (
                   <p className="text-sm font-bold text-red-400">已超时</p>
-                ) : remainingSeconds !== null && remainingSeconds <= timeLimitSeconds! * 0.25 ? (
-                  <p className="text-sm font-bold text-orange-400">剩余时间不多了！</p>
+                ) : remainingSeconds !== null &&
+                  remainingSeconds <= timeLimitSeconds! * 0.25 ? (
+                  <p className="text-sm font-bold text-orange-400">
+                    剩余时间不多了！
+                  </p>
                 ) : (
                   <p className="text-sm text-zinc-400">
-                    {remainingSeconds === null ? "—" : `剩余 ${remainingSeconds} 秒`}
+                    {remainingSeconds === null
+                      ? "—"
+                      : `剩余 ${remainingSeconds} 秒`}
                     {remainingSeconds === 0 && "，提交将得 0 分"}
                   </p>
                 )}
@@ -346,13 +447,17 @@ export function ContestSprintPanel({
                   autoFocus
                 />
                 {answerFormatNote && (
-                  <p className="text-xs leading-5 text-zinc-500">{answerFormatNote}</p>
+                  <p className="text-xs leading-5 text-zinc-500">
+                    {answerFormatNote}
+                  </p>
                 )}
               </div>
             ) : (
               <div className="space-y-2">
                 <label className="block text-xs font-bold uppercase tracking-wide text-zinc-500">
-                  {answerType === "multiple_choice" ? "多选（可选多个）" : "选择答案"}
+                  {answerType === "multiple_choice"
+                    ? "多选（可选多个）"
+                    : "选择答案"}
                 </label>
                 <div className="flex flex-wrap gap-2">
                   {CHOICE_OPTIONS.map((choice) => {
@@ -362,7 +467,7 @@ export function ContestSprintPanel({
                         key={choice}
                         type="button"
                         onClick={() => toggleChoice(choice)}
-                        className={`size-12 border text-base font-bold transition ${
+                        className={`pressable size-12  border text-base font-bold ${
                           active
                             ? "border-amber-400 bg-amber-400 text-zinc-950 shadow-[0_0_12px] shadow-amber-400/30"
                             : "border-white/15 text-zinc-300 hover:border-amber-400/50 hover:bg-amber-400/[0.07]"
@@ -379,17 +484,21 @@ export function ContestSprintPanel({
             <button
               type="button"
               onClick={handleSubmit}
-              disabled={submitting || (answerType === "fill_blank" ? !fillBlankAnswer.trim() : selectedChoices.length === 0)}
-              className="inline-flex h-11 items-center gap-2 border border-amber-400/50 bg-amber-400/10 px-6 text-sm font-bold text-amber-200 transition hover:bg-amber-400/20 disabled:cursor-not-allowed disabled:opacity-40"
+              disabled={
+                submitting ||
+                (answerType === "fill_blank"
+                  ? !fillBlankAnswer.trim()
+                  : selectedChoices.length === 0)
+              }
+              className="pressable pill-button inline-flex h-11 items-center gap-2 border border-amber-400/50 bg-amber-400/10 px-6 text-sm font-bold text-amber-200 hover:bg-amber-400/20 disabled:cursor-not-allowed disabled:opacity-40"
             >
               {submitting ? "提交中…" : "提交答案"}
             </button>
           </div>
-
         ) : state.phase === "pending-review" ? (
           /* fill_blank answer received but not matched — pending human review */
           <div className="space-y-4">
-            <div className="flex items-start gap-3 border border-sky-500/30 bg-sky-500/[0.06] px-4 py-4">
+            <div className="surface-panel-subtle flex items-start gap-3 border-sky-500/30 bg-sky-500/[0.06] px-4 py-4">
               <HelpCircle className="mt-0.5 size-5 shrink-0 text-sky-400" />
               <div className="text-sm">
                 <p className="font-bold text-sky-300">答案已收到，待人工复核</p>
@@ -403,12 +512,11 @@ export function ContestSprintPanel({
               </div>
             </div>
           </div>
-
         ) : (
           /* submitted — correct or wrong */
           <div className="space-y-4">
             <div
-              className={`flex items-start gap-3 border px-4 py-4 ${
+              className={`surface-panel-subtle flex items-start gap-3 px-4 py-4 ${
                 state.isCorrect
                   ? "border-emerald-500/35 bg-emerald-500/[0.06]"
                   : "border-red-500/35 bg-red-500/[0.06]"
@@ -420,16 +528,23 @@ export function ContestSprintPanel({
                 <XCircle className="mt-0.5 size-5 shrink-0 text-red-400" />
               )}
               <div className="text-sm">
-                <p className={`text-base font-bold ${state.isCorrect ? "text-emerald-300" : "text-red-300"}`}>
+                <p
+                  className={`text-base font-bold ${state.isCorrect ? "text-emerald-300" : "text-red-300"}`}
+                >
                   {state.isCorrect ? "回答正确！" : "回答错误"}
                 </p>
                 <p className="mt-1 text-zinc-400">
-                  用时 <span className="tabular-nums text-white">{(state.elapsedMs / 1000).toFixed(1)}</span> 秒
-                  {" · "}得分{" "}
-                  <span className={`font-mono font-bold tabular-nums ${state.isCorrect ? "text-amber-300" : "text-zinc-500"}`}>
+                  用时{" "}
+                  <span className="tabular-nums text-white">
+                    {(state.elapsedMs / 1000).toFixed(1)}
+                  </span>{" "}
+                  秒{" · "}得分{" "}
+                  <span
+                    className={`font-mono font-bold tabular-nums ${state.isCorrect ? "text-amber-300" : "text-zinc-500"}`}
+                  >
                     {state.score}
-                  </span>
-                  {" "}/ {scoreMax}
+                  </span>{" "}
+                  / {scoreMax}
                 </p>
               </div>
             </div>

@@ -20,7 +20,11 @@ const statusMap = {
   },
 };
 
-export function VerificationPanel({ verification }: { verification: Verification }) {
+export function VerificationPanel({
+  verification,
+}: {
+  verification: Verification;
+}) {
   const state = statusMap[verification.status];
   const StatusIcon = state.icon;
 
@@ -40,7 +44,10 @@ export function VerificationPanel({ verification }: { verification: Verification
       </p>
       <div className="mt-3 flex flex-wrap gap-2">
         {verification.checks.map((check) => (
-          <span key={check} className="border border-white/10 bg-black/15 px-2 py-1 text-[11px] text-zinc-400">
+          <span
+            key={check}
+            className="border border-white/10 bg-black/15 px-2 py-1 text-[11px] text-zinc-400"
+          >
             {check}
           </span>
         ))}
@@ -50,7 +57,9 @@ export function VerificationPanel({ verification }: { verification: Verification
           <h4 className="font-bold text-emerald-300">已验证什么</h4>
           <ul className="mt-2 space-y-1.5">
             {verification.verifiedScope.map((item) => (
-              <li key={item}>· <MathBlock>{item}</MathBlock></li>
+              <li key={item}>
+                · <MathBlock>{item}</MathBlock>
+              </li>
             ))}
           </ul>
         </div>
@@ -58,7 +67,9 @@ export function VerificationPanel({ verification }: { verification: Verification
           <h4 className="font-bold text-amber-300">未验证什么</h4>
           <ul className="mt-2 space-y-1.5">
             {verification.unverifiedScope.map((item) => (
-              <li key={item}>· <MathBlock>{item}</MathBlock></li>
+              <li key={item}>
+                · <MathBlock>{item}</MathBlock>
+              </li>
             ))}
           </ul>
         </div>

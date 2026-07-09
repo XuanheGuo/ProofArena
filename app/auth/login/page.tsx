@@ -1,16 +1,16 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { createClient } from '@/lib/supabase-client';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { Crosshair } from 'lucide-react';
-import { hasSupabasePublicEnv } from '@/lib/supabase-env';
+import { useState } from "react";
+import { createClient } from "@/lib/supabase-client";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { Crosshair } from "lucide-react";
+import { hasSupabasePublicEnv } from "@/lib/supabase-env";
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const communityEnabled = hasSupabasePublicEnv();
@@ -19,19 +19,26 @@ export default function LoginPage() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!supabase) {
-      setError('社区数据库暂不可用，当前只能浏览静态题库。');
+      setError("社区数据库暂不可用，当前只能浏览静态题库。");
       return;
     }
-    setError('');
+    setError("");
     setLoading(true);
 
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
 
     if (error) {
-      setError(error.message === 'Invalid login credentials' ? '邮箱或密码错误' : error.message);
+      setError(
+        error.message === "Invalid login credentials"
+          ? "邮箱或密码错误"
+          : error.message,
+      );
       setLoading(false);
     } else {
-      router.push('/');
+      router.push("/");
       router.refresh();
     }
   };
@@ -43,7 +50,9 @@ export default function LoginPage() {
           <span className="grid size-10 place-items-center bg-cyan-400 text-zinc-950">
             <Crosshair className="size-6" />
           </span>
-          <h1 className="text-xl font-black tracking-wide text-white">登录 ProofArena</h1>
+          <h1 className="text-xl font-black tracking-wide text-white">
+            登录 ProofArena
+          </h1>
         </div>
 
         {!communityEnabled && (
@@ -54,27 +63,37 @@ export default function LoginPage() {
 
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
-            <label htmlFor="email" className="block text-sm text-zinc-400 mb-1.5">邮箱</label>
+            <label
+              htmlFor="email"
+              className="block text-sm text-zinc-400 mb-1.5"
+            >
+              邮箱
+            </label>
             <input
               id="email"
               type="email"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder-zinc-600 outline-none focus:border-cyan-400/50 focus:bg-white/[0.07]"
+              className="w-full  border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder-zinc-600 outline-none focus:border-cyan-400/50 focus:bg-white/[0.07]"
               placeholder="you@example.com"
             />
           </div>
 
           <div>
-            <label htmlFor="password" className="block text-sm text-zinc-400 mb-1.5">密码</label>
+            <label
+              htmlFor="password"
+              className="block text-sm text-zinc-400 mb-1.5"
+            >
+              密码
+            </label>
             <input
               id="password"
               type="password"
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder-zinc-600 outline-none focus:border-cyan-400/50 focus:bg-white/[0.07]"
+              className="w-full  border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder-zinc-600 outline-none focus:border-cyan-400/50 focus:bg-white/[0.07]"
               placeholder="••••••••"
             />
           </div>
@@ -84,15 +103,18 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading || !communityEnabled}
-            className="w-full rounded bg-cyan-400 px-4 py-2 text-sm font-bold text-zinc-950 transition hover:bg-cyan-300 disabled:opacity-50"
+            className="w-full  bg-cyan-400 px-4 py-2 text-sm font-bold text-zinc-950 transition hover:bg-cyan-300 disabled:opacity-50"
           >
-            {loading ? '登录中…' : '登录'}
+            {loading ? "登录中…" : "登录"}
           </button>
         </form>
 
         <p className="text-center text-sm text-zinc-500">
-          没有账号？{' '}
-          <Link href="/auth/signup" className="text-cyan-400 hover:text-cyan-300">
+          没有账号？{" "}
+          <Link
+            href="/auth/signup"
+            className="text-cyan-400 hover:text-cyan-300"
+          >
             注册
           </Link>
         </p>

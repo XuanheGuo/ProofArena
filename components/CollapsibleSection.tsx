@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { useState } from "react";
+import { ChevronDown, ChevronUp } from "lucide-react";
 
 interface CollapsibleSectionProps {
   title: string;
@@ -13,7 +13,15 @@ interface CollapsibleSectionProps {
   defaultOpen?: boolean;
 }
 
-export function CollapsibleSection({ title, subtitle, icon, badge, children, footer, defaultOpen = false }: CollapsibleSectionProps) {
+export function CollapsibleSection({
+  title,
+  subtitle,
+  icon,
+  badge,
+  children,
+  footer,
+  defaultOpen = false,
+}: CollapsibleSectionProps) {
   const [open, setOpen] = useState(defaultOpen);
 
   return (
@@ -26,21 +34,26 @@ export function CollapsibleSection({ title, subtitle, icon, badge, children, foo
           {icon && icon}
           <div>
             <span className="font-bold text-white">{title}</span>
-            {subtitle && <p className="mt-0.5 text-xs text-zinc-500">{subtitle}</p>}
+            {subtitle && (
+              <p className="mt-0.5 text-xs text-zinc-500">{subtitle}</p>
+            )}
           </div>
-          {badge && <span className="font-mono text-[10px] uppercase tracking-widest text-zinc-600">{badge}</span>}
+          {badge && (
+            <span className="font-mono text-[10px] uppercase tracking-widest text-zinc-600">
+              {badge}
+            </span>
+          )}
         </div>
-        {open
-          ? <ChevronUp className="size-4 shrink-0 text-zinc-500" />
-          : <ChevronDown className="size-4 shrink-0 text-zinc-500" />
-        }
+        {open ? (
+          <ChevronUp className="size-4 shrink-0 text-zinc-500" />
+        ) : (
+          <ChevronDown className="size-4 shrink-0 text-zinc-500" />
+        )}
       </button>
 
       {open && (
         <>
-          <div className="border-t border-white/10">
-            {children}
-          </div>
+          <div className="border-t border-white/10">{children}</div>
           {footer && (
             <div className="border-t border-white/10 px-5 py-4 md:px-7">
               {footer}

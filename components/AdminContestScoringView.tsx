@@ -1,7 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { CheckCircle2, ClipboardList, HelpCircle, Save, Timer, XCircle } from "lucide-react";
+import {
+  CheckCircle2,
+  ClipboardList,
+  HelpCircle,
+  Save,
+  Timer,
+  XCircle,
+} from "lucide-react";
 import { contestProblemPhaseMeta } from "@/lib/contest-meta";
 import { computeSprintStepScore } from "@/lib/contest-sprint-score";
 import { createClient } from "@/lib/supabase-client";
@@ -94,17 +101,33 @@ type ProfileEdit = {
   penaltyReason: string;
 };
 
-const submissionStatusMeta: Record<SubmissionStatus, { label: string; className: string }> = {
-  pending: { label: "待审核", className: "border-amber-400/40 bg-amber-400/[0.07] text-amber-300" },
-  approved: { label: "已通过", className: "border-emerald-500/40 bg-emerald-500/[0.07] text-emerald-300" },
-  rejected: { label: "已拒绝", className: "border-red-500/40 bg-red-500/[0.07] text-red-300" },
-  needs_revision: { label: "需修改", className: "border-cyan-400/40 bg-cyan-400/[0.07] text-cyan-300" },
+const submissionStatusMeta: Record<
+  SubmissionStatus,
+  { label: string; className: string }
+> = {
+  pending: {
+    label: "待审核",
+    className: "border-amber-400/40 bg-amber-400/[0.07] text-amber-300",
+  },
+  approved: {
+    label: "已通过",
+    className: "border-emerald-500/40 bg-emerald-500/[0.07] text-emerald-300",
+  },
+  rejected: {
+    label: "已拒绝",
+    className: "border-red-500/40 bg-red-500/[0.07] text-red-300",
+  },
+  needs_revision: {
+    label: "需修改",
+    className: "border-cyan-400/40 bg-cyan-400/[0.07] text-cyan-300",
+  },
 };
 
 function matchesContestProblem(sub: SubmissionRow, cp: ScoringContestProblem) {
   if (sub.contest_problem_key === cp.id) return true;
   if (sub.problem_id && sub.problem_id === cp.problem_id) return true;
-  if (sub.draft_problem_id && sub.draft_problem_id === cp.draft_problem_id) return true;
+  if (sub.draft_problem_id && sub.draft_problem_id === cp.draft_problem_id)
+    return true;
   return false;
 }
 
@@ -139,7 +162,9 @@ export function AdminContestScoringView({
   const [userNames, setUserNames] = useState<Map<string, string>>(new Map());
 
   const [scoreEdits, setScoreEdits] = useState<Record<string, ScoreEdit>>({});
-  const [profileEdits, setProfileEdits] = useState<Record<string, ProfileEdit>>({});
+  const [profileEdits, setProfileEdits] = useState<Record<string, ProfileEdit>>(
+    {},
+  );
 
   // Sprint problems are scored automatically by the submit API (step
   // scoring) and shown read-only below; discussion problems aren't judged
@@ -147,7 +172,10 @@ export function AdminContestScoringView({
   const scorableProblems = useMemo(
     () =>
       contestProblems
-        .filter((cp) => cp.problem_phase !== "sprint" && cp.problem_phase !== "discussion")
+        .filter(
+          (cp) =>
+            cp.problem_phase !== "sprint" && cp.problem_phase !== "discussion",
+        )
         .sort((a, b) => a.day_index - b.day_index),
     [contestProblems],
   );
@@ -165,29 +193,41 @@ export function AdminContestScoringView({
     const [subsRes, scoresRes, profilesRes, sprintRes] = await Promise.all([
       supabase
         .from("submissions")
-        .select("id, user_id, problem_id, draft_problem_id, contest_problem_key, status, title, moderator_notes, created_at")
+        .select(
+          "id, user_id, problem_id, draft_problem_id, contest_problem_key, status, title, moderator_notes, created_at",
+        )
         .eq("contest_slug", contestSlug)
         .eq("submission_type", "solution")
         .not("status", "in", "(rejected,precheck_failed)")
         .order("created_at", { ascending: false }),
       supabase
         .from("contest_submission_scores")
-        .select("id, contest_problem_id, submission_id, user_id, problem_phase, raw_score, score_max, judge_note, scored_at")
+        .select(
+          "id, contest_problem_id, submission_id, user_id, problem_phase, raw_score, score_max, judge_note, scored_at",
+        )
         .eq("contest_id", contestId),
       supabase
         .from("contest_participant_profiles")
-        .select("id, user_id, challenge_score, challenge_multiplier, multiplier_reason, penalty_points, penalty_reason")
+        .select(
+          "id, user_id, challenge_score, challenge_multiplier, multiplier_reason, penalty_points, penalty_reason",
+        )
         .eq("contest_id", contestId),
       supabase
         .from("contest_sprint_attempts")
-        .select("id, contest_problem_id, user_id, unlock_at, submitted_at, elapsed_ms, answer_raw, answer_normalized, is_correct, score")
+        .select(
+          "id, contest_problem_id, user_id, unlock_at, submitted_at, elapsed_ms, answer_raw, answer_normalized, is_correct, score",
+        )
         .eq("contest_id", contestId),
     ]);
 
-    const firstError = subsRes.error || scoresRes.error || profilesRes.error || sprintRes.error;
+    const firstError =
+      subsRes.error || scoresRes.error || profilesRes.error || sprintRes.error;
     if (firstError) {
       setLoading(false);
-      setError(firstError.message || "加载评分数据失败。请确认已执行 013_weekly_contest_scoring.sql。");
+      setError(
+        firstError.message ||
+          "加载评分数据失败。请确认已执行 013_weekly_contest_scoring.sql。",
+      );
       return;
     }
 
@@ -215,7 +255,12 @@ export function AdminContestScoringView({
       const nameMap = new Map<string, string>();
       for (const u of userRows ?? []) {
         const id = u.id as string;
-        nameMap.set(id, (u.display_name as string) || (u.username as string) || `用户 ${id.slice(0, 8)}`);
+        nameMap.set(
+          id,
+          (u.display_name as string) ||
+            (u.username as string) ||
+            `用户 ${id.slice(0, 8)}`,
+        );
       }
       setUserNames(nameMap);
     } else {
@@ -231,13 +276,17 @@ export function AdminContestScoringView({
     for (const s of scores) ids.add(s.user_id);
     for (const p of profiles) ids.add(p.user_id);
     for (const a of sprintAttempts) ids.add(a.user_id);
-    return [...ids].sort((a, b) => (userNames.get(a) ?? a).localeCompare(userNames.get(b) ?? b));
+    return [...ids].sort((a, b) =>
+      (userNames.get(a) ?? a).localeCompare(userNames.get(b) ?? b),
+    );
   }, [submissions, scores, profiles, sprintAttempts, userNames]);
 
   // Submitted sprint attempts whose answer matched no answer-key variant —
   // the submit route parks them with is_correct = null for a human to rule on.
   const pendingSprintCount = useMemo(
-    () => sprintAttempts.filter((a) => a.submitted_at && a.is_correct === null).length,
+    () =>
+      sprintAttempts.filter((a) => a.submitted_at && a.is_correct === null)
+        .length,
     [sprintAttempts],
   );
 
@@ -246,7 +295,11 @@ export function AdminContestScoringView({
     return data.user?.id ?? null;
   }
 
-  async function saveScore(cp: ScoringContestProblem, userId: string, edit: ScoreEdit) {
+  async function saveScore(
+    cp: ScoringContestProblem,
+    userId: string,
+    edit: ScoreEdit,
+  ) {
     const rawScoreNum = Number(edit.rawScore);
     if (edit.rawScore.trim() === "" || Number.isNaN(rawScoreNum)) {
       setError("请输入有效的分数。");
@@ -258,33 +311,42 @@ export function AdminContestScoringView({
     setError("");
     setMessage("");
 
-    const existing = scores.find((s) => s.contest_problem_id === cp.id && s.user_id === userId);
-    const relevantSubs = submissions.filter((s) => s.user_id === userId && matchesContestProblem(s, cp));
+    const existing = scores.find(
+      (s) => s.contest_problem_id === cp.id && s.user_id === userId,
+    );
+    const relevantSubs = submissions.filter(
+      (s) => s.user_id === userId && matchesContestProblem(s, cp),
+    );
     const scoredBy = await currentAdminId();
 
-    const { error: upsertError } = await supabase.from("contest_submission_scores").upsert(
-      {
-        contest_id: contestId,
-        contest_problem_id: cp.id,
-        submission_id: existing?.submission_id ?? pickSubmissionId(relevantSubs),
-        user_id: userId,
-        problem_phase: cp.problem_phase,
-        raw_score: rawScoreNum,
-        score_max: cp.score_max,
-        rubric: {},
-        judge_note: edit.judgeNote.trim(),
-        scored_by: scoredBy,
-        scored_at: new Date().toISOString(),
-      },
-      { onConflict: "contest_problem_id,user_id" },
-    );
+    const { error: upsertError } = await supabase
+      .from("contest_submission_scores")
+      .upsert(
+        {
+          contest_id: contestId,
+          contest_problem_id: cp.id,
+          submission_id:
+            existing?.submission_id ?? pickSubmissionId(relevantSubs),
+          user_id: userId,
+          problem_phase: cp.problem_phase,
+          raw_score: rawScoreNum,
+          score_max: cp.score_max,
+          rubric: {},
+          judge_note: edit.judgeNote.trim(),
+          scored_by: scoredBy,
+          scored_at: new Date().toISOString(),
+        },
+        { onConflict: "contest_problem_id,user_id" },
+      );
 
     setSaving(null);
     if (upsertError) {
       setError(upsertError.message || "保存评分失败。");
       return;
     }
-    setMessage(`已保存 ${userNames.get(userId) ?? userId} · ${cp.title} 的评分。`);
+    setMessage(
+      `已保存 ${userNames.get(userId) ?? userId} · ${cp.title} 的评分。`,
+    );
     setScoreEdits((prev) => {
       const next = { ...prev };
       delete next[key];
@@ -311,19 +373,21 @@ export function AdminContestScoringView({
     setError("");
     setMessage("");
 
-    const { error: upsertError } = await supabase.from("contest_participant_profiles").upsert(
-      {
-        contest_id: contestId,
-        contest_slug: contestSlug,
-        user_id: userId,
-        challenge_score: challengeScoreNum,
-        challenge_multiplier: multiplier,
-        multiplier_reason: edit.multiplierReason.trim(),
-        penalty_points: penaltyPointsNum,
-        penalty_reason: edit.penaltyReason.trim(),
-      },
-      { onConflict: "contest_id,user_id" },
-    );
+    const { error: upsertError } = await supabase
+      .from("contest_participant_profiles")
+      .upsert(
+        {
+          contest_id: contestId,
+          contest_slug: contestSlug,
+          user_id: userId,
+          challenge_score: challengeScoreNum,
+          challenge_multiplier: multiplier,
+          multiplier_reason: edit.multiplierReason.trim(),
+          penalty_points: penaltyPointsNum,
+          penalty_reason: edit.penaltyReason.trim(),
+        },
+        { onConflict: "contest_id,user_id" },
+      );
 
     setSaving(null);
     if (upsertError) {
@@ -345,7 +409,10 @@ export function AdminContestScoringView({
   // with the exact same step table the submit route uses, from the
   // server-recorded elapsed_ms — an overtime attempt therefore still scores 0
   // even when ruled correct, matching the auto-grader's overtime rule.
-  async function judgeSprintAttempt(attempt: SprintAttemptRow, judgedCorrect: boolean) {
+  async function judgeSprintAttempt(
+    attempt: SprintAttemptRow,
+    judgedCorrect: boolean,
+  ) {
     const cp = contestProblems.find((c) => c.id === attempt.contest_problem_id);
     if (!cp) {
       setError("找不到该计时题的配置，无法评判。");
@@ -361,7 +428,11 @@ export function AdminContestScoringView({
     const timeLimitSeconds = Number(cp.time_limit_seconds) || 120;
     const score =
       judgedCorrect && attempt.elapsed_ms != null
-        ? computeSprintStepScore(Number(cp.score_max), timeLimitSeconds, attempt.elapsed_ms)
+        ? computeSprintStepScore(
+            Number(cp.score_max),
+            timeLimitSeconds,
+            attempt.elapsed_ms,
+          )
         : 0;
 
     const { error: updateError } = await supabase
@@ -388,7 +459,9 @@ export function AdminContestScoringView({
           评分台
         </div>
         <div className="space-y-2">
-          {[1, 2, 3].map((i) => <div key={i} className="h-16 animate-pulse bg-white/[0.03]" />)}
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-16 animate-pulse bg-white/[0.03]" />
+          ))}
         </div>
       </section>
     );
@@ -408,7 +481,8 @@ export function AdminContestScoringView({
         <div className="mb-3 flex items-center gap-2 border border-sky-500/40 bg-sky-500/[0.08] px-3 py-2">
           <HelpCircle className="size-3.5 shrink-0 text-sky-400" />
           <p className="text-xs text-sky-300">
-            有 <span className="font-bold">{pendingSprintCount}</span> 条计时题答案待人工评判，请在对应参赛者的计时题列表中判定。
+            有 <span className="font-bold">{pendingSprintCount}</span>{" "}
+            条计时题答案待人工评判，请在对应参赛者的计时题列表中判定。
           </p>
         </div>
       )}
@@ -420,7 +494,9 @@ export function AdminContestScoringView({
         </div>
       )}
       {error && (
-        <div className="mb-3 border border-red-500/40 bg-red-500/[0.08] px-3 py-2 text-xs text-red-300">{error}</div>
+        <div className="mb-3 border border-red-500/40 bg-red-500/[0.08] px-3 py-2 text-xs text-red-300">
+          {error}
+        </div>
       )}
 
       {participantIds.length === 0 ? (
@@ -428,17 +504,26 @@ export function AdminContestScoringView({
       ) : (
         <div className="space-y-3">
           {participantIds.map((userId) => {
-            const displayName = userNames.get(userId) ?? `用户 ${userId.slice(0, 8)}`;
+            const displayName =
+              userNames.get(userId) ?? `用户 ${userId.slice(0, 8)}`;
             const relevantProblems = scorableProblems.filter(
               (cp) =>
-                submissions.some((s) => s.user_id === userId && matchesContestProblem(s, cp)) ||
-                scores.some((s) => s.contest_problem_id === cp.id && s.user_id === userId),
+                submissions.some(
+                  (s) => s.user_id === userId && matchesContestProblem(s, cp),
+                ) ||
+                scores.some(
+                  (s) => s.contest_problem_id === cp.id && s.user_id === userId,
+                ),
             );
             const userSprintAttempts = sprintAttempts
               .filter((a) => a.user_id === userId)
               .sort((a, b) => {
-                const dayA = contestProblems.find((cp) => cp.id === a.contest_problem_id)?.day_index ?? 0;
-                const dayB = contestProblems.find((cp) => cp.id === b.contest_problem_id)?.day_index ?? 0;
+                const dayA =
+                  contestProblems.find((cp) => cp.id === a.contest_problem_id)
+                    ?.day_index ?? 0;
+                const dayB =
+                  contestProblems.find((cp) => cp.id === b.contest_problem_id)
+                    ?.day_index ?? 0;
                 return dayA - dayB;
               });
             const profile = profiles.find((p) => p.user_id === userId);
@@ -454,32 +539,52 @@ export function AdminContestScoringView({
             return (
               <div key={userId} className="border border-white/10 bg-zinc-950">
                 <div className="flex items-center justify-between border-b border-white/10 px-3 py-2">
-                  <span className="text-sm font-bold text-white">{displayName}</span>
-                  <span className="font-mono text-[11px] text-zinc-600">{userId.slice(0, 8)}…</span>
+                  <span className="text-sm font-bold text-white">
+                    {displayName}
+                  </span>
+                  <span className="font-mono text-[11px] text-zinc-600">
+                    {userId.slice(0, 8)}…
+                  </span>
                 </div>
 
                 {relevantProblems.length === 0 ? (
-                  <p className="px-3 py-2 text-xs text-zinc-600">该用户没有普通题/挑战题/解答题投稿。</p>
+                  <p className="px-3 py-2 text-xs text-zinc-600">
+                    该用户没有普通题/挑战题/解答题投稿。
+                  </p>
                 ) : (
                   relevantProblems.map((cp) => {
                     const key = `${cp.id}:${userId}`;
-                    const existing = scores.find((s) => s.contest_problem_id === cp.id && s.user_id === userId);
+                    const existing = scores.find(
+                      (s) =>
+                        s.contest_problem_id === cp.id && s.user_id === userId,
+                    );
                     const edit: ScoreEdit = scoreEdits[key] ?? {
                       rawScore: existing ? String(existing.raw_score) : "",
                       judgeNote: existing?.judge_note ?? "",
                     };
-                    const subs = submissions.filter((s) => s.user_id === userId && matchesContestProblem(s, cp));
+                    const subs = submissions.filter(
+                      (s) =>
+                        s.user_id === userId && matchesContestProblem(s, cp),
+                    );
                     const latestSub = subs[0];
                     const isSaving = saving === key;
                     const phaseMeta = contestProblemPhaseMeta[cp.problem_phase];
 
                     return (
-                      <div key={cp.id} className="border-t border-white/[0.05] px-3 py-2">
+                      <div
+                        key={cp.id}
+                        className="border-t border-white/[0.05] px-3 py-2"
+                      >
                         <div className="flex flex-wrap items-center gap-2">
-                          <span className={`shrink-0 border px-1.5 py-0.5 text-[10px] font-bold ${phaseMeta.className}`}>
+                          <span
+                            className={`shrink-0 border px-1.5 py-0.5 text-[10px] font-bold ${phaseMeta.className}`}
+                          >
                             Day {cp.day_index} · {phaseMeta.label}
                           </span>
-                          <span className="min-w-[6rem] flex-1 truncate text-xs font-bold text-white" title={cp.title}>
+                          <span
+                            className="min-w-[6rem] flex-1 truncate text-xs font-bold text-white"
+                            title={cp.title}
+                          >
                             {cp.title}
                           </span>
                           <span className="shrink-0 text-[11px] text-zinc-500">
@@ -489,8 +594,13 @@ export function AdminContestScoringView({
                               <>
                                 {subs.length} 次
                                 {latestSub && (
-                                  <span className={`ml-1 border px-1 py-0.5 ${submissionStatusMeta[latestSub.status].className}`}>
-                                    {submissionStatusMeta[latestSub.status].label}
+                                  <span
+                                    className={`ml-1 border px-1 py-0.5 ${submissionStatusMeta[latestSub.status].className}`}
+                                  >
+                                    {
+                                      submissionStatusMeta[latestSub.status]
+                                        .label
+                                    }
                                   </span>
                                 )}
                               </>
@@ -500,17 +610,31 @@ export function AdminContestScoringView({
                             type="number"
                             value={edit.rawScore}
                             onChange={(event) =>
-                              setScoreEdits((prev) => ({ ...prev, [key]: { ...edit, rawScore: event.target.value } }))
+                              setScoreEdits((prev) => ({
+                                ...prev,
+                                [key]: {
+                                  ...edit,
+                                  rawScore: event.target.value,
+                                },
+                              }))
                             }
                             className="h-7 w-16 shrink-0 border border-white/15 bg-black/20 px-1.5 text-xs text-white outline-none focus:border-cyan-400/50"
                           />
-                          <span className="shrink-0 text-[11px] text-zinc-600">/ {cp.score_max}</span>
+                          <span className="shrink-0 text-[11px] text-zinc-600">
+                            / {cp.score_max}
+                          </span>
                           <input
                             type="text"
                             placeholder="评分备注（可选）"
                             value={edit.judgeNote}
                             onChange={(event) =>
-                              setScoreEdits((prev) => ({ ...prev, [key]: { ...edit, judgeNote: event.target.value } }))
+                              setScoreEdits((prev) => ({
+                                ...prev,
+                                [key]: {
+                                  ...edit,
+                                  judgeNote: event.target.value,
+                                },
+                              }))
                             }
                             className="h-7 min-w-[8rem] flex-1 border border-white/15 bg-black/20 px-1.5 text-xs text-white outline-none focus:border-cyan-400/50"
                           />
@@ -524,20 +648,26 @@ export function AdminContestScoringView({
                             {isSaving ? "保存中…" : "保存"}
                           </button>
                           {existing && (
-                            <span title={`已于 ${existing.scored_at ? formatContestDateTime(existing.scored_at) : "—"} 评分`}>
+                            <span
+                              title={`已于 ${existing.scored_at ? formatContestDateTime(existing.scored_at) : "—"} 评分`}
+                            >
                               <CheckCircle2 className="size-3.5 shrink-0 text-emerald-400" />
                             </span>
                           )}
                         </div>
                         {latestSub?.moderator_notes && (
-                          <div className="mt-2 rounded border border-amber-400/20 bg-amber-400/[0.045] px-2 py-1.5 text-[11px] leading-5 text-amber-100">
-                            <span className="font-bold text-amber-200">审核评语：</span>
+                          <div className="mt-2  border border-amber-400/20 bg-amber-400/[0.045] px-2 py-1.5 text-[11px] leading-5 text-amber-100">
+                            <span className="font-bold text-amber-200">
+                              审核评语：
+                            </span>
                             {latestSub.moderator_notes}
                           </div>
                         )}
                         {existing?.judge_note && (
                           <div className="mt-1 text-[11px] leading-5 text-zinc-500">
-                            <span className="font-bold text-zinc-400">评分备注：</span>
+                            <span className="font-bold text-zinc-400">
+                              评分备注：
+                            </span>
                             {existing.judge_note}
                           </div>
                         )}
@@ -547,14 +677,22 @@ export function AdminContestScoringView({
                 )}
 
                 <div className="flex flex-wrap items-center gap-2 border-t border-white/10 bg-black/10 px-3 py-2.5">
-                  <span className="shrink-0 text-[11px] font-bold uppercase tracking-wide text-zinc-500">挑战倍率 &amp; 扣分</span>
+                  <span className="shrink-0 text-[11px] font-bold uppercase tracking-wide text-zinc-500">
+                    挑战倍率 &amp; 扣分
+                  </span>
                   <label className="flex shrink-0 items-center gap-1 text-[11px] text-zinc-400">
                     挑战分
                     <input
                       type="number"
                       value={profileEdit.challengeScore}
                       onChange={(event) =>
-                        setProfileEdits((prev) => ({ ...prev, [userId]: { ...profileEdit, challengeScore: event.target.value } }))
+                        setProfileEdits((prev) => ({
+                          ...prev,
+                          [userId]: {
+                            ...profileEdit,
+                            challengeScore: event.target.value,
+                          },
+                        }))
                       }
                       className="h-7 w-14 border border-white/15 bg-black/20 px-1.5 text-xs text-white outline-none focus:border-cyan-400/50"
                     />
@@ -568,7 +706,13 @@ export function AdminContestScoringView({
                       max="1.25"
                       value={profileEdit.challengeMultiplier}
                       onChange={(event) =>
-                        setProfileEdits((prev) => ({ ...prev, [userId]: { ...profileEdit, challengeMultiplier: event.target.value } }))
+                        setProfileEdits((prev) => ({
+                          ...prev,
+                          [userId]: {
+                            ...profileEdit,
+                            challengeMultiplier: event.target.value,
+                          },
+                        }))
                       }
                       className="h-7 w-16 border border-white/15 bg-black/20 px-1.5 text-xs text-white outline-none focus:border-cyan-400/50"
                     />
@@ -578,7 +722,13 @@ export function AdminContestScoringView({
                     placeholder="倍率理由"
                     value={profileEdit.multiplierReason}
                     onChange={(event) =>
-                      setProfileEdits((prev) => ({ ...prev, [userId]: { ...profileEdit, multiplierReason: event.target.value } }))
+                      setProfileEdits((prev) => ({
+                        ...prev,
+                        [userId]: {
+                          ...profileEdit,
+                          multiplierReason: event.target.value,
+                        },
+                      }))
                     }
                     className="h-7 min-w-[7rem] flex-1 border border-white/15 bg-black/20 px-1.5 text-xs text-white outline-none focus:border-cyan-400/50"
                   />
@@ -588,7 +738,13 @@ export function AdminContestScoringView({
                       type="number"
                       value={profileEdit.penaltyPoints}
                       onChange={(event) =>
-                        setProfileEdits((prev) => ({ ...prev, [userId]: { ...profileEdit, penaltyPoints: event.target.value } }))
+                        setProfileEdits((prev) => ({
+                          ...prev,
+                          [userId]: {
+                            ...profileEdit,
+                            penaltyPoints: event.target.value,
+                          },
+                        }))
                       }
                       className="h-7 w-14 border border-red-400/20 bg-black/20 px-1.5 text-xs text-white outline-none focus:border-red-400/50"
                     />
@@ -598,7 +754,13 @@ export function AdminContestScoringView({
                     placeholder="扣分理由"
                     value={profileEdit.penaltyReason}
                     onChange={(event) =>
-                      setProfileEdits((prev) => ({ ...prev, [userId]: { ...profileEdit, penaltyReason: event.target.value } }))
+                      setProfileEdits((prev) => ({
+                        ...prev,
+                        [userId]: {
+                          ...profileEdit,
+                          penaltyReason: event.target.value,
+                        },
+                      }))
                     }
                     className="h-7 min-w-[7rem] flex-1 border border-red-400/20 bg-black/20 px-1.5 text-xs text-white outline-none focus:border-red-400/50"
                   />
@@ -621,27 +783,52 @@ export function AdminContestScoringView({
                     </p>
                     <div className="space-y-1.5">
                       {userSprintAttempts.map((attempt) => {
-                        const cp = contestProblems.find((c) => c.id === attempt.contest_problem_id);
-                        const isPending = attempt.submitted_at !== null && attempt.is_correct === null;
+                        const cp = contestProblems.find(
+                          (c) => c.id === attempt.contest_problem_id,
+                        );
+                        const isPending =
+                          attempt.submitted_at !== null &&
+                          attempt.is_correct === null;
                         const isJudging = saving === `sprint:${attempt.id}`;
                         return (
                           <div
                             key={attempt.id}
                             className={`flex flex-wrap items-center gap-2 text-[11px] text-zinc-400 ${
-                              isPending ? "border border-sky-500/30 bg-sky-500/[0.05] px-2 py-1.5" : ""
+                              isPending
+                                ? "border border-sky-500/30 bg-sky-500/[0.05] px-2 py-1.5"
+                                : ""
                             }`}
                           >
                             <span className="shrink-0 font-bold text-white">
-                              {cp ? `Day ${cp.day_index} · ${cp.title}` : attempt.contest_problem_id}
+                              {cp
+                                ? `Day ${cp.day_index} · ${cp.title}`
+                                : attempt.contest_problem_id}
                             </span>
-                            <span>解锁 {formatContestDateTime(attempt.unlock_at)}</span>
-                            <span>{attempt.submitted_at ? `提交 ${formatContestDateTime(attempt.submitted_at)}` : "未提交"}</span>
-                            {attempt.elapsed_ms != null && <span>用时 {(attempt.elapsed_ms / 1000).toFixed(1)}s</span>}
-                            {attempt.submitted_at && attempt.answer_raw !== null && (
-                              <span className="max-w-[14rem] truncate" title={attempt.answer_raw}>
-                                答案 <span className="font-mono text-zinc-200">{attempt.answer_raw || "（空）"}</span>
+                            <span>
+                              解锁 {formatContestDateTime(attempt.unlock_at)}
+                            </span>
+                            <span>
+                              {attempt.submitted_at
+                                ? `提交 ${formatContestDateTime(attempt.submitted_at)}`
+                                : "未提交"}
+                            </span>
+                            {attempt.elapsed_ms != null && (
+                              <span>
+                                用时 {(attempt.elapsed_ms / 1000).toFixed(1)}s
                               </span>
                             )}
+                            {attempt.submitted_at &&
+                              attempt.answer_raw !== null && (
+                                <span
+                                  className="max-w-[14rem] truncate"
+                                  title={attempt.answer_raw}
+                                >
+                                  答案{" "}
+                                  <span className="font-mono text-zinc-200">
+                                    {attempt.answer_raw || "（空）"}
+                                  </span>
+                                </span>
+                              )}
                             {isPending ? (
                               <span className="shrink-0 border border-sky-400/40 bg-sky-400/[0.08] px-1.5 py-0.5 font-bold text-sky-300">
                                 待人工评判
@@ -656,32 +843,52 @@ export function AdminContestScoringView({
                                       : "text-zinc-500"
                                 }
                               >
-                                {attempt.is_correct === null ? "—" : attempt.is_correct ? "正确" : "错误"}
+                                {attempt.is_correct === null
+                                  ? "—"
+                                  : attempt.is_correct
+                                    ? "正确"
+                                    : "错误"}
                               </span>
                             )}
-                            <span className="font-bold text-amber-300">{attempt.score} 分</span>
-                            {attempt.submitted_at && attempt.is_correct !== true && (
-                              <button
-                                type="button"
-                                onClick={() => judgeSprintAttempt(attempt, true)}
-                                disabled={isJudging}
-                                className="inline-flex h-6 shrink-0 items-center gap-1 border border-emerald-500/40 px-1.5 font-bold text-emerald-300 transition hover:bg-emerald-500/10 disabled:opacity-50"
-                              >
-                                <CheckCircle2 className="size-3" />
-                                {isJudging ? "…" : isPending ? "判为正确" : "改判正确"}
-                              </button>
-                            )}
-                            {attempt.submitted_at && attempt.is_correct !== false && (
-                              <button
-                                type="button"
-                                onClick={() => judgeSprintAttempt(attempt, false)}
-                                disabled={isJudging}
-                                className="inline-flex h-6 shrink-0 items-center gap-1 border border-red-500/40 px-1.5 font-bold text-red-300 transition hover:bg-red-500/10 disabled:opacity-50"
-                              >
-                                <XCircle className="size-3" />
-                                {isJudging ? "…" : isPending ? "判为错误" : "改判错误"}
-                              </button>
-                            )}
+                            <span className="font-bold text-amber-300">
+                              {attempt.score} 分
+                            </span>
+                            {attempt.submitted_at &&
+                              attempt.is_correct !== true && (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    judgeSprintAttempt(attempt, true)
+                                  }
+                                  disabled={isJudging}
+                                  className="inline-flex h-6 shrink-0 items-center gap-1 border border-emerald-500/40 px-1.5 font-bold text-emerald-300 transition hover:bg-emerald-500/10 disabled:opacity-50"
+                                >
+                                  <CheckCircle2 className="size-3" />
+                                  {isJudging
+                                    ? "…"
+                                    : isPending
+                                      ? "判为正确"
+                                      : "改判正确"}
+                                </button>
+                              )}
+                            {attempt.submitted_at &&
+                              attempt.is_correct !== false && (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    judgeSprintAttempt(attempt, false)
+                                  }
+                                  disabled={isJudging}
+                                  className="inline-flex h-6 shrink-0 items-center gap-1 border border-red-500/40 px-1.5 font-bold text-red-300 transition hover:bg-red-500/10 disabled:opacity-50"
+                                >
+                                  <XCircle className="size-3" />
+                                  {isJudging
+                                    ? "…"
+                                    : isPending
+                                      ? "判为错误"
+                                      : "改判错误"}
+                                </button>
+                              )}
                           </div>
                         );
                       })}

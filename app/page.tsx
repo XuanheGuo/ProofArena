@@ -1,6 +1,18 @@
 import Link from "next/link";
-import { ArrowRight, CheckCircle2, Compass, Flame, Send, Swords, Trophy } from "lucide-react";
-import { getLearningIndex, getProblemSummaries, getProblemsByIds } from "@/lib/db";
+import {
+  ArrowRight,
+  CheckCircle2,
+  Compass,
+  Flame,
+  Send,
+  Swords,
+  Trophy,
+} from "lucide-react";
+import {
+  getLearningIndex,
+  getProblemSummaries,
+  getProblemsByIds,
+} from "@/lib/db";
 import { getFeaturedContest } from "@/lib/contests";
 import { difficultyBadgeClass } from "@/lib/problem-presentation";
 import { MathBlock } from "@/components/MathBlock";
@@ -16,21 +28,30 @@ export default async function HomePage() {
     getProblemsByIds(FEATURED_PROBLEM_IDS),
     getFeaturedContest(),
   ]);
-  const solutionCount = summaries.reduce((sum, problem) => sum + problem.solutions.length, 0);
-  const featuredProblems = FEATURED_PROBLEM_IDS
-    .map((id) => featuredCandidates.find((problem) => problem.id === id))
-    .filter((problem): problem is (typeof featuredCandidates)[number] => Boolean(problem));
+  const solutionCount = summaries.reduce(
+    (sum, problem) => sum + problem.solutions.length,
+    0,
+  );
+  const featuredProblems = FEATURED_PROBLEM_IDS.map((id) =>
+    featuredCandidates.find((problem) => problem.id === id),
+  ).filter((problem): problem is (typeof featuredCandidates)[number] =>
+    Boolean(problem),
+  );
   const stats = [
     [String(summaries.length).padStart(2, "0"), "精编真题"],
     [String(solutionCount).padStart(2, "0"), "完整解法"],
   ];
-  // Hero "动态战况" module — desktop-only, fills the right half of the hero
-  // that used to be empty background. Computed off `summaries` (already
+  // Hero"动态战况" module — desktop-only, fills the right half of the hero
+  // that used to be empty background. Computed off`summaries` (already
   // fetched above for the stats bar), no extra queries.
-  const topBySolutions = [...summaries].sort((a, b) => b.solutions.length - a.solutions.length)[0];
-  const topByHeat = [...summaries]
-    .sort((a, b) => b.heat - a.heat)
-    .find((problem) => problem.id !== topBySolutions?.id) ?? [...summaries].sort((a, b) => b.heat - a.heat)[0];
+  const topBySolutions = [...summaries].sort(
+    (a, b) => b.solutions.length - a.solutions.length,
+  )[0];
+  const topByHeat =
+    [...summaries]
+      .sort((a, b) => b.heat - a.heat)
+      .find((problem) => problem.id !== topBySolutions?.id) ??
+    [...summaries].sort((a, b) => b.heat - a.heat)[0];
   const hasArenaStatus = Boolean(currentContest || topBySolutions);
 
   return (
@@ -51,7 +72,8 @@ export default async function HomePage() {
               同一道题，多种解法，正面交锋。
             </p>
             <p className="mt-3 max-w-2xl border-l-2 border-red-500 pl-4 text-sm font-semibold leading-7 text-zinc-200 md:text-base">
-              ProofArena 是一个围绕数学题展开解法比较、思路拆解和知识关联的平台。
+              ProofArena
+              是一个围绕数学题展开解法比较、思路拆解和知识关联的平台。
             </p>
             <p className="mt-4 max-w-xl text-sm leading-7 text-zinc-400 md:text-base">
               核心路径很简单：看题，比较不同解法，然后把真正有启发的路线沉淀下来。
@@ -59,14 +81,14 @@ export default async function HomePage() {
             <div className="mt-8 flex flex-wrap gap-3">
               <Link
                 href="/problems"
-                className="inline-flex h-12 items-center gap-2 bg-cyan-400 px-5 text-sm font-bold text-zinc-950 transition hover:bg-cyan-300"
+                className="pressable pill-button inline-flex h-12 items-center gap-2 bg-cyan-400 px-5 text-sm font-bold text-zinc-950 shadow-lg shadow-cyan-400/15 hover:bg-cyan-300"
               >
                 开始看题
                 <ArrowRight className="size-4" />
               </Link>
               <Link
                 href="/submit"
-                className="inline-flex h-12 items-center gap-2 border border-white/20 bg-black/25 px-5 text-sm font-bold text-white transition hover:border-white/40"
+                className="pressable pill-button inline-flex h-12 items-center gap-2 border border-white/20 bg-black/25 px-5 text-sm font-bold text-white hover:border-cyan-400/35"
               >
                 提交题目/解法
                 <Send className="size-4" />
@@ -76,20 +98,26 @@ export default async function HomePage() {
 
           {hasArenaStatus && (
             <div className="hidden w-full max-w-sm shrink-0 lg:block">
-              <div className="border border-white/10 bg-zinc-950/80 backdrop-blur">
+              <div className="surface-panel overflow-hidden bg-zinc-950/80 backdrop-blur">
                 <div className="flex items-center gap-2 border-b border-white/10 px-5 py-3">
                   <Flame className="size-4 text-amber-300" />
-                  <span className="font-mono text-xs uppercase tracking-widest text-zinc-400">动态战况</span>
+                  <span className="font-mono text-xs uppercase tracking-widest text-zinc-400">
+                    动态战况
+                  </span>
                 </div>
                 <div className="divide-y divide-white/10">
                   {currentContest && (
                     <Link
                       href={`/contests/${currentContest.slug}`}
-                      className="flex items-center justify-between gap-3 px-5 py-4 transition hover:bg-white/[0.03]"
+                      className="pressable flex items-center justify-between gap-3 px-5 py-4 hover:bg-white/[0.03]"
                     >
                       <div className="min-w-0">
-                        <p className="text-[11px] font-bold uppercase tracking-wider text-amber-300">比赛进行中</p>
-                        <p className="mt-1 truncate text-sm font-bold text-white"><MathBlock>{currentContest.title}</MathBlock></p>
+                        <p className="text-[11px] font-bold uppercase tracking-wider text-amber-300">
+                          比赛进行中
+                        </p>
+                        <p className="mt-1 truncate text-sm font-bold text-white">
+                          <MathBlock>{currentContest.title}</MathBlock>
+                        </p>
                       </div>
                       <ArrowRight className="size-4 shrink-0 text-zinc-600" />
                     </Link>
@@ -97,23 +125,33 @@ export default async function HomePage() {
                   {topBySolutions && (
                     <Link
                       href={`/problems/${topBySolutions.id}`}
-                      className="flex items-center justify-between gap-3 px-5 py-4 transition hover:bg-white/[0.03]"
+                      className="pressable flex items-center justify-between gap-3 px-5 py-4 hover:bg-white/[0.03]"
                     >
                       <div className="min-w-0">
-                        <p className="text-[11px] font-bold uppercase tracking-wider text-cyan-300">对比最多解法</p>
-                        <p className="mt-1 truncate text-sm font-bold text-white"><MathBlock>{topBySolutions.title}</MathBlock></p>
+                        <p className="text-[11px] font-bold uppercase tracking-wider text-cyan-300">
+                          对比最多解法
+                        </p>
+                        <p className="mt-1 truncate text-sm font-bold text-white">
+                          <MathBlock>{topBySolutions.title}</MathBlock>
+                        </p>
                       </div>
-                      <span className="shrink-0 font-display text-lg font-black tabular-nums text-cyan-300">{topBySolutions.solutions.length}</span>
+                      <span className="shrink-0 font-display text-lg font-black tabular-nums text-cyan-300">
+                        {topBySolutions.solutions.length}
+                      </span>
                     </Link>
                   )}
                   {topByHeat && topByHeat.id !== topBySolutions?.id && (
                     <Link
                       href={`/problems/${topByHeat.id}`}
-                      className="flex items-center justify-between gap-3 px-5 py-4 transition hover:bg-white/[0.03]"
+                      className="pressable flex items-center justify-between gap-3 px-5 py-4 hover:bg-white/[0.03]"
                     >
                       <div className="min-w-0">
-                        <p className="text-[11px] font-bold uppercase tracking-wider text-emerald-300">热度最高</p>
-                        <p className="mt-1 truncate text-sm font-bold text-white"><MathBlock>{topByHeat.title}</MathBlock></p>
+                        <p className="text-[11px] font-bold uppercase tracking-wider text-emerald-300">
+                          热度最高
+                        </p>
+                        <p className="mt-1 truncate text-sm font-bold text-white">
+                          <MathBlock>{topByHeat.title}</MathBlock>
+                        </p>
                       </div>
                       <ArrowRight className="size-4 shrink-0 text-zinc-600" />
                     </Link>
@@ -124,12 +162,19 @@ export default async function HomePage() {
           )}
         </div>
         <div className="relative mx-auto -mt-16 max-w-7xl px-4 md:px-6">
-          <div className="flex w-full flex-col border border-white/10 bg-zinc-950/90 backdrop-blur sm:w-fit sm:flex-row">
+          <div className="surface-panel flex w-full flex-col overflow-hidden bg-zinc-950/90 backdrop-blur sm:w-fit sm:flex-row">
             <div className="grid grid-cols-2">
               {stats.map(([value, label]) => (
-                <div key={label} className="border-r border-white/10 p-4 last:border-r-0 md:p-6">
-                  <strong className="font-display block text-2xl font-black tabular-nums text-white md:text-3xl">{value}</strong>
-                  <span className="mt-1 block text-xs text-zinc-500">{label}</span>
+                <div
+                  key={label}
+                  className="border-r border-white/10 p-4 last:border-r-0 md:p-6"
+                >
+                  <strong className="font-display block text-2xl font-black tabular-nums text-white md:text-3xl">
+                    {value}
+                  </strong>
+                  <span className="mt-1 block text-xs text-zinc-500">
+                    {label}
+                  </span>
                 </div>
               ))}
             </div>
@@ -147,16 +192,26 @@ export default async function HomePage() {
             <Compass className="size-4 text-cyan-300" />
             默认阅读路径
           </div>
-          <div className="grid gap-px bg-white/10 md:grid-cols-3">
+          <div className="grid gap-3 md:grid-cols-3">
             {[
-              ["01", "选一道题", "按卷别或专题进入，不需要先理解全部评分体系。"],
+              [
+                "01",
+                "选一道题",
+                "按卷别或专题进入，不需要先理解全部评分体系。",
+              ],
               ["02", "看观察入口", "先读题干和关键观察，再决定走哪条解法。"],
-              ["03", "展开一条解法", "优先看标准解；想提思维时再看启发解和进阶资料。"],
+              [
+                "03",
+                "展开一条解法",
+                "优先看标准解；想提思维时再看启发解和进阶资料。",
+              ],
             ].map(([step, title, description]) => (
-              <div key={step} className="bg-zinc-950 p-5">
+              <div key={step} className="surface-panel-subtle bg-zinc-950 p-5">
                 <span className="font-mono text-xs text-cyan-300">{step}</span>
                 <h2 className="mt-3 text-lg font-bold text-white">{title}</h2>
-                <p className="mt-2 text-sm leading-6 text-zinc-500">{description}</p>
+                <p className="mt-2 text-sm leading-6 text-zinc-500">
+                  {description}
+                </p>
               </div>
             ))}
           </div>
@@ -167,40 +222,64 @@ export default async function HomePage() {
         <div className="mx-auto max-w-7xl px-4 md:px-6">
           <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
             <div>
-              <span className="font-mono text-xs uppercase tracking-widest text-red-400">新手入口</span>
-              <h2 className="mt-2 text-2xl font-black leading-tight text-white sm:text-3xl md:text-4xl">先从这几道题开始</h2>
+              <span className="font-mono text-xs uppercase tracking-widest text-red-400">
+                新手入口
+              </span>
+              <h2 className="mt-2 text-2xl font-black leading-tight text-white sm:text-3xl md:text-4xl">
+                先从这几道题开始
+              </h2>
             </div>
-            <Link href="/problems" className="hidden items-center gap-2 text-sm text-zinc-400 hover:text-white sm:flex">
+            <Link
+              href="/problems"
+              className="pressable hidden items-center gap-2 px-2 py-1 text-sm text-zinc-400 hover:bg-white/10 hover:text-white sm:flex"
+            >
               查看全部 <ArrowRight className="size-4" />
             </Link>
           </div>
           <div className="grid gap-4 md:grid-cols-3">
             {featuredProblems.map((problem, index) => (
-              <article key={problem.id} className="flex border border-white/10 bg-zinc-950 p-5">
+              <article
+                key={problem.id}
+                className="interactive-lift surface-panel flex p-5 hover:border-cyan-400/35"
+              >
                 <div className="flex min-h-[22rem] w-full flex-col">
                   <div className="flex items-center justify-between gap-3">
-                    <span className="font-mono text-xs text-zinc-600">{String(index + 1).padStart(2, "0")}</span>
-                    <span className={`border px-2 py-1 text-xs ${difficultyBadgeClass[problem.difficulty]}`}>
+                    <span className="font-mono text-xs text-zinc-600">
+                      {String(index + 1).padStart(2, "0")}
+                    </span>
+                    <span
+                      className={`border px-2 py-1 text-xs ${difficultyBadgeClass[problem.difficulty]}`}
+                    >
                       {problem.difficulty}
                     </span>
                   </div>
-                  <h3 className="mt-4 min-h-14 text-lg font-bold leading-7 text-white">{problem.title}</h3>
+                  <h3 className="mt-4 min-h-14 text-lg font-bold leading-7 text-white">
+                    {problem.title}
+                  </h3>
                   <p className="mt-4 line-clamp-5 text-sm leading-7 text-zinc-400">
                     <MathBlock>{problem.statement[0]}</MathBlock>
                   </p>
-                  <div className="mt-5 grid grid-cols-2 gap-px bg-white/10 text-center">
+                  <div className="surface-panel-subtle mt-5 grid grid-cols-2 gap-px overflow-hidden bg-white/10 text-center">
                     <div className="bg-zinc-950 p-3">
-                      <strong className="font-display block text-xl tabular-nums text-cyan-300">{problem.solutions.length}</strong>
-                      <span className="text-[11px] text-zinc-600">解法路线</span>
+                      <strong className="font-display block text-xl tabular-nums text-cyan-300">
+                        {problem.solutions.length}
+                      </strong>
+                      <span className="text-[11px] text-zinc-600">
+                        解法路线
+                      </span>
                     </div>
                     <div className="bg-zinc-950 p-3">
-                      <strong className="font-display block text-xl tabular-nums text-amber-300">{getLearningIndex(problem)}</strong>
-                      <span className="text-[11px] text-zinc-600">学习指数</span>
+                      <strong className="font-display block text-xl tabular-nums text-amber-300">
+                        {getLearningIndex(problem)}
+                      </strong>
+                      <span className="text-[11px] text-zinc-600">
+                        学习指数
+                      </span>
                     </div>
                   </div>
                   <Link
                     href={`/problems/${problem.id}`}
-                    className="mt-auto inline-flex h-10 w-full items-center justify-center gap-2 bg-cyan-400 px-4 text-sm font-bold text-zinc-950 transition hover:bg-cyan-300"
+                    className="pressable pill-button mt-auto inline-flex h-10 w-full items-center justify-center gap-2 bg-cyan-400 px-4 text-sm font-bold text-zinc-950 hover:bg-cyan-300"
                   >
                     进入擂台
                     <ArrowRight className="size-4" />
@@ -215,13 +294,17 @@ export default async function HomePage() {
       <section className="border-b border-white/10 py-20">
         <div className="mx-auto grid max-w-7xl gap-12 px-4 md:grid-cols-[.8fr_1.2fr] md:px-6">
           <div>
-            <span className="font-mono text-xs uppercase tracking-widest text-cyan-300">解法评价维度</span>
-            <h2 className="mt-3 text-2xl font-black leading-tight text-white sm:text-3xl">解法不只分对错</h2>
+            <span className="font-mono text-xs uppercase tracking-widest text-cyan-300">
+              解法评价维度
+            </span>
+            <h2 className="mt-3 text-2xl font-black leading-tight text-white sm:text-3xl">
+              解法不只分对错
+            </h2>
             <p className="mt-4 text-sm leading-7 text-zinc-400">
               一个正确但考场上写不完的解法，和一个短、稳、能迁移的解法，不该得到相同评价。
             </p>
           </div>
-          <div className="grid gap-px bg-white/10 lg:grid-cols-5">
+          <div className="grid gap-3 lg:grid-cols-5">
             {[
               [CheckCircle2, "正确性", "推理链完整、边界无遗漏"],
               [Swords, "考场性", "时间可控、路径容易识别"],
@@ -231,10 +314,17 @@ export default async function HomePage() {
             ].map(([Icon, title, description]) => {
               const FeatureIcon = Icon as typeof CheckCircle2;
               return (
-                <div key={title as string} className="bg-zinc-950 p-5">
+                <div
+                  key={title as string}
+                  className="surface-panel-subtle bg-zinc-950 p-5"
+                >
                   <FeatureIcon className="size-5 text-cyan-300" />
-                  <h3 className="mt-5 font-bold text-white">{title as string}</h3>
-                  <p className="mt-2 text-xs leading-6 text-zinc-500">{description as string}</p>
+                  <h3 className="mt-5 font-bold text-white">
+                    {title as string}
+                  </h3>
+                  <p className="mt-2 text-xs leading-6 text-zinc-500">
+                    {description as string}
+                  </p>
                 </div>
               );
             })}
@@ -249,25 +339,57 @@ export default async function HomePage() {
               Proof<span className="text-cyan-300">Arena</span>
             </span>
             <p className="mt-3 text-xs leading-6 text-zinc-500">
-              围绕数学题展开解法比较、思路拆解和知识关联的平台。当前为 Demo，题目与解法数据仍在整理中。
+              围绕数学题展开解法比较、思路拆解和知识关联的平台。当前为
+              Demo，题目与解法数据仍在整理中。
             </p>
           </div>
           <div>
-            <span className="text-xs font-bold uppercase tracking-widest text-zinc-500">导航</span>
+            <span className="text-xs font-bold uppercase tracking-widest text-zinc-500">
+              导航
+            </span>
             <ul className="mt-3 space-y-2 text-xs text-zinc-400">
-              <li><Link href="/problems" className="hover:text-white">题目擂台</Link></li>
-              <li><Link href="/contests" className="hover:text-white">比赛</Link></li>
-              <li><Link href="/library" className="hover:text-white">思路库</Link></li>
-              <li><Link href="/submit" className="hover:text-white">投稿</Link></li>
-              <li><Link href="/about" className="hover:text-white">关于</Link></li>
+              <li>
+                <Link href="/problems" className="hover:text-white">
+                  题目擂台
+                </Link>
+              </li>
+              <li>
+                <Link href="/contests" className="hover:text-white">
+                  比赛
+                </Link>
+              </li>
+              <li>
+                <Link href="/library" className="hover:text-white">
+                  思路库
+                </Link>
+              </li>
+              <li>
+                <Link href="/submit" className="hover:text-white">
+                  投稿
+                </Link>
+              </li>
+              <li>
+                <Link href="/about" className="hover:text-white">
+                  关于
+                </Link>
+              </li>
             </ul>
           </div>
           <div>
-            <span className="text-xs font-bold uppercase tracking-widest text-zinc-500">开放协议</span>
+            <span className="text-xs font-bold uppercase tracking-widest text-zinc-500">
+              开放协议
+            </span>
             <ul className="mt-3 space-y-2 text-xs text-zinc-400">
               <li>应用代码 · AGPL-3.0</li>
               <li>原创题解与编辑内容 · CC BY-SA 4.0</li>
-              <li><Link href="/about" className="text-cyan-400 hover:text-cyan-300">查看完整协议说明 →</Link></li>
+              <li>
+                <Link
+                  href="/about"
+                  className="text-cyan-400 hover:text-cyan-300"
+                >
+                  查看完整协议说明 →
+                </Link>
+              </li>
             </ul>
           </div>
         </div>
@@ -278,7 +400,10 @@ export default async function HomePage() {
       </footer>
 
       {currentContest && (
-        <ContestPromoCard slug={currentContest.slug} title={currentContest.title} />
+        <ContestPromoCard
+          slug={currentContest.slug}
+          title={currentContest.title}
+        />
       )}
     </main>
   );

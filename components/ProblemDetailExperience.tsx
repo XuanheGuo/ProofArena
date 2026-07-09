@@ -16,7 +16,14 @@ import {
   Target,
   Trophy,
 } from "lucide-react";
-import type { Contest, ContestProblem, KnowledgeNode, Problem, ProblemSummary, Solution } from "@/lib/types";
+import type {
+  Contest,
+  ContestProblem,
+  KnowledgeNode,
+  Problem,
+  ProblemSummary,
+  Solution,
+} from "@/lib/types";
 import { MathBlock } from "@/components/MathBlock";
 import { ScoreBar } from "@/components/ScoreBar";
 import { VerificationPanel } from "@/components/VerificationPanel";
@@ -37,17 +44,39 @@ import { mathVizProblemIds } from "@/lib/math-viz-problem-ids";
 import { getScrollBehavior } from "@/lib/scroll-behavior";
 
 const FunctionGraphPanel = dynamic(
-  () => import("@/components/FunctionGraphPanel").then((mod) => mod.FunctionGraphPanel),
-  { ssr: false, loading: () => <div className="min-h-96 border border-cyan-400/25 bg-zinc-950 lg:min-h-[34rem]" /> },
+  () =>
+    import("@/components/FunctionGraphPanel").then(
+      (mod) => mod.FunctionGraphPanel,
+    ),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="min-h-96 border border-cyan-400/25 bg-zinc-950 lg:min-h-[34rem]" />
+    ),
+  },
 );
 const MathVisualization = dynamic(
-  () => import("@/components/MathVisualization").then((mod) => mod.MathVisualization),
-  { ssr: false, loading: () => <div className="min-h-96 border border-cyan-400/25 bg-zinc-950 lg:min-h-[34rem]" /> },
+  () =>
+    import("@/components/MathVisualization").then(
+      (mod) => mod.MathVisualization,
+    ),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="min-h-96 border border-cyan-400/25 bg-zinc-950 lg:min-h-[34rem]" />
+    ),
+  },
 );
 
-type DetailTab = "problem" | "comparison" | "solutions" | "knowledge" | "related" | "graph";
+type DetailTab =
+  "problem" | "comparison" | "solutions" | "knowledge" | "related" | "graph";
 
-const allTabs: Array<{ id: DetailTab; label: string; requiresGraph?: boolean; requiresProofGraph?: boolean }> = [
+const allTabs: Array<{
+  id: DetailTab;
+  label: string;
+  requiresGraph?: boolean;
+  requiresProofGraph?: boolean;
+}> = [
   { id: "problem", label: "题目" },
   { id: "comparison", label: "比较" },
   { id: "solutions", label: "解法" },
@@ -68,19 +97,34 @@ function scoreTone(index: number) {
   return index === 1 ? "red" : index === 2 ? "amber" : "cyan";
 }
 
-function SolutionCompareCard({ solution, rank }: { solution: Solution; rank: number }) {
+function SolutionCompareCard({
+  solution,
+  rank,
+}: {
+  solution: Solution;
+  rank: number;
+}) {
   const [expanded, setExpanded] = useState(false);
   const meta = getSolutionKindMeta(solution.kind);
-  const contestType = solution.contestSolutionType ? contestSolutionTypeMeta[solution.contestSolutionType] : null;
+  const contestType = solution.contestSolutionType
+    ? contestSolutionTypeMeta[solution.contestSolutionType]
+    : null;
 
   return (
-    <article id={solution.id} className="scroll-mt-32 border border-white/10 bg-zinc-950 transition-colors hover:border-white/20">
+    <article
+      id={solution.id}
+      className="scroll-mt-32 border border-white/10 bg-zinc-950 transition-colors hover:border-white/20"
+    >
       <div className="grid lg:grid-cols-[minmax(0,1fr)_17rem]">
         <div className="border-b border-white/10 p-5 lg:border-b-0 lg:border-r md:p-6">
           {/* badges row */}
           <div className="flex flex-wrap items-center gap-1.5">
-            <span className="font-mono text-[11px] text-zinc-600">{String(rank).padStart(2, "0")}</span>
-            <span className={`border px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide ${meta.className}`}>
+            <span className="font-mono text-[11px] text-zinc-600">
+              {String(rank).padStart(2, "0")}
+            </span>
+            <span
+              className={`border px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide ${meta.className}`}
+            >
               {meta.label}
             </span>
             {contestType && (
@@ -89,14 +133,19 @@ function SolutionCompareCard({ solution, rank }: { solution: Solution; rank: num
               </span>
             )}
             {solution.isPostContest && (
-              <span className="border border-zinc-600 px-2 py-0.5 text-[11px] text-zinc-400">赛后</span>
+              <span className="border border-zinc-600 px-2 py-0.5 text-[11px] text-zinc-400">
+                赛后
+              </span>
             )}
             {solution.thinkingCues?.forkOf && (
               <a
                 href={`#${solution.thinkingCues.forkOf.solutionId}`}
                 className="border border-violet-400/40 bg-violet-400/10 px-2 py-0.5 text-[11px] font-bold text-violet-300 transition hover:bg-violet-400/20"
               >
-                Fork 自：<MathBlock>{solution.thinkingCues.forkOf.solutionTitle}</MathBlock>
+                Fork 自：
+                <MathBlock>
+                  {solution.thinkingCues.forkOf.solutionTitle}
+                </MathBlock>
               </a>
             )}
           </div>
@@ -110,7 +159,10 @@ function SolutionCompareCard({ solution, rank }: { solution: Solution; rank: num
           {solution.tags.length > 0 && (
             <div className="mt-3 flex flex-wrap gap-1.5">
               {solution.tags.map((tag) => (
-                <span key={tag} className="bg-white/[0.04] px-2 py-0.5 text-[11px] text-zinc-500">
+                <span
+                  key={tag}
+                  className="bg-white/[0.04] px-2 py-0.5 text-[11px] text-zinc-500"
+                >
                   {tag}
                 </span>
               ))}
@@ -138,7 +190,9 @@ function SolutionCompareCard({ solution, rank }: { solution: Solution; rank: num
             }`}
           >
             {expanded ? "收起" : "展开解析"}
-            <ChevronDown className={`size-4 transition-transform duration-200 ${expanded ? "rotate-180" : ""}`} />
+            <ChevronDown
+              className={`size-4 transition-transform duration-200 ${expanded ? "rotate-180" : ""}`}
+            />
           </button>
         </div>
       </div>
@@ -160,9 +214,16 @@ function SolutionCompareCard({ solution, rank }: { solution: Solution; rank: num
                 <h4 className="text-sm font-bold text-white">完整解析摘要</h4>
                 <ol className="mt-4 space-y-4">
                   {solution.summary.map((step, index) => (
-                    <li key={step} className="grid grid-cols-[2rem_minmax(0,1fr)] gap-3 text-sm leading-7 text-zinc-300">
-                      <span className="font-mono text-cyan-300">{String(index + 1).padStart(2, "0")}</span>
-                      <span><MathBlock>{step}</MathBlock></span>
+                    <li
+                      key={step}
+                      className="grid grid-cols-[2rem_minmax(0,1fr)] gap-3 text-sm leading-7 text-zinc-300"
+                    >
+                      <span className="font-mono text-cyan-300">
+                        {String(index + 1).padStart(2, "0")}
+                      </span>
+                      <span>
+                        <MathBlock>{step}</MathBlock>
+                      </span>
                     </li>
                   ))}
                 </ol>
@@ -170,7 +231,9 @@ function SolutionCompareCard({ solution, rank }: { solution: Solution; rank: num
               <details className="border border-white/10 bg-black/20">
                 <summary className="flex list-none flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm font-bold text-white marker:hidden">
                   上传者补充说明
-                  <span className="text-xs font-normal text-zinc-600">适用场景 / 局限 / 验证</span>
+                  <span className="text-xs font-normal text-zinc-600">
+                    适用场景 / 局限 / 验证
+                  </span>
                 </summary>
                 <div className="space-y-4 border-t border-white/10 p-4">
                   <p className="text-sm leading-7 text-zinc-300">
@@ -178,17 +241,25 @@ function SolutionCompareCard({ solution, rank }: { solution: Solution; rank: num
                   </p>
                   <div className="flex flex-wrap gap-2">
                     {solution.suitableFor.map((item) => (
-                      <span key={item} className="border border-emerald-400/20 bg-emerald-400/5 px-2.5 py-1.5 text-xs text-zinc-300">
+                      <span
+                        key={item}
+                        className="border border-emerald-400/20 bg-emerald-400/5 px-2.5 py-1.5 text-xs text-zinc-300"
+                      >
                         {item}
                       </span>
                     ))}
                   </div>
                   <ul className="space-y-2 text-sm leading-6 text-zinc-400">
-                    {[...solution.tradeoffs, ...solution.limitations].map((item) => (
-                      <li key={item} className="border-l border-red-400/35 pl-3">
-                        <MathBlock>{item}</MathBlock>
-                      </li>
-                    ))}
+                    {[...solution.tradeoffs, ...solution.limitations].map(
+                      (item) => (
+                        <li
+                          key={item}
+                          className="border-l border-red-400/35 pl-3"
+                        >
+                          <MathBlock>{item}</MathBlock>
+                        </li>
+                      ),
+                    )}
                   </ul>
                 </div>
               </details>
@@ -197,11 +268,18 @@ function SolutionCompareCard({ solution, rank }: { solution: Solution; rank: num
               <details className="border border-white/10 bg-black/20">
                 <summary className="flex list-none flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm font-bold text-white marker:hidden">
                   评分细节
-                  <span className="text-xs font-normal text-zinc-600">默认折叠</span>
+                  <span className="text-xs font-normal text-zinc-600">
+                    默认折叠
+                  </span>
                 </summary>
                 <div className="space-y-3 border-t border-white/10 p-4">
                   {scoreRows.map(([key, label], index) => (
-                    <ScoreBar key={key} label={label} value={solution.scores[key]} tone={scoreTone(index)} />
+                    <ScoreBar
+                      key={key}
+                      label={label}
+                      value={solution.scores[key]}
+                      tone={scoreTone(index)}
+                    />
                   ))}
                   <p className="pt-2 text-xs leading-6 text-zinc-500">
                     <MathBlock>{solution.scoringReason}</MathBlock>
@@ -212,7 +290,10 @@ function SolutionCompareCard({ solution, rank }: { solution: Solution; rank: num
             </aside>
           </div>
           <div className="mt-5 border-t border-white/10 pt-5">
-            <SolutionRatingPanel solutionId={solution.id} authorId={solution.authorId} />
+            <SolutionRatingPanel
+              solutionId={solution.id}
+              authorId={solution.authorId}
+            />
           </div>
         </div>
       )}
@@ -271,22 +352,20 @@ function ProofGraphSummaryStrip({
 function ComparisonTabNav({ problem }: { problem: Problem }) {
   const pg = problem.proofGraph;
   const hasReplay = Boolean(
-    pg && (
-      pg.observations.length > 0 ||
+    pg &&
+    (pg.observations.length > 0 ||
       pg.branches.length > 0 ||
       pg.transformations.length > 0 ||
       pg.verificationSteps.length > 0 ||
-      pg.methodBoundaries.length > 0
-    ),
+      pg.methodBoundaries.length > 0),
   );
   const hasProvenance = Boolean(
-    pg && (
-      pg.observations.length > 0 ||
+    pg &&
+    (pg.observations.length > 0 ||
       pg.transformations.length > 0 ||
       pg.challengeEdges.length > 0 ||
       pg.methodBoundaries.length > 0 ||
-      problem.solutions.some((solution) => solution.thinkingCues?.forkOf)
-    ),
+      problem.solutions.some((solution) => solution.thinkingCues?.forkOf)),
   );
   // 8 flat sub-tool anchors read as a wall of buttons with no map — grouped
   // into the same 总览/深入/溯源 clusters docs/UI_UX_AUDIT.md D3 suggested.
@@ -298,7 +377,11 @@ function ComparisonTabNav({ problem }: { problem: Problem }) {
       label: "总览",
       sections: [
         { id: "comparison-matrix", label: "解法比较", show: true },
-        { id: "comparison-boundaries", label: "方法边界", show: Boolean(pg?.methodBoundaries.length) },
+        {
+          id: "comparison-boundaries",
+          label: "方法边界",
+          show: Boolean(pg?.methodBoundaries.length),
+        },
       ],
     },
     {
@@ -306,8 +389,16 @@ function ComparisonTabNav({ problem }: { problem: Problem }) {
       label: "深入",
       sections: [
         { id: "comparison-replay", label: "推导过程", show: hasReplay },
-        { id: "comparison-challenges", label: "解法挑战", show: Boolean(pg?.challengeEdges.length) },
-        { id: "comparison-diff", label: "解法 Diff", show: problem.solutions.length >= 2 },
+        {
+          id: "comparison-challenges",
+          label: "解法挑战",
+          show: Boolean(pg?.challengeEdges.length),
+        },
+        {
+          id: "comparison-diff",
+          label: "解法 Diff",
+          show: problem.solutions.length >= 2,
+        },
       ],
     },
     {
@@ -316,15 +407,25 @@ function ComparisonTabNav({ problem }: { problem: Problem }) {
       sections: [
         { id: "comparison-release", label: "发布信息", show: Boolean(pg) },
         { id: "comparison-provenance", label: "图谱来源", show: hasProvenance },
-        { id: "comparison-tree", label: "思路树", show: Boolean(problem.solutionTree?.roots.length) },
+        {
+          id: "comparison-tree",
+          label: "思路树",
+          show: Boolean(problem.solutionTree?.roots.length),
+        },
       ],
     },
   ]
-    .map((group) => ({ ...group, sections: group.sections.filter((section) => section.show) }))
+    .map((group) => ({
+      ...group,
+      sections: group.sections.filter((section) => section.show),
+    }))
     .filter((group) => group.sections.length > 0);
 
   return (
-    <nav className="border border-white/10 bg-black/20 px-3 py-3" aria-label="比较工具目录">
+    <nav
+      className="border border-white/10 bg-black/20 px-3 py-3"
+      aria-label="比较工具目录"
+    >
       <div className="flex flex-wrap gap-x-6 gap-y-3">
         {groups.map((group, index) => (
           <div
@@ -350,12 +451,22 @@ function ComparisonTabNav({ problem }: { problem: Problem }) {
   );
 }
 
-function EmptyState({ title, description, action }: { title: string; description: string; action?: React.ReactNode }) {
+function EmptyState({
+  title,
+  description,
+  action,
+}: {
+  title: string;
+  description: string;
+  action?: React.ReactNode;
+}) {
   return (
     <div className="border border-white/10 bg-zinc-950 px-6 py-12 text-center">
       <MessageSquareText className="mx-auto size-7 text-zinc-600" />
       <h3 className="mt-4 font-bold text-white">{title}</h3>
-      <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-zinc-500">{description}</p>
+      <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-zinc-500">
+        {description}
+      </p>
       {action && <div className="mt-5">{action}</div>}
     </div>
   );
@@ -401,11 +512,16 @@ export function ProblemDetailExperience({
   // must stay hidden so later participants aren't nudged toward an existing
   // route. The server already redacts the underlying data for this case;
   // these checks are the client-side belt to that server-side suspenders.
-  const hideSolutionsForContest = contestContext?.contest.status === "active" || Boolean(contestLock);
+  const hideSolutionsForContest =
+    contestContext?.contest.status === "active" || Boolean(contestLock);
   const tabs = allTabs.filter((tab) => {
     if (tab.requiresGraph && !Boolean(graphSpec) && !hasMathViz) return false;
     if (tab.requiresProofGraph && !problem.proofGraph) return false;
-    if (tab.id === "comparison" && (problem.solutions.length < 2 || hideSolutionsForContest)) return false;
+    if (
+      tab.id === "comparison" &&
+      (problem.solutions.length < 2 || hideSolutionsForContest)
+    )
+      return false;
     return true;
   });
   const [activeTab, setActiveTab] = useState<DetailTab>("solutions");
@@ -414,22 +530,20 @@ export function ProblemDetailExperience({
   const [showTabOverflowHint, setShowTabOverflowHint] = useState(false);
   const proofGraph = problem.proofGraph;
   const hasReplay = Boolean(
-    proofGraph && (
-      proofGraph.observations.length > 0 ||
+    proofGraph &&
+    (proofGraph.observations.length > 0 ||
       proofGraph.branches.length > 0 ||
       proofGraph.transformations.length > 0 ||
       proofGraph.verificationSteps.length > 0 ||
-      proofGraph.methodBoundaries.length > 0
-    ),
+      proofGraph.methodBoundaries.length > 0),
   );
   const hasProvenance = Boolean(
-    proofGraph && (
-      proofGraph.observations.length > 0 ||
+    proofGraph &&
+    (proofGraph.observations.length > 0 ||
       proofGraph.transformations.length > 0 ||
       proofGraph.challengeEdges.length > 0 ||
       proofGraph.methodBoundaries.length > 0 ||
-      problem.solutions.some((solution) => solution.thinkingCues?.forkOf)
-    ),
+      problem.solutions.some((solution) => solution.thinkingCues?.forkOf)),
   );
 
   useEffect(() => {
@@ -448,14 +562,21 @@ export function ProblemDetailExperience({
 
     function updateOverflowHint() {
       const hasOverflow = tabScroller.scrollWidth > tabScroller.clientWidth + 1;
-      const isAtEnd = tabScroller.scrollLeft + tabScroller.clientWidth >= tabScroller.scrollWidth - 2;
+      const isAtEnd =
+        tabScroller.scrollLeft + tabScroller.clientWidth >=
+        tabScroller.scrollWidth - 2;
       setShowTabOverflowHint(hasOverflow && !isAtEnd);
     }
 
     updateOverflowHint();
-    tabScroller.addEventListener("scroll", updateOverflowHint, { passive: true });
+    tabScroller.addEventListener("scroll", updateOverflowHint, {
+      passive: true,
+    });
     window.addEventListener("resize", updateOverflowHint);
-    const resizeObserver = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(updateOverflowHint);
+    const resizeObserver =
+      typeof ResizeObserver === "undefined"
+        ? null
+        : new ResizeObserver(updateOverflowHint);
     resizeObserver?.observe(tabScroller);
 
     return () => {
@@ -475,19 +596,26 @@ export function ProblemDetailExperience({
   function showSolutions() {
     setActiveTab("solutions");
     requestAnimationFrame(() => {
-      document.getElementById("solutions-content")?.scrollIntoView({ block: "start", behavior: getScrollBehavior() });
+      document
+        .getElementById("solutions-content")
+        ?.scrollIntoView({ block: "start", behavior: getScrollBehavior() });
     });
   }
 
   function showComparison() {
     setActiveTab("comparison");
     requestAnimationFrame(() => {
-      document.getElementById("proof-graph-comparison-content")?.scrollIntoView({ block: "start", behavior: getScrollBehavior() });
+      document
+        .getElementById("proof-graph-comparison-content")
+        ?.scrollIntoView({ block: "start", behavior: getScrollBehavior() });
     });
   }
 
   const keyConditions = useMemo(
-    () => [...problem.learningGuide.observation.slice(0, 2), ...problem.learningGuide.triggers.slice(0, 2)],
+    () => [
+      ...problem.learningGuide.observation.slice(0, 2),
+      ...problem.learningGuide.triggers.slice(0, 2),
+    ],
     [problem],
   );
 
@@ -504,8 +632,14 @@ export function ProblemDetailExperience({
 
           {showGuide && (
             <div className="mb-5 flex flex-col gap-3 border border-cyan-400/25 bg-cyan-400/[0.06] p-4 text-sm leading-6 text-zinc-200 sm:flex-row sm:items-center sm:justify-between">
-              <span>新手可以按这个顺序看：先读题，再比较不同解法，最后把自己的思路整理成可复核的投稿。</span>
-              <button type="button" onClick={dismissGuide} className="text-left text-xs font-bold text-cyan-300 sm:text-right">
+              <span>
+                新手可以按这个顺序看：先读题，再比较不同解法，最后把自己的思路整理成可复核的投稿。
+              </span>
+              <button
+                type="button"
+                onClick={dismissGuide}
+                className="text-left text-xs font-bold text-cyan-300 sm:text-right"
+              >
                 知道了
               </button>
             </div>
@@ -521,67 +655,93 @@ export function ProblemDetailExperience({
                       {contestContext.contest.title}
                     </span>
                     <span className="border border-amber-400/20 px-2 py-1 text-amber-100/80">
-                      Day {contestContext.contestProblem.dayIndex} · {contestContext.contestProblem.title}
+                      Day {contestContext.contestProblem.dayIndex} ·{" "}
+                      {contestContext.contestProblem.title}
                     </span>
                   </div>
                   <p className="mt-2 text-sm leading-6 text-zinc-400">
-                    {contestContext.contestProblem.theme}。当前题目会按比赛解法类型提交，赛后优秀解法将回流到题目页。
+                    {contestContext.contestProblem.theme}
+                    。当前题目会按比赛解法类型提交，赛后优秀解法将回流到题目页。
                   </p>
                 </div>
-                  <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
+                <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
                   <Link
                     href={`/contests/${contestContext.contest.slug}`}
                     className="inline-flex h-9 items-center justify-center gap-2 border border-amber-400/25 px-3 text-xs font-bold text-amber-200 transition hover:bg-amber-400/10"
                   >
                     返回比赛主页
                   </Link>
-                  {(contestContext.contest.status === "active" || contestContext.contest.status === "judging") && (
+                  {(contestContext.contest.status === "active" ||
+                    contestContext.contest.status === "judging") && (
                     <Link
                       href={submitHref}
                       className="inline-flex h-9 items-center justify-center gap-2 bg-amber-300 px-3 text-xs font-bold text-zinc-950 transition hover:bg-amber-200"
                     >
                       <Send className="size-3.5" />
-                      {contestContext.contest.status === "judging" ? "赛后补充" : "提交参赛解法"}
+                      {contestContext.contest.status === "judging"
+                        ? "赛后补充"
+                        : "提交参赛解法"}
                     </Link>
                   )}
-                  </div>
+                </div>
               </div>
             </div>
           )}
 
-          <Link href="/problems" className="text-sm text-zinc-500 transition hover:text-white">
+          <Link
+            href="/problems"
+            className="text-sm text-zinc-500 transition hover:text-white"
+          >
             返回题目列表
           </Link>
           <div className="mt-5 grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-end">
             <div>
               <div className="flex flex-wrap items-center gap-2 text-xs">
-                <span className="bg-cyan-400 px-2 py-1 font-bold text-zinc-950">{problem.region}</span>
+                <span className="bg-cyan-400 px-2 py-1 font-bold text-zinc-950">
+                  {problem.region}
+                </span>
                 <span className="border border-white/10 px-2 py-1 text-zinc-400">
                   {problem.year} · {problem.paper} · {problem.number}
                 </span>
-                <span className={`border px-2 py-1 ${difficultyBadgeClass[problem.difficulty]}`}>{problem.difficulty}</span>
+                <span
+                  className={`border px-2 py-1 ${difficultyBadgeClass[problem.difficulty]}`}
+                >
+                  {problem.difficulty}
+                </span>
               </div>
-              <h1 className="mt-4 text-2xl font-black leading-tight text-white sm:text-3xl md:text-5xl">{problem.title}</h1>
+              <h1 className="mt-4 text-2xl font-black leading-tight text-white sm:text-3xl md:text-5xl">
+                {problem.title}
+              </h1>
               <p className="mt-4 max-w-3xl text-sm leading-7 text-zinc-400">
                 先看题目本体；到「比较」看路线差异，到「解法」展开完整解析。知识点和相关题放在辅助区，避免干扰主线阅读。
               </p>
             </div>
             <div className="grid grid-cols-3 border border-white/10 bg-black/20 text-center sm:max-w-md lg:max-w-none">
               <div className="border-r border-white/10 p-3">
-                <strong className="font-display block text-2xl tabular-nums text-cyan-300">{problem.solutions.length}</strong>
+                <strong className="font-display block text-2xl tabular-nums text-cyan-300">
+                  {problem.solutions.length}
+                </strong>
                 <span className="text-[11px] text-zinc-600">解法</span>
               </div>
               <div className="border-r border-white/10 p-3">
-                <strong className="font-display block text-2xl tabular-nums text-red-300">{problem.tags.length}</strong>
+                <strong className="font-display block text-2xl tabular-nums text-red-300">
+                  {problem.tags.length}
+                </strong>
                 <span className="text-[11px] text-zinc-600">专题</span>
               </div>
               <div className="p-3">
-                <strong className="font-display block text-2xl tabular-nums text-amber-300">{knowledgeNodes.length}</strong>
+                <strong className="font-display block text-2xl tabular-nums text-amber-300">
+                  {knowledgeNodes.length}
+                </strong>
                 <span className="text-[11px] text-zinc-600">知识点</span>
               </div>
             </div>
             {problem.proofGraph && !hideSolutionsForContest && (
-              <ProofGraphSummaryStrip problem={problem} submitHref={submitHref} onOpenComparison={showComparison} />
+              <ProofGraphSummaryStrip
+                problem={problem}
+                submitHref={submitHref}
+                onOpenComparison={showComparison}
+              />
             )}
           </div>
           <div className="mt-4 grid gap-2 sm:hidden">
@@ -610,7 +770,9 @@ export function ProblemDetailExperience({
               </div>
               <div className="space-y-4 text-base leading-8 text-zinc-200 md:text-lg">
                 {problem.statement.map((paragraph) => (
-                  <p key={paragraph}><MathBlock>{paragraph}</MathBlock></p>
+                  <p key={paragraph}>
+                    <MathBlock>{paragraph}</MathBlock>
+                  </p>
                 ))}
               </div>
             </section>
@@ -619,7 +781,10 @@ export function ProblemDetailExperience({
                 <h2 className="text-sm font-bold text-white">关键条件</h2>
                 <ul className="mt-3 space-y-2">
                   {keyConditions.map((item) => (
-                    <li key={item} className="border-l border-cyan-400/35 pl-3 text-sm leading-6 text-zinc-400">
+                    <li
+                      key={item}
+                      className="border-l border-cyan-400/35 pl-3 text-sm leading-6 text-zinc-400"
+                    >
                       <MathBlock>{item}</MathBlock>
                     </li>
                   ))}
@@ -647,9 +812,16 @@ export function ProblemDetailExperience({
         </div>
       </section>
 
-      <nav id="solutions-panel" className="sticky top-16 z-40 border-b border-white/10 bg-zinc-950/95 backdrop-blur-xl scroll-mt-20" aria-label="题目详情 Tab">
+      <nav
+        id="solutions-panel"
+        className="sticky top-16 z-40 border-b border-white/10 bg-zinc-950/95 backdrop-blur-xl scroll-mt-20"
+        aria-label="题目详情 Tab"
+      >
         <div className="relative mx-auto max-w-7xl">
-          <div ref={tabScrollerRef} className="flex gap-1 overflow-x-auto px-4 py-2 md:px-6">
+          <div
+            ref={tabScrollerRef}
+            className="flex gap-1 overflow-x-auto px-4 py-2 md:px-6"
+          >
             {tabs.map((tab) => (
               <button
                 key={tab.id}
@@ -670,7 +842,10 @@ export function ProblemDetailExperience({
             <div
               aria-hidden="true"
               className="pointer-events-none absolute inset-y-0 right-0 w-10 md:hidden"
-              style={{ background: "linear-gradient(to left, var(--surface), transparent)" }}
+              style={{
+                background:
+                  "linear-gradient(to left, var(--surface), transparent)",
+              }}
             />
           )}
         </div>
@@ -683,7 +858,9 @@ export function ProblemDetailExperience({
               <h2 className="font-bold text-white">题目</h2>
               <div className="mt-5 space-y-4 text-base leading-8 text-zinc-200">
                 {problem.statement.map((paragraph) => (
-                  <p key={paragraph}><MathBlock>{paragraph}</MathBlock></p>
+                  <p key={paragraph}>
+                    <MathBlock>{paragraph}</MathBlock>
+                  </p>
                 ))}
               </div>
             </div>
@@ -697,7 +874,9 @@ export function ProblemDetailExperience({
                   <details className="border border-white/10 bg-zinc-950">
                     <summary className="flex list-none flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm font-bold text-white marker:hidden">
                       参考答案
-                      <span className="text-xs font-normal text-zinc-600">展开查看</span>
+                      <span className="text-xs font-normal text-zinc-600">
+                        展开查看
+                      </span>
                     </summary>
                     <div className="border-t border-white/10 p-4 text-sm leading-7 text-zinc-300">
                       <MathBlock>{problem.answer}</MathBlock>
@@ -721,7 +900,10 @@ export function ProblemDetailExperience({
         )}
 
         {activeTab === "comparison" && (
-          <section id="proof-graph-comparison-content" className="space-y-4 scroll-mt-28">
+          <section
+            id="proof-graph-comparison-content"
+            className="space-y-4 scroll-mt-28"
+          >
             <ComparisonTabNav problem={problem} />
             {proofGraph && (
               <div id="comparison-release" className="scroll-mt-28">
@@ -776,11 +958,15 @@ export function ProblemDetailExperience({
                 <details className="group">
                   <summary className="flex cursor-pointer list-none items-center justify-between gap-2 text-sm font-bold text-white marker:hidden">
                     对照题目
-                    <span className="text-xs font-normal text-zinc-600">展开回看</span>
+                    <span className="text-xs font-normal text-zinc-600">
+                      展开回看
+                    </span>
                   </summary>
                   <div className="mt-3 max-h-[28rem] overflow-y-auto space-y-3 text-sm leading-7 text-zinc-400">
                     {problem.statement.map((paragraph, i) => (
-                      <p key={i}><MathBlock>{paragraph}</MathBlock></p>
+                      <p key={i}>
+                        <MathBlock>{paragraph}</MathBlock>
+                      </p>
                     ))}
                   </div>
                 </details>
@@ -796,7 +982,10 @@ export function ProblemDetailExperience({
                       : "展开任意解法查看完整推理步骤和验证细节。"}
                   </p>
                 </div>
-                <Link href={submitHref} className="inline-flex h-9 items-center justify-center gap-2 border border-cyan-400/30 px-3 text-xs font-bold text-cyan-300">
+                <Link
+                  href={submitHref}
+                  className="inline-flex h-9 items-center justify-center gap-2 border border-cyan-400/30 px-3 text-xs font-bold text-cyan-300"
+                >
                   <Plus className="size-3.5" />
                   {isContestSubmission ? "提交参赛解法" : "提交新解法"}
                 </Link>
@@ -804,12 +993,17 @@ export function ProblemDetailExperience({
               {hideSolutionsForContest ? (
                 <div className="border border-amber-400/25 bg-amber-400/[0.06] px-6 py-12 text-center">
                   <Trophy className="mx-auto size-7 text-amber-300" />
-                  <h3 className="mt-4 font-bold text-white">比赛进行中，题解暂时隐藏</h3>
+                  <h3 className="mt-4 font-bold text-white">
+                    比赛进行中，题解暂时隐藏
+                  </h3>
                   <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-zinc-500">
                     先把自己的观察写下来。哪怕只是一个入口、一种直觉、一个卡点，也比被已有题解牵着走更有价值。
                   </p>
                   <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
-                    <Link href={submitHref} className="inline-flex h-10 items-center justify-center gap-2 bg-amber-300 px-4 text-sm font-bold text-zinc-950">
+                    <Link
+                      href={submitHref}
+                      className="inline-flex h-10 items-center justify-center gap-2 bg-amber-300 px-4 text-sm font-bold text-zinc-950"
+                    >
                       <Send className="size-4" />
                       提交参赛思路
                     </Link>
@@ -825,19 +1019,30 @@ export function ProblemDetailExperience({
                 </div>
               ) : (
                 <>
-              {problem.solutions.length ? (
-                <div className="space-y-4">
-                  {problem.solutions.map((solution, index) => (
-                    <SolutionCompareCard key={solution.id} solution={solution} rank={index + 1} />
-                  ))}
-                </div>
-              ) : (
-                <EmptyState
-                  title="还没有解法"
-                  description="你可以提交第一个思路，让这道题真正进入擂台。"
-                  action={<Link href={submitHref} className="text-sm font-bold text-cyan-300">提交第一个解法</Link>}
-                />
-              )}
+                  {problem.solutions.length ? (
+                    <div className="space-y-4">
+                      {problem.solutions.map((solution, index) => (
+                        <SolutionCompareCard
+                          key={solution.id}
+                          solution={solution}
+                          rank={index + 1}
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <EmptyState
+                      title="还没有解法"
+                      description="你可以提交第一个思路，让这道题真正进入擂台。"
+                      action={
+                        <Link
+                          href={submitHref}
+                          className="text-sm font-bold text-cyan-300"
+                        >
+                          提交第一个解法
+                        </Link>
+                      }
+                    />
+                  )}
                 </>
               )}
             </div>
@@ -848,7 +1053,9 @@ export function ProblemDetailExperience({
           <section className="space-y-4">
             <div className="border border-white/10 bg-zinc-950 p-5">
               <h2 className="font-bold text-white">知识点摘要</h2>
-              <p className="mt-2 text-sm leading-6 text-zinc-500">点击卡片进入知识节点查看完整边界说明和对比题目。</p>
+              <p className="mt-2 text-sm leading-6 text-zinc-500">
+                点击卡片进入知识节点查看完整边界说明和对比题目。
+              </p>
             </div>
             {knowledgeNodes.length ? (
               <div className="grid gap-3 md:grid-cols-2">
@@ -860,16 +1067,25 @@ export function ProblemDetailExperience({
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <span className="text-[11px] font-mono text-zinc-500">{node.category}</span>
-                        <h3 className="mt-1 font-bold text-white group-hover:text-cyan-200">{node.title}</h3>
+                        <span className="text-[11px] font-mono text-zinc-500">
+                          {node.category}
+                        </span>
+                        <h3 className="mt-1 font-bold text-white group-hover:text-cyan-200">
+                          {node.title}
+                        </h3>
                       </div>
                       <ArrowUpRight className="size-4 shrink-0 text-zinc-600 group-hover:text-cyan-300 mt-1" />
                     </div>
-                    <p className="mt-3 text-sm leading-6 text-zinc-400 line-clamp-2">{node.summary}</p>
+                    <p className="mt-3 text-sm leading-6 text-zinc-400 line-clamp-2">
+                      {node.summary}
+                    </p>
                     {node.aliases && node.aliases.length > 0 && (
                       <div className="mt-3 flex flex-wrap gap-1.5">
                         {node.aliases.slice(0, 3).map((alias) => (
-                          <span key={alias} className="border border-white/10 px-2 py-0.5 text-[11px] text-zinc-600">
+                          <span
+                            key={alias}
+                            className="border border-white/10 px-2 py-0.5 text-[11px] text-zinc-600"
+                          >
                             {alias}
                           </span>
                         ))}
@@ -879,7 +1095,10 @@ export function ProblemDetailExperience({
                 ))}
               </div>
             ) : (
-              <EmptyState title="还没有知识点关联" description="后续整理时会把本题关联到可复用的知识节点。" />
+              <EmptyState
+                title="还没有知识点关联"
+                description="后续整理时会把本题关联到可复用的知识节点。"
+              />
             )}
           </section>
         )}
@@ -887,7 +1106,9 @@ export function ProblemDetailExperience({
         {activeTab === "graph" && (
           <section>
             {graphSpec && <FunctionGraphPanel spec={graphSpec} />}
-            {!graphSpec && hasMathViz && <MathVisualization problemId={problem.id} />}
+            {!graphSpec && hasMathViz && (
+              <MathVisualization problemId={problem.id} />
+            )}
           </section>
         )}
 
@@ -895,23 +1116,42 @@ export function ProblemDetailExperience({
           <section className="space-y-4">
             <div className="border border-white/10 bg-zinc-950 p-5">
               <h2 className="font-bold text-white">相关题摘要</h2>
-              <p className="mt-2 text-sm leading-6 text-zinc-500">默认只展示少量相近题，避免打断当前题的解法比较。</p>
+              <p className="mt-2 text-sm leading-6 text-zinc-500">
+                默认只展示少量相近题，避免打断当前题的解法比较。
+              </p>
             </div>
             {relatedProblems.length ? (
               <div className="grid gap-3 md:grid-cols-2">
                 {relatedProblems.map((item) => (
-                  <Link key={item.id} href={`/problems/${item.id}`} className="group border border-white/10 bg-zinc-950 p-4 transition hover:border-cyan-400/35">
+                  <Link
+                    key={item.id}
+                    href={`/problems/${item.id}`}
+                    className="group border border-white/10 bg-zinc-950 p-4 transition hover:border-cyan-400/35"
+                  >
                     <div className="flex flex-wrap items-center gap-2 text-xs">
-                      <span className="bg-cyan-400 px-2 py-1 font-bold text-zinc-950">{item.region}</span>
-                      <span className={`border px-2 py-1 ${difficultyBadgeClass[item.difficulty]}`}>{item.difficulty}</span>
+                      <span className="bg-cyan-400 px-2 py-1 font-bold text-zinc-950">
+                        {item.region}
+                      </span>
+                      <span
+                        className={`border px-2 py-1 ${difficultyBadgeClass[item.difficulty]}`}
+                      >
+                        {item.difficulty}
+                      </span>
                     </div>
-                    <h3 className="mt-3 font-bold text-white group-hover:text-cyan-200">{item.title}</h3>
-                    <p className="mt-2 text-xs leading-5 text-zinc-600">{item.solutions.length} 条解法</p>
+                    <h3 className="mt-3 font-bold text-white group-hover:text-cyan-200">
+                      {item.title}
+                    </h3>
+                    <p className="mt-2 text-xs leading-5 text-zinc-600">
+                      {item.solutions.length} 条解法
+                    </p>
                   </Link>
                 ))}
               </div>
             ) : (
-              <EmptyState title="还没有相关题" description="当前题还没有整理出稳定的迁移题组。" />
+              <EmptyState
+                title="还没有相关题"
+                description="当前题还没有整理出稳定的迁移题组。"
+              />
             )}
           </section>
         )}

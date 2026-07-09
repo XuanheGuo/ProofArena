@@ -28,7 +28,9 @@ type AnswerKeyRow = {
 
 function answerKeyToLines(value: unknown): string {
   if (Array.isArray(value)) {
-    return value.filter((item): item is string => typeof item === "string").join("\n");
+    return value
+      .filter((item): item is string => typeof item === "string")
+      .join("\n");
   }
   if (typeof value === "string") return value;
   return "";
@@ -52,7 +54,9 @@ export function AdminSprintAnswerKeyEditor({
   const [loading, setLoading] = useState(true);
   const [existing, setExisting] = useState<AnswerKeyRow | null>(null);
   const [expanded, setExpanded] = useState(false);
-  const [answerType, setAnswerType] = useState<ContestAnswerType>(defaultAnswerType ?? "single_choice");
+  const [answerType, setAnswerType] = useState<ContestAnswerType>(
+    defaultAnswerType ?? "single_choice",
+  );
   const [answerLines, setAnswerLines] = useState("");
   const [formatNote, setFormatNote] = useState("");
   const [saving, setSaving] = useState(false);
@@ -97,7 +101,9 @@ export function AdminSprintAnswerKeyEditor({
   async function save() {
     const answers = linesToAnswerKey(answerLines);
     if (answers.length === 0) {
-      setError("标准答案不能为空——每行至少填写一个可接受答案；如需清空请用下面的「清空答案 key」按钮，避免误清空。");
+      setError(
+        "标准答案不能为空——每行至少填写一个可接受答案；如需清空请用下面的「清空答案 key」按钮，避免误清空。",
+      );
       return;
     }
 
@@ -105,15 +111,17 @@ export function AdminSprintAnswerKeyEditor({
     setError("");
     setMessage("");
 
-    const { error: upsertError } = await supabase.from("contest_problem_answer_keys").upsert(
-      {
-        contest_problem_id: contestProblemId,
-        answer_type: answerType,
-        answer_key: answers,
-        format_note: formatNote.trim(),
-      },
-      { onConflict: "contest_problem_id" },
-    );
+    const { error: upsertError } = await supabase
+      .from("contest_problem_answer_keys")
+      .upsert(
+        {
+          contest_problem_id: contestProblemId,
+          answer_type: answerType,
+          answer_key: answers,
+          format_note: formatNote.trim(),
+        },
+        { onConflict: "contest_problem_id" },
+      );
 
     setSaving(false);
     if (upsertError) {
@@ -175,7 +183,9 @@ export function AdminSprintAnswerKeyEditor({
             <span className="font-bold text-zinc-300">答案类型</span>
             <select
               value={answerType}
-              onChange={(event) => setAnswerType(event.target.value as ContestAnswerType)}
+              onChange={(event) =>
+                setAnswerType(event.target.value as ContestAnswerType)
+              }
               className="h-8 border border-white/15 bg-zinc-950 px-2 text-xs text-white outline-none"
             >
               <option value="single_choice">单选</option>
@@ -185,13 +195,19 @@ export function AdminSprintAnswerKeyEditor({
           </label>
 
           <label className="grid gap-1 text-xs">
-            <span className="font-bold text-zinc-300">标准答案（每行一个可接受答案）</span>
+            <span className="font-bold text-zinc-300">
+              标准答案（每行一个可接受答案）
+            </span>
             <textarea
               rows={4}
               value={answerLines}
               onChange={(event) => setAnswerLines(event.target.value)}
               placeholder={
-                answerType === "multiple_choice" ? "A,C" : answerType === "fill_blank" ? "3/4\n0.75" : "A"
+                answerType === "multiple_choice"
+                  ? "A,C"
+                  : answerType === "fill_blank"
+                    ? "3/4\n0.75"
+                    : "A"
               }
               className="resize-y border border-white/15 bg-zinc-950 px-2 py-1.5 text-xs text-white outline-none"
             />

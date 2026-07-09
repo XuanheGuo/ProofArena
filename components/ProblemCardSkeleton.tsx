@@ -40,7 +40,10 @@ export function ProblemListSkeleton({ count = 6 }: { count?: number }) {
 export function ProblemExplorerSkeleton() {
   return (
     <>
-      <section className="border-b border-white/10 bg-zinc-950/80" aria-hidden="true">
+      <section
+        className="border-b border-white/10 bg-zinc-950/80"
+        aria-hidden="true"
+      >
         <div className="mx-auto max-w-7xl px-4 py-5 md:px-6">
           <div className="grid animate-pulse gap-3 lg:grid-cols-[minmax(0,1fr)_auto_auto]">
             <div className="h-11 border border-white/10 bg-zinc-950" />

@@ -3,11 +3,25 @@
 import { Check, ClipboardCopy, MessageSquareText } from "lucide-react";
 import { useState } from "react";
 import type { Problem, Solution } from "@/lib/types";
-import { getShareRoutes, getShareTags, getSolutionShareTags } from "@/components/ShareCard";
+import {
+  getShareRoutes,
+  getShareTags,
+  getSolutionShareTags,
+} from "@/components/ShareCard";
 import { getSolutionKindMeta } from "@/lib/solution-kinds";
 
-export function CopyLinkButton({ path, problem, solution }: { path: string; problem?: Problem; solution?: Solution }) {
-  const [copiedTarget, setCopiedTarget] = useState<"link" | "text" | null>(null);
+export function CopyLinkButton({
+  path,
+  problem,
+  solution,
+}: {
+  path: string;
+  problem?: Problem;
+  solution?: Solution;
+}) {
+  const [copiedTarget, setCopiedTarget] = useState<"link" | "text" | null>(
+    null,
+  );
 
   function fallbackCopy(value: string) {
     const textarea = document.createElement("textarea");
@@ -23,7 +37,8 @@ export function CopyLinkButton({ path, problem, solution }: { path: string; prob
   }
 
   function getUrl() {
-    const origin = window.location.origin || "https://proof-arena.guoxh.dpdns.org";
+    const origin =
+      window.location.origin || "https://proof-arena.guoxh.dpdns.org";
     return `${origin}${path}`;
   }
 
@@ -34,7 +49,10 @@ export function CopyLinkButton({ path, problem, solution }: { path: string; prob
       const kindMeta = getSolutionKindMeta(solution.kind);
       const tags = getSolutionShareTags(problem, solution).slice(0, 5);
       const scenarios = solution.suitableFor.slice(0, 3).join("、") || "待补充";
-      const costs = [...solution.tradeoffs, ...solution.limitations].slice(0, 2).join("；") || "待补充";
+      const costs =
+        [...solution.tradeoffs, ...solution.limitations]
+          .slice(0, 2)
+          .join("；") || "待补充";
 
       return `【ProofArena 解法分享】
 题目：${problem.title}
@@ -62,7 +80,12 @@ ${solution.transferValue}
     }
 
     const routes = getShareRoutes(problem);
-    const routeByLabel = new Map(routes.map((route) => [route.label, route.solution?.title ?? "待补充解法"]));
+    const routeByLabel = new Map(
+      routes.map((route) => [
+        route.label,
+        route.solution?.title ?? "待补充解法",
+      ]),
+    );
     const tags = getShareTags(problem).slice(0, 5);
 
     return `【ProofArena 解法分享】
@@ -82,7 +105,6 @@ ${solution.transferValue}
   }
 
   async function copyValue(value: string, target: "link" | "text") {
-
     try {
       if (navigator.clipboard?.writeText) {
         try {
@@ -108,7 +130,11 @@ ${solution.transferValue}
         onClick={() => copyValue(getUrl(), "link")}
         className="inline-flex h-11 w-full items-center justify-center gap-2 border border-white/20 px-4 text-sm font-bold text-white transition hover:border-cyan-400/50 hover:text-cyan-300 sm:w-auto"
       >
-        {copiedTarget === "link" ? <Check className="size-4 text-emerald-300" /> : <ClipboardCopy className="size-4" />}
+        {copiedTarget === "link" ? (
+          <Check className="size-4 text-emerald-300" />
+        ) : (
+          <ClipboardCopy className="size-4" />
+        )}
         {copiedTarget === "link" ? "链接已复制" : "复制链接"}
       </button>
       {problem && (
@@ -117,7 +143,11 @@ ${solution.transferValue}
           onClick={() => copyValue(buildShareText(), "text")}
           className="inline-flex h-11 w-full items-center justify-center gap-2 bg-cyan-400 px-4 text-sm font-bold text-zinc-950 transition hover:bg-cyan-300 sm:w-auto"
         >
-          {copiedTarget === "text" ? <Check className="size-4" /> : <MessageSquareText className="size-4" />}
+          {copiedTarget === "text" ? (
+            <Check className="size-4" />
+          ) : (
+            <MessageSquareText className="size-4" />
+          )}
           {copiedTarget === "text" ? "文案已复制" : "复制分享文案"}
         </button>
       )}

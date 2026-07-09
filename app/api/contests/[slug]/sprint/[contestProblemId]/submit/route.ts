@@ -1,8 +1,15 @@
 import { NextResponse } from "next/server";
 import { createClient, createServiceClient } from "@/lib/supabase-server";
-import { computeSprintStepScore, loadSprintContestProblem, normalizeSprintAnswer, sprintAnswerMatches } from "@/lib/contest-sprint";
+import {
+  computeSprintStepScore,
+  loadSprintContestProblem,
+  normalizeSprintAnswer,
+  sprintAnswerMatches,
+} from "@/lib/contest-sprint";
 
-type RouteContext = { params: Promise<{ slug: string; contestProblemId: string }> };
+type RouteContext = {
+  params: Promise<{ slug: string; contestProblemId: string }>;
+};
 
 const DEFAULT_TIME_LIMIT_SECONDS = 120;
 
@@ -27,13 +34,23 @@ export async function POST(req: Request, context: RouteContext) {
   const { data: authData } = await authClient.auth.getUser();
   const user = authData.user;
   if (!user) {
-    return NextResponse.json({ error: "需要登录后才能提交计时题。" }, { status: 401 });
+    return NextResponse.json(
+      { error: "需要登录后才能提交计时题。" },
+      { status: 401 },
+    );
   }
 
   const supabase = createServiceClient();
-  const loaded = await loadSprintContestProblem(supabase, slug, contestProblemId);
+  const loaded = await loadSprintContestProblem(
+    supabase,
+    slug,
+    contestProblemId,
+  );
   if (!loaded.ok) {
-    return NextResponse.json({ error: loaded.error }, { status: loaded.status });
+    return NextResponse.json(
+      { error: loaded.error },
+      { status: loaded.status },
+    );
   }
   const { contestProblem } = loaded;
 
@@ -45,7 +62,10 @@ export async function POST(req: Request, context: RouteContext) {
     .maybeSingle();
 
   if (!attempt) {
-    return NextResponse.json({ error: "请先解锁这道计时题。" }, { status: 400 });
+    return NextResponse.json(
+      { error: "请先解锁这道计时题。" },
+      { status: 400 },
+    );
   }
 
   // Idempotent: a duplicate/retried submit (double click, network retry)
@@ -61,7 +81,10 @@ export async function POST(req: Request, context: RouteContext) {
   }
 
   if (!contestProblem.answer_type) {
-    return NextResponse.json({ error: "这道计时题还没有配置答案类型，请联系管理员。" }, { status: 500 });
+    return NextResponse.json(
+      { error: "这道计时题还没有配置答案类型，请联系管理员。" },
+      { status: 500 },
+    );
   }
 
   // Answer keys live in a separate admin-only table (contest_problem_answer_keys)
@@ -75,17 +98,28 @@ export async function POST(req: Request, context: RouteContext) {
     .maybeSingle();
 
   if (!answerKeyRow) {
-    return NextResponse.json({ error: "这道计时题还没有配置标准答案，请联系管理员。" }, { status: 500 });
+    return NextResponse.json(
+      { error: "这道计时题还没有配置标准答案，请联系管理员。" },
+      { status: 500 },
+    );
   }
 
   const now = new Date();
   const unlockAt = new Date(attempt.unlock_at);
   const elapsedMs = Math.max(0, now.getTime() - unlockAt.getTime());
-  const timeLimitSeconds = Number(contestProblem.time_limit_seconds) || DEFAULT_TIME_LIMIT_SECONDS;
+  const timeLimitSeconds =
+    Number(contestProblem.time_limit_seconds) || DEFAULT_TIME_LIMIT_SECONDS;
   const isOverTime = elapsedMs > timeLimitSeconds * 1000;
 
-  const isCorrect = sprintAnswerMatches(contestProblem.answer_type, rawAnswer, answerKeyRow.answer_key);
-  const normalizedAnswer = normalizeSprintAnswer(contestProblem.answer_type, rawAnswer);
+  const isCorrect = sprintAnswerMatches(
+    contestProblem.answer_type,
+    rawAnswer,
+    answerKeyRow.answer_key,
+  );
+  const normalizedAnswer = normalizeSprintAnswer(
+    contestProblem.answer_type,
+    rawAnswer,
+  );
 
   // fill_blank answers that don't match any key after normalization are NOT
   // immediately marked wrong — the participant may have used a correct but
@@ -101,7 +135,13 @@ export async function POST(req: Request, context: RouteContext) {
   //             null  → pending human review (fill_blank, within time, no key match).
   const isCorrectDb: boolean | null = isFillBlankPending ? null : isCorrect;
   const score =
-    isCorrect && !isOverTime ? computeSprintStepScore(Number(contestProblem.score_max), timeLimitSeconds, elapsedMs) : 0;
+    isCorrect && !isOverTime
+      ? computeSprintStepScore(
+          Number(contestProblem.score_max),
+          timeLimitSeconds,
+          elapsedMs,
+        )
+      : 0;
 
   const { data: updated, error: updateError } = await supabase
     .from("contest_sprint_attempts")
@@ -140,7 +180,10 @@ export async function POST(req: Request, context: RouteContext) {
       });
     }
 
-    return NextResponse.json({ error: updateError?.message || "提交失败，请重试。" }, { status: 500 });
+    return NextResponse.json(
+      { error: updateError?.message || "提交失败，请重试。" },
+      { status: 500 },
+    );
   }
 
   return NextResponse.json({

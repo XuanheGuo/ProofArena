@@ -80,8 +80,16 @@ export function CopySubmissionTemplate() {
       onClick={copyTemplate}
       className="inline-flex h-12 w-full items-center justify-center gap-2 border border-white/20 px-5 text-sm font-bold text-white transition hover:border-cyan-400/50 hover:text-cyan-300 sm:w-auto"
     >
-      {status === "copied" ? <Check className="size-4 text-emerald-400" /> : <ClipboardCopy className="size-4" />}
-      {status === "copied" ? "已复制模板" : status === "failed" ? "复制失败，请手动复制" : "复制模板"}
+      {status === "copied" ? (
+        <Check className="size-4 text-emerald-400" />
+      ) : (
+        <ClipboardCopy className="size-4" />
+      )}
+      {status === "copied"
+        ? "已复制模板"
+        : status === "failed"
+          ? "复制失败，请手动复制"
+          : "复制模板"}
     </button>
   );
 }

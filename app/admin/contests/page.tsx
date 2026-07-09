@@ -11,7 +11,9 @@ function canManageContests(role?: string | null) {
 
 export default async function AdminContestsPage() {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   if (!user) redirect("/auth/login");
 
@@ -37,7 +39,9 @@ export default async function AdminContestsPage() {
     getProblems(),
     serviceSupabase
       .from("problem_drafts")
-      .select("id, year, region, paper, number, difficulty, question_type, tags, title, statement, answer, notes, status, promoted_problem_id, created_at")
+      .select(
+        "id, year, region, paper, number, difficulty, question_type, tags, title, statement, answer, notes, status, promoted_problem_id, created_at",
+      )
       .order("created_at", { ascending: false }),
   ]);
   const problemOptions = problems.map((problem) => ({
@@ -49,11 +53,17 @@ export default async function AdminContestsPage() {
   return (
     <main className="min-h-screen bg-zinc-950 px-4 py-10 md:px-6">
       <div className="mx-auto max-w-7xl">
-        <Link href="/admin" className="inline-flex items-center gap-2 text-sm text-zinc-500 transition hover:text-white">
+        <Link
+          href="/admin"
+          className="inline-flex items-center gap-2 text-sm text-zinc-500 transition hover:text-white"
+        >
           <ArrowLeft className="size-4" />
           返回管理面板
         </Link>
-        <AdminContestsView problems={problemOptions} initialDraftProblems={draftProblems ?? []} />
+        <AdminContestsView
+          problems={problemOptions}
+          initialDraftProblems={draftProblems ?? []}
+        />
       </div>
     </main>
   );

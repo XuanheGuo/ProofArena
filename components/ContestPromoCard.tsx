@@ -21,7 +21,8 @@ export function ContestPromoCard({ slug, title }: ContestPromoCardProps) {
   const [entered, setEntered] = useState(false);
 
   useEffect(() => {
-    const alreadyDismissed = window.localStorage.getItem(`${STORAGE_PREFIX}${slug}`) === "1";
+    const alreadyDismissed =
+      window.localStorage.getItem(`${STORAGE_PREFIX}${slug}`) === "1";
     setDismissed(alreadyDismissed);
     if (alreadyDismissed) return;
     const frame = requestAnimationFrame(() => setEntered(true));
@@ -32,18 +33,18 @@ export function ContestPromoCard({ slug, title }: ContestPromoCardProps) {
 
   return (
     <div
-      className={`fixed bottom-4 right-4 z-50 flex items-center gap-1.5 transition-all duration-300 ease-out sm:bottom-5 sm:right-5 ${
+      className={`fixed bottom-4 right-3 z-50 flex max-w-[calc(100vw-1.5rem)] items-center gap-1.5 transition-all duration-300 ease-out sm:bottom-5 sm:right-5 sm:max-w-none ${
         entered ? "translate-y-0 opacity-100" : "translate-y-2 opacity-0"
       }`}
     >
       <Link
         href={`/contests/${slug}`}
-        className="flex items-center gap-2 border border-amber-400/25 bg-zinc-950/95 py-2 pl-2 pr-3 shadow-2xl shadow-black/30 transition hover:border-amber-300/50"
+        className="pressable surface-panel flex min-w-0 items-center gap-2 border-amber-400/25 bg-zinc-950/95 py-2 pl-2 pr-3 shadow-2xl shadow-black/30 hover:border-amber-300/50"
       >
-        <span className="grid size-7 shrink-0 place-items-center bg-amber-300 text-zinc-950">
+        <span className="grid size-7 shrink-0 place-items-center  bg-amber-300 text-zinc-950">
           <Trophy className="size-3.5" />
         </span>
-        <span className="max-w-[8rem] truncate text-xs font-bold text-white sm:max-w-[14rem]">
+        <span className="min-w-0 max-w-[9.5rem] truncate text-xs font-bold text-white sm:max-w-[14rem]">
           {title}
         </span>
         <ArrowRight className="size-3.5 shrink-0 text-zinc-500" />
@@ -55,7 +56,7 @@ export function ContestPromoCard({ slug, title }: ContestPromoCardProps) {
           setDismissed(true);
         }}
         aria-label="关闭比赛推广"
-        className="grid size-7 shrink-0 place-items-center border border-white/10 bg-zinc-950/95 text-zinc-500 transition hover:text-white"
+        className="pressable grid size-8 shrink-0 place-items-center  border border-white/10 bg-zinc-950/95 text-zinc-500 hover:bg-white/10 hover:text-white"
       >
         <X className="size-3.5" />
       </button>

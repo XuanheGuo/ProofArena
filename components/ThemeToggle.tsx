@@ -25,7 +25,9 @@ export function ThemeToggle() {
   useEffect(() => {
     const saved = localStorage.getItem("proofarena-theme");
     const initialMode: ThemeMode =
-      saved === "light" || saved === "dark" || saved === "system" ? saved : "light";
+      saved === "light" || saved === "dark" || saved === "system"
+        ? saved
+        : "light";
     setMode(initialMode);
     applyTheme(initialMode);
 
@@ -47,7 +49,7 @@ export function ThemeToggle() {
 
   return (
     <div
-      className="flex items-center border border-white/10 bg-black/20 p-0.5"
+      className="surface-panel-subtle flex items-center gap-0.5 p-0.5"
       role="group"
       aria-label="主题设置"
     >
@@ -61,7 +63,7 @@ export function ThemeToggle() {
             aria-label={label}
             aria-pressed={active}
             onClick={() => selectMode(optionMode)}
-            className={`grid size-7 place-items-center transition ${
+            className={`pressable grid size-7 place-items-center  ${
               active
                 ? "bg-cyan-400 text-zinc-950"
                 : "text-zinc-500 hover:bg-white/10 hover:text-white"

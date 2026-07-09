@@ -1,18 +1,38 @@
 "use client";
 
-import { Camera, ChevronDown, ChevronUp, Lightbulb, ListChecks, MoveRight, Sparkles } from "lucide-react";
+import {
+  Camera,
+  ChevronDown,
+  ChevronUp,
+  Lightbulb,
+  ListChecks,
+  MoveRight,
+  Sparkles,
+} from "lucide-react";
 import { useMemo, useState } from "react";
 import type { Problem } from "@/lib/types";
 import { CopyLinkButton } from "@/components/CopyLinkButton";
-import { getDefaultShareSolution, ShareCard, type ShareCardMode } from "@/components/ShareCard";
+import {
+  getDefaultShareSolution,
+  ShareCard,
+  type ShareCardMode,
+} from "@/components/ShareCard";
 import { getSolutionKindMeta } from "@/lib/solution-kinds";
 
 export function SolutionSharePanel({ problem }: { problem: Problem }) {
-  const defaultSolution = useMemo(() => getDefaultShareSolution(problem), [problem]);
+  const defaultSolution = useMemo(
+    () => getDefaultShareSolution(problem),
+    [problem],
+  );
   const [expanded, setExpanded] = useState(false);
-  const [selectedId, setSelectedId] = useState(defaultSolution?.id ?? problem.solutions[0]?.id ?? "");
+  const [selectedId, setSelectedId] = useState(
+    defaultSolution?.id ?? problem.solutions[0]?.id ?? "",
+  );
   const [shareMode, setShareMode] = useState<ShareCardMode>("idea");
-  const selectedSolution = problem.solutions.find((solution) => solution.id === selectedId) ?? defaultSolution ?? problem.solutions[0];
+  const selectedSolution =
+    problem.solutions.find((solution) => solution.id === selectedId) ??
+    defaultSolution ??
+    problem.solutions[0];
 
   if (!selectedSolution) return null;
 
@@ -32,17 +52,29 @@ export function SolutionSharePanel({ problem }: { problem: Problem }) {
             <Sparkles className="size-4" />
             分享这份解法
           </div>
-          <h2 className="mt-3 text-2xl font-black text-white md:text-3xl">生成解法分享卡</h2>
+          <h2 className="mt-3 text-2xl font-black text-white md:text-3xl">
+            生成解法分享卡
+          </h2>
           <p className="mt-3 max-w-2xl text-sm leading-7 text-zinc-400">
             默认折叠，需要传播时再展开。比起分享整道题，更适合截取某个解法的启发点、关键转化和适用场景。
           </p>
           <div className="mt-4 flex flex-wrap gap-2 text-xs">
-            <span className={`border px-2.5 py-1.5 font-bold ${selectedMeta.className}`}>{selectedMeta.label}</span>
-            <span className="border border-white/10 px-2.5 py-1.5 text-zinc-400">{selectedSolution.title}</span>
+            <span
+              className={`border px-2.5 py-1.5 font-bold ${selectedMeta.className}`}
+            >
+              {selectedMeta.label}
+            </span>
+            <span className="border border-white/10 px-2.5 py-1.5 text-zinc-400">
+              {selectedSolution.title}
+            </span>
           </div>
         </div>
         <span className="grid size-10 shrink-0 place-items-center border border-white/15 text-zinc-300">
-          {expanded ? <ChevronUp className="size-5" /> : <ChevronDown className="size-5" />}
+          {expanded ? (
+            <ChevronUp className="size-5" />
+          ) : (
+            <ChevronDown className="size-5" />
+          )}
         </span>
       </button>
 
@@ -71,11 +103,17 @@ export function SolutionSharePanel({ problem }: { problem: Problem }) {
           </div>
 
           <div className="mb-6">
-            <p className="mb-2 text-xs font-bold uppercase tracking-widest text-zinc-500">截图内容</p>
+            <p className="mb-2 text-xs font-bold uppercase tracking-widest text-zinc-500">
+              截图内容
+            </p>
             <div className="inline-flex max-w-full overflow-x-auto border border-white/10 bg-black/20 p-1">
               {[
                 { id: "idea" as const, label: "只看思路", icon: Lightbulb },
-                { id: "transform" as const, label: "关键转化", icon: MoveRight },
+                {
+                  id: "transform" as const,
+                  label: "关键转化",
+                  icon: MoveRight,
+                },
                 { id: "full" as const, label: "完整过程", icon: ListChecks },
               ].map((option) => {
                 const active = shareMode === option.id;
@@ -88,7 +126,9 @@ export function SolutionSharePanel({ problem }: { problem: Problem }) {
                     aria-pressed={active}
                     onClick={() => setShareMode(option.id)}
                     className={`inline-flex shrink-0 items-center gap-1.5 px-3 py-2 text-xs font-bold transition ${
-                      active ? "bg-cyan-400 text-zinc-950" : "text-zinc-400 hover:bg-white/[0.06] hover:text-white"
+                      active
+                        ? "bg-cyan-400 text-zinc-950"
+                        : "text-zinc-400 hover:bg-white/[0.06] hover:text-white"
                     }`}
                   >
                     <Icon className="size-3.5" />
@@ -115,15 +155,29 @@ export function SolutionSharePanel({ problem }: { problem: Problem }) {
                 </p>
               </div>
               <div className="mt-5 flex flex-col gap-3 sm:flex-row">
-                <CopyLinkButton path={`/problems/${problem.id}`} problem={problem} solution={selectedSolution} />
+                <CopyLinkButton
+                  path={`/problems/${problem.id}`}
+                  problem={problem}
+                  solution={selectedSolution}
+                />
               </div>
             </div>
             <div className="mx-auto w-full max-w-[520px] border border-white/10 bg-black/20 p-2 sm:p-3 xl:max-w-[940px]">
               <div className="mb-2 flex items-center justify-between gap-3 px-1 text-[11px] font-bold uppercase tracking-widest text-zinc-500">
                 <span>截图区域</span>
-                <span>{shareMode === "full" ? "完整过程" : shareMode === "transform" ? "关键转化" : "只看思路"}</span>
+                <span>
+                  {shareMode === "full"
+                    ? "完整过程"
+                    : shareMode === "transform"
+                      ? "关键转化"
+                      : "只看思路"}
+                </span>
               </div>
-              <ShareCard problem={problem} solution={selectedSolution} mode={shareMode} />
+              <ShareCard
+                problem={problem}
+                solution={selectedSolution}
+                mode={shareMode}
+              />
             </div>
           </div>
         </div>

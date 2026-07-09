@@ -33,7 +33,8 @@ export function ProofGraphReleaseCard({ problem }: { problem: Problem }) {
   ];
 
   function buildCitation() {
-    const origin = window.location.origin || "https://proof-arena.guoxh.dpdns.org";
+    const origin =
+      window.location.origin || "https://proof-arena.guoxh.dpdns.org";
     return `ProofArena · ${problem.title}
 ${problem.year} ${problem.region} · ${problem.paper} · ${problem.number}
 
@@ -78,7 +79,8 @@ ${origin}/problems/${problem.id}`;
                 key={c.label}
                 className="border border-white/10 bg-white/[0.02] px-2 py-1 text-[11px] text-zinc-400"
               >
-                <span className="font-bold text-zinc-200">{c.count}</span> {c.label}
+                <span className="font-bold text-zinc-200">{c.count}</span>{" "}
+                {c.label}
               </span>
             ))}
           </div>
@@ -88,7 +90,11 @@ ${origin}/problems/${problem.id}`;
           onClick={copyCitation}
           className="inline-flex h-9 w-fit items-center gap-1.5 border border-cyan-400/30 px-3 text-xs font-bold text-cyan-300 transition hover:bg-cyan-400/10"
         >
-          {copied ? <Check className="size-3.5 text-emerald-300" /> : <ClipboardCopy className="size-3.5" />}
+          {copied ? (
+            <Check className="size-3.5 text-emerald-300" />
+          ) : (
+            <ClipboardCopy className="size-3.5" />
+          )}
           {copied ? "已复制" : "复制引用"}
         </button>
       </div>

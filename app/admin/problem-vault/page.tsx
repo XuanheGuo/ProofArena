@@ -21,12 +21,15 @@ type ContestRefRow = {
   title: string | null;
   answer_type: string | null;
   timed_mode_enabled: boolean | null;
-  contests: { slug: string; title: string } | { slug: string; title: string }[] | null;
+  contests:
+    { slug: string; title: string } | { slug: string; title: string }[] | null;
 };
 
 export default async function ProblemVaultPage() {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   if (!user) redirect("/auth/login");
 
@@ -50,7 +53,11 @@ export default async function ProblemVaultPage() {
   // Service-role reads (bypass RLS) are only reached AFTER the admin/moderator
   // check above — draft content must never serialize into a non-admin page.
   const serviceSupabase = createServiceClient();
-  const [{ data: drafts, error: draftsError }, { data: refRows }, { data: contestRows }] = await Promise.all([
+  const [
+    { data: drafts, error: draftsError },
+    { data: refRows },
+    { data: contestRows },
+  ] = await Promise.all([
     serviceSupabase
       .from("problem_drafts")
       .select(
@@ -59,7 +66,9 @@ export default async function ProblemVaultPage() {
       .order("created_at", { ascending: false }),
     serviceSupabase
       .from("contest_problems")
-      .select("id, draft_problem_id, day_index, problem_phase, title, answer_type, timed_mode_enabled, contests(slug, title)")
+      .select(
+        "id, draft_problem_id, day_index, problem_phase, title, answer_type, timed_mode_enabled, contests(slug, title)",
+      )
       .not("draft_problem_id", "is", null),
     serviceSupabase
       .from("contests")
@@ -76,11 +85,17 @@ export default async function ProblemVaultPage() {
       .from("contest_problem_answer_keys")
       .select("contest_problem_id")
       .in("contest_problem_id", contestProblemIds);
-    keyedIds = new Set((keyRows ?? []).map((row) => row.contest_problem_id as string));
+    keyedIds = new Set(
+      (keyRows ?? []).map((row) => row.contest_problem_id as string),
+    );
   }
 
-  const contestRefs: DraftContestRef[] = ((refRows ?? []) as unknown as ContestRefRow[]).map((row) => {
-    const contest = Array.isArray(row.contests) ? row.contests[0] : row.contests;
+  const contestRefs: DraftContestRef[] = (
+    (refRows ?? []) as unknown as ContestRefRow[]
+  ).map((row) => {
+    const contest = Array.isArray(row.contests)
+      ? row.contests[0]
+      : row.contests;
     return {
       contestProblemId: row.id,
       draftId: row.draft_problem_id,

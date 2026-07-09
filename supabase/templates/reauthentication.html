@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light" />
+    <meta name="supported-color-schemes" content="light" />
+    <title>安全验证码 · ProofArena</title>
+  </head>
+  <body
+    style="
+      margin: 0;
+      padding: 0;
+      background-color: #f4f5f7;
+      font-family:
+        -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;,
+        &quot;PingFang SC&quot;, &quot;Microsoft YaHei&quot;, sans-serif;
+    "
+  >
+    <table
+      role="presentation"
+      width="100%"
+      cellpadding="0"
+      cellspacing="0"
+      style="background-color: #f4f5f7"
+    >
+      <tr>
+        <td align="center" style="padding: 32px 16px">
+          <table
+            role="presentation"
+            width="480"
+            cellpadding="0"
+            cellspacing="0"
+            style="
+              width: 480px;
+              max-width: 100%;
+              background-color: #ffffff;
+              border-radius: 0;
+              overflow: hidden;
+              box-shadow:
+                0 1px 2px rgba(17, 24, 39, 0.04),
+                0 16px 42px rgba(17, 24, 39, 0.07);
+            "
+          >
+            <tr>
+              <td style="background-color: #111318; padding: 28px 32px">
+                <table role="presentation" cellpadding="0" cellspacing="0">
+                  <tr>
+                    <td
+                      style="
+                        width: 32px;
+                        height: 32px;
+                        background-color: #4f46e5;
+                        border-radius: 0;
+                        text-align: center;
+                        vertical-align: middle;
+                        font-size: 13px;
+                        font-weight: 800;
+                        color: #ffffff;
+                        font-family: Arial, sans-serif;
+                      "
+                    >
+                      PA
+                    </td>
+                    <td
+                      style="
+                        padding-left: 10px;
+                        font-size: 16px;
+                        font-weight: 800;
+                        color: #ffffff;
+                        letter-spacing: 0.2px;
+                        font-family: Arial, sans-serif;
+                      "
+                    >
+                      ProofArena
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 36px 32px 8px">
+                <h1
+                  style="
+                    margin: 0 0 12px;
+                    font-size: 20px;
+                    line-height: 1.4;
+                    color: #111827;
+                    font-weight: 800;
+                  "
+                >
+                  安全验证
+                </h1>
+                <p
+                  style="
+                    margin: 0 0 20px;
+                    font-size: 14px;
+                    line-height: 1.75;
+                    color: #4b5563;
+                  "
+                >
+                  你正在 ProofArena 上执行需要额外验证的操作（<strong
+                    style="color: #111827"
+                    >{{ .Email }}</strong
+                  >）。请在页面中输入以下验证码完成确认：
+                </p>
+                <table
+                  role="presentation"
+                  width="100%"
+                  cellpadding="0"
+                  cellspacing="0"
+                >
+                  <tr>
+                    <td
+                      align="center"
+                      style="
+                        background-color: #f4f5f7;
+                        border: 1px solid #e5e7eb;
+                        border-radius: 0;
+                        padding: 18px 0;
+                      "
+                    >
+                      <span
+                        style="
+                          font-family:
+                            &quot;SFMono-Regular&quot;, Consolas, Menlo,
+                            monospace;
+                          font-size: 28px;
+                          font-weight: 800;
+                          letter-spacing: 8px;
+                          color: #111827;
+                        "
+                        >{{ .Token }}</span
+                      >
+                    </td>
+                  </tr>
+                </table>
+                <p
+                  style="
+                    margin: 20px 0 0;
+                    font-size: 12px;
+                    line-height: 1.7;
+                    color: #9ca3af;
+                  "
+                >
+                  验证码 10 分钟内有效，请勿将其提供给任何人（包括自称是
+                  ProofArena
+                  工作人员的人）。如果这不是你本人的操作，请立即修改密码。
+                </p>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 24px 32px 32px">
+                <hr
+                  style="
+                    border: none;
+                    border-top: 1px solid #e5e7eb;
+                    margin: 0 0 20px;
+                  "
+                />
+                <p
+                  style="
+                    margin: 0;
+                    font-size: 12px;
+                    line-height: 1.7;
+                    color: #9ca3af;
+                  "
+                >
+                  ProofArena · 高中数学解法竞技场<br />
+                  同一道题，多种解法，正面交锋。<br />
+                  此邮件由系统自动发送，请勿回复。
+                </p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

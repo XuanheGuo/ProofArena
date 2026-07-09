@@ -21,7 +21,10 @@ export function MethodBoundaryHighlights({ problem }: { problem: Problem }) {
       </div>
       <div className="divide-y divide-white/5">
         {boundaries.map((b) => (
-          <div key={b.id} className="grid gap-3 p-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+          <div
+            key={b.id}
+            className="grid gap-3 p-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]"
+          >
             <div>
               <p className="text-sm font-bold text-zinc-200">{b.methodName}</p>
               <div className="mt-1.5 border-l-2 border-red-400/40 pl-2">

@@ -5,25 +5,25 @@ import { Eye, EyeOff } from "lucide-react";
 import { MathBlock } from "@/components/MathBlock";
 
 const SNIPPETS: Array<{ label: string; insert: string; cursor?: number }> = [
-  { label: "frac",   insert: "\\frac{{}}{{}}", cursor: 7 },
-  { label: "sqrt",   insert: "\\sqrt{{}}", cursor: 6 },
-  { label: "sum",    insert: "\\sum_{{i=1}}^{{n}}", cursor: 5 },
-  { label: "int",    insert: "\\int_{{a}}^{{b}}", cursor: 5 },
-  { label: "lim",    insert: "\\lim_{{x \\to }}", cursor: 12 },
-  { label: "x^n",    insert: "x^{{}}", cursor: 3 },
-  { label: "x_n",    insert: "x_{{}}", cursor: 3 },
-  { label: "≤",      insert: "\\leq " },
-  { label: "≥",      insert: "\\geq " },
-  { label: "≠",      insert: "\\neq " },
-  { label: "·",      insert: "\\cdot " },
-  { label: "×",      insert: "\\times " },
-  { label: "∞",      insert: "\\infty" },
-  { label: "α",      insert: "\\alpha" },
-  { label: "β",      insert: "\\beta" },
-  { label: "θ",      insert: "\\theta" },
-  { label: "π",      insert: "\\pi" },
-  { label: "λ",      insert: "\\lambda" },
-  { label: "$…$",    insert: "${{}}", cursor: 1 },
+  { label: "frac", insert: "\\frac{{}}{{}}", cursor: 7 },
+  { label: "sqrt", insert: "\\sqrt{{}}", cursor: 6 },
+  { label: "sum", insert: "\\sum_{{i=1}}^{{n}}", cursor: 5 },
+  { label: "int", insert: "\\int_{{a}}^{{b}}", cursor: 5 },
+  { label: "lim", insert: "\\lim_{{x \\to }}", cursor: 12 },
+  { label: "x^n", insert: "x^{{}}", cursor: 3 },
+  { label: "x_n", insert: "x_{{}}", cursor: 3 },
+  { label: "≤", insert: "\\leq " },
+  { label: "≥", insert: "\\geq " },
+  { label: "≠", insert: "\\neq " },
+  { label: "·", insert: "\\cdot " },
+  { label: "×", insert: "\\times " },
+  { label: "∞", insert: "\\infty" },
+  { label: "α", insert: "\\alpha" },
+  { label: "β", insert: "\\beta" },
+  { label: "θ", insert: "\\theta" },
+  { label: "π", insert: "\\pi" },
+  { label: "λ", insert: "\\lambda" },
+  { label: "$…$", insert: "${{}}", cursor: 1 },
 ];
 
 interface MathPreviewTextAreaProps {
@@ -46,23 +46,26 @@ export function MathPreviewTextArea({
   const [showPreview, setShowPreview] = useState(true);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const insertSnippet = useCallback((insert: string, cursorOffset?: number) => {
-    const el = textareaRef.current;
-    if (!el) return;
-    const start = el.selectionStart;
-    const end = el.selectionEnd;
-    const selected = value.slice(start, end);
-    // If there's a selection and we're inserting a wrapper like ${}
-    const inner = insert.replace("{{}}", `{${selected}}`);
-    const next = value.slice(0, start) + inner + value.slice(end);
-    onChange(next);
-    // move cursor
-    const pos = start + (cursorOffset ?? inner.length);
-    requestAnimationFrame(() => {
-      el.focus();
-      el.setSelectionRange(pos, pos);
-    });
-  }, [value, onChange]);
+  const insertSnippet = useCallback(
+    (insert: string, cursorOffset?: number) => {
+      const el = textareaRef.current;
+      if (!el) return;
+      const start = el.selectionStart;
+      const end = el.selectionEnd;
+      const selected = value.slice(start, end);
+      // If there's a selection and we're inserting a wrapper like ${}
+      const inner = insert.replace("{{}}", `{${selected}}`);
+      const next = value.slice(0, start) + inner + value.slice(end);
+      onChange(next);
+      // move cursor
+      const pos = start + (cursorOffset ?? inner.length);
+      requestAnimationFrame(() => {
+        el.focus();
+        el.setSelectionRange(pos, pos);
+      });
+    },
+    [value, onChange],
+  );
 
   return (
     <div className="grid gap-2 text-sm">
@@ -75,7 +78,11 @@ export function MathPreviewTextArea({
           onClick={() => setShowPreview((v) => !v)}
           className="inline-flex items-center gap-1.5 text-xs text-zinc-500 transition hover:text-zinc-300"
         >
-          {showPreview ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
+          {showPreview ? (
+            <EyeOff className="size-3.5" />
+          ) : (
+            <Eye className="size-3.5" />
+          )}
           {showPreview ? "隐藏预览" : "显示预览"}
         </button>
       </div>
@@ -87,7 +94,7 @@ export function MathPreviewTextArea({
             key={btnLabel}
             type="button"
             onClick={() => insertSnippet(insert, cursor)}
-            className="h-7 rounded border border-white/10 bg-black/30 px-2 font-mono text-[11px] text-zinc-400 transition hover:border-cyan-400/40 hover:text-cyan-300"
+            className="h-7  border border-white/10 bg-black/30 px-2 font-mono text-[11px] text-zinc-400 transition hover:border-cyan-400/40 hover:text-cyan-300"
           >
             {btnLabel}
           </button>

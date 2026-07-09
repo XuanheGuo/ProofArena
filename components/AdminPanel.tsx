@@ -17,6 +17,7 @@ import {
   Users,
   BookOpen,
 } from "lucide-react";
+import { Badge, Panel } from "@/components/ui";
 
 interface AdminStats {
   submissions: {
@@ -59,13 +60,15 @@ function StatCard({
   accent: string;
 }) {
   return (
-    <div className="border border-white/10 bg-black/20 p-4">
+    <Panel tone="subtle" className="p-4">
       <div className="flex items-center justify-between">
         <span className="text-xs font-medium text-zinc-500">{label}</span>
-        <Icon className={`size-4 ${accent}`} />
+        <span className="grid size-8 place-items-center  bg-white/[0.04]">
+          <Icon className={`size-4 ${accent}`} />
+        </span>
       </div>
       <div className="mt-2 text-2xl font-black text-white">{value}</div>
-    </div>
+    </Panel>
   );
 }
 
@@ -87,23 +90,27 @@ function EntryCard({
   return (
     <Link
       href={href}
-      className={`group flex min-h-20 items-center gap-4 border border-white/10 bg-black/20 px-4 py-3 transition hover:border-white/20 hover:bg-white/[0.03]`}
+      className="interactive-lift surface-panel-subtle group flex min-h-20 items-center gap-4 px-4 py-3 hover:border-cyan-400/30"
     >
-      <span className={`grid size-10 shrink-0 place-items-center border border-white/10 bg-zinc-950 ${accent}`}>
+      <span
+        className={`grid size-10 shrink-0 place-items-center  border border-white/10 bg-zinc-950 ${accent}`}
+      >
         <Icon className="size-5" />
       </span>
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <span className="font-bold text-white">{title}</span>
           {badge && (
-            <span className={`rounded px-1.5 py-0.5 text-xs font-bold ${badge.color}`}>
+            <Badge className={`px-1.5 py-0.5 text-xs ${badge.color}`}>
               {badge.label}
-            </span>
+            </Badge>
           )}
         </div>
         <p className="mt-0.5 text-xs leading-5 text-zinc-500">{description}</p>
       </div>
-      <span className="shrink-0 text-zinc-700 transition group-hover:text-zinc-400">→</span>
+      <span className="grid size-7 shrink-0 place-items-center  text-zinc-700 transition group-hover:bg-white/10 group-hover:text-cyan-300">
+        →
+      </span>
     </Link>
   );
 }
@@ -122,8 +129,10 @@ export function AdminPanel({ stats, userEmail }: AdminPanelProps) {
 
       {/* Stats */}
       <section className="mb-8">
-        <h2 className="mb-3 text-xs font-bold uppercase tracking-widest text-zinc-500">数据概览</h2>
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <h2 className="mb-3 text-xs font-bold uppercase tracking-widest text-zinc-500">
+          数据概览
+        </h2>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <StatCard
             label="待审投稿"
             value={stats.submissions.pending}
@@ -149,7 +158,7 @@ export function AdminPanel({ stats, userEmail }: AdminPanelProps) {
             accent="text-violet-400"
           />
         </div>
-        <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
           <StatCard
             label="需要修改"
             value={stats.submissions.needsRevision}
@@ -176,7 +185,7 @@ export function AdminPanel({ stats, userEmail }: AdminPanelProps) {
           />
         </div>
         {stats.submissions.precheckFailed > 0 && (
-          <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
             <StatCard
               label="预筛未通过"
               value={stats.submissions.precheckFailed}
@@ -189,8 +198,10 @@ export function AdminPanel({ stats, userEmail }: AdminPanelProps) {
 
       {/* Entry cards */}
       <section>
-        <h2 className="mb-3 text-xs font-bold uppercase tracking-widest text-zinc-500">功能入口</h2>
-        <div className="grid gap-2 sm:grid-cols-2">
+        <h2 className="mb-3 text-xs font-bold uppercase tracking-widest text-zinc-500">
+          功能入口
+        </h2>
+        <div className="grid gap-3 sm:grid-cols-2">
           <EntryCard
             href="/admin/submissions"
             icon={ShieldCheck}
@@ -199,7 +210,10 @@ export function AdminPanel({ stats, userEmail }: AdminPanelProps) {
             accent="text-cyan-300"
             badge={
               stats.submissions.pending > 0
-                ? { label: `${stats.submissions.pending} 待审`, color: "bg-amber-400/15 text-amber-300" }
+                ? {
+                    label: `${stats.submissions.pending} 待审`,
+                    color: "bg-amber-400/15 text-amber-300",
+                  }
                 : undefined
             }
           />
@@ -211,7 +225,10 @@ export function AdminPanel({ stats, userEmail }: AdminPanelProps) {
             accent="text-yellow-300"
             badge={
               stats.contests.active > 0
-                ? { label: `${stats.contests.active} 进行中`, color: "bg-emerald-400/15 text-emerald-300" }
+                ? {
+                    label: `${stats.contests.active} 进行中`,
+                    color: "bg-emerald-400/15 text-emerald-300",
+                  }
                 : undefined
             }
           />
@@ -223,7 +240,10 @@ export function AdminPanel({ stats, userEmail }: AdminPanelProps) {
             accent="text-violet-300"
             badge={
               stats.drafts.drafting > 0
-                ? { label: `${stats.drafts.drafting} 草稿`, color: "bg-violet-400/15 text-violet-300" }
+                ? {
+                    label: `${stats.drafts.drafting} 草稿`,
+                    color: "bg-violet-400/15 text-violet-300",
+                  }
                 : undefined
             }
           />

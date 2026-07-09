@@ -14,12 +14,16 @@ import { SubmitForm } from "@/components/SubmitForm";
 import { getContest } from "@/lib/contests";
 import { getMyContestRegistration } from "@/lib/contest-registration";
 import { getProblems } from "@/lib/db";
-import { adaptProblemDraftToProblem, getProblemDraftForContestDisplay } from "@/lib/problem-drafts";
+import {
+  adaptProblemDraftToProblem,
+  getProblemDraftForContestDisplay,
+} from "@/lib/problem-drafts";
 import { isContestProblemLocked } from "@/lib/types";
 
 export const metadata: Metadata = {
   title: "提交题目或解法 | ProofArena",
-  description: "向 ProofArena 提交高中数学题目，或为已有题补充可学习、可比较、可验证的解法。",
+  description:
+    "向 ProofArena 提交高中数学题目，或为已有题补充可学习、可比较、可验证的解法。",
 };
 
 const acceptedSolutionTraits = [
@@ -37,16 +41,23 @@ export default async function SubmitPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const [params, problems] = await Promise.all([searchParams, getProblems()]);
-  const contestSlug = typeof params.contest === "string" ? params.contest : undefined;
-  const initialProblemId = typeof params.problem === "string" ? params.problem : undefined;
-  const initialForkSolutionId = typeof params.fork === "string" ? params.fork : undefined;
+  const contestSlug =
+    typeof params.contest === "string" ? params.contest : undefined;
+  const initialProblemId =
+    typeof params.problem === "string" ? params.problem : undefined;
+  const initialForkSolutionId =
+    typeof params.fork === "string" ? params.fork : undefined;
   const contest = contestSlug ? await getContest(contestSlug) : undefined;
-  const contestRegistration = contest ? await getMyContestRegistration(contest.id) : null;
+  const contestRegistration = contest
+    ? await getMyContestRegistration(contest.id)
+    : null;
 
   // A contest problem may be backed by either a public problem (problemId)
   // or a Problem Vault draft (draftProblemId).  Find the match either way.
   const contestProblem = contest?.problems.find(
-    (item) => item.problemId === initialProblemId || item.draftProblemId === initialProblemId,
+    (item) =>
+      item.problemId === initialProblemId ||
+      item.draftProblemId === initialProblemId,
   );
 
   // Contest problems backed by Problem Vault drafts (not yet in the public
@@ -57,7 +68,12 @@ export default async function SubmitPage({
   // (which carries no problem id) also gets a full problem list.
   // isContestProblemLocked guards against premature reveal here just as it
   // does in the dedicated /contests/[slug]/problems/[id] route.
-  let draftProblemOptions: Array<{ id: string; title: string; source: string; solutions: never[] }> = [];
+  let draftProblemOptions: Array<{
+    id: string;
+    title: string;
+    source: string;
+    solutions: never[];
+  }> = [];
   if (contest) {
     const unlockedDraftIds = [
       ...new Set(
@@ -71,7 +87,9 @@ export default async function SubmitPage({
           .map((item) => item.draftProblemId as string),
       ),
     ];
-    const drafts = await Promise.all(unlockedDraftIds.map((id) => getProblemDraftForContestDisplay(id)));
+    const drafts = await Promise.all(
+      unlockedDraftIds.map((id) => getProblemDraftForContestDisplay(id)),
+    );
     draftProblemOptions = drafts
       .filter((draft): draft is NonNullable<typeof draft> => Boolean(draft))
       .map((draft) => {
@@ -108,19 +126,27 @@ export default async function SubmitPage({
     <main className="grid-surface min-h-screen">
       <section className="border-b border-white/10 bg-zinc-950/90">
         <div className="mx-auto max-w-7xl px-5 py-10 sm:px-6 md:py-16 lg:px-8">
-          <Link href="/" className="inline-flex items-center gap-2 text-sm text-zinc-500 hover:text-white">
+          <Link
+            href="/"
+            className="inline-flex items-center gap-2 text-sm text-zinc-500 hover:text-white"
+          >
             <ArrowLeft className="size-4" />
             返回 ProofArena
           </Link>
           <div className="mt-10">
-            <h1 className="text-4xl font-black text-white md:text-5xl">提交题目或解法</h1>
+            <h1 className="text-4xl font-black text-white md:text-5xl">
+              提交题目或解法
+            </h1>
             <p className="mt-4 text-base leading-7 text-zinc-400">
               新题和解法分开提交：题目先进入题库审核，解法则绑定到已有题目。
               不需要格式完美，把来源、题干、思路和步骤说清楚就行。
             </p>
             <p className="mt-3 text-sm text-zinc-600">
               想提交更完整的结构化解法？试试{" "}
-              <Link href="/studio" className="text-cyan-400 hover:text-cyan-300 inline-flex items-center gap-1">
+              <Link
+                href="/studio"
+                className="text-cyan-400 hover:text-cyan-300 inline-flex items-center gap-1"
+              >
                 <Hammer className="size-3" />
                 ProofArena Studio
               </Link>
@@ -140,7 +166,9 @@ export default async function SubmitPage({
               {acceptedSolutionTraits.map(([title, description]) => (
                 <div key={title} className="p-4">
                   <h3 className="text-sm font-bold text-white">{title}</h3>
-                  <p className="mt-2 text-xs leading-5 text-zinc-500">{description}</p>
+                  <p className="mt-2 text-xs leading-5 text-zinc-500">
+                    {description}
+                  </p>
                 </div>
               ))}
             </div>
@@ -152,9 +180,16 @@ export default async function SubmitPage({
               投稿流向
             </div>
             <ol className="mt-4 space-y-3 text-xs leading-5 text-zinc-500">
-              {["提交题目或解法", "进入人工审核", "补充标签与结构", "展示到题目页"].map((item, index) => (
+              {[
+                "提交题目或解法",
+                "进入人工审核",
+                "补充标签与结构",
+                "展示到题目页",
+              ].map((item, index) => (
                 <li key={item} className="grid grid-cols-[1.5rem_1fr] gap-2">
-                  <span className="font-mono font-bold text-cyan-300">{index + 1}</span>
+                  <span className="font-mono font-bold text-cyan-300">
+                    {index + 1}
+                  </span>
                   <span>{item}</span>
                 </li>
               ))}
@@ -188,13 +223,17 @@ export default async function SubmitPage({
               <div>
                 <h2 className="text-sm font-bold text-white">版权与署名</h2>
                 <p className="mt-2 text-xs leading-6 text-zinc-500">
-                  解法内容默认按 CC BY-SA 4.0 共享，代码按 AGPL-3.0 开源。参考他人讨论或公开资料时，请在思路中注明。
+                  解法内容默认按 CC BY-SA 4.0 共享，代码按 AGPL-3.0
+                  开源。参考他人讨论或公开资料时，请在思路中注明。
                 </p>
               </div>
             </div>
             <div className="mt-4 flex flex-wrap gap-2">
               {["CC BY-SA 4.0", "AGPL-3.0", "保留署名"].map((item) => (
-                <span key={item} className="inline-flex items-center gap-1.5 border border-white/10 px-2.5 py-1.5 text-[11px] font-bold text-zinc-400">
+                <span
+                  key={item}
+                  className="inline-flex items-center gap-1.5 border border-white/10 px-2.5 py-1.5 text-[11px] font-bold text-zinc-400"
+                >
                   <Tags className="size-3" />
                   {item}
                 </span>
@@ -212,9 +251,13 @@ export default async function SubmitPage({
               Studio
             </div>
             <p className="mt-2 text-xs leading-6 text-zinc-500">
-              如果你想让解法像正式卡片一样预览、补五维评分和知识点匹配，用 Studio 会更顺手。
+              如果你想让解法像正式卡片一样预览、补五维评分和知识点匹配，用
+              Studio 会更顺手。
             </p>
-            <Link href="/studio" className="mt-4 inline-flex h-9 w-full items-center justify-center gap-2 bg-cyan-400 px-3 text-xs font-bold text-zinc-950 transition hover:bg-cyan-300">
+            <Link
+              href="/studio"
+              className="mt-4 inline-flex h-9 w-full items-center justify-center gap-2 bg-cyan-400 px-3 text-xs font-bold text-zinc-950 transition hover:bg-cyan-300"
+            >
               打开 Studio
             </Link>
           </section>

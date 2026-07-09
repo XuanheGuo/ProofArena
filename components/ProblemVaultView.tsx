@@ -127,15 +127,26 @@ function phaseMeta(phase: string) {
   );
 }
 
-function draftSourceLabel(draft: Pick<ProblemDraft, "year" | "region" | "paper" | "number">) {
-  return [draft.region, draft.paper, draft.number, draft.year ? String(draft.year) : ""]
+function draftSourceLabel(
+  draft: Pick<ProblemDraft, "year" | "region" | "paper" | "number">,
+) {
+  return [
+    draft.region,
+    draft.paper,
+    draft.number,
+    draft.year ? String(draft.year) : "",
+  ]
     .filter(Boolean)
     .join(" · ");
 }
 
 function draftWarnings(draft: ProblemDraft): string[] {
   const warnings: string[] = [];
-  if (!draft.statement || draft.statement.filter((line) => line.trim()).length === 0) warnings.push("缺题干");
+  if (
+    !draft.statement ||
+    draft.statement.filter((line) => line.trim()).length === 0
+  )
+    warnings.push("缺题干");
   if (!draft.answer?.trim()) warnings.push("缺答案");
   if (!draft.source_pdf?.trim()) warnings.push("缺来源 PDF");
   return warnings;
@@ -159,7 +170,10 @@ function buildEditForm(draft: ProblemDraft): DraftEditForm {
   };
 }
 
-const LEARNING_GUIDE_SECTIONS: Array<{ key: keyof LearningGuideData; label: string }> = [
+const LEARNING_GUIDE_SECTIONS: Array<{
+  key: keyof LearningGuideData;
+  label: string;
+}> = [
   { key: "observation", label: "观察" },
   { key: "triggers", label: "触发条件" },
   { key: "pitfalls", label: "易错点" },
@@ -202,17 +216,25 @@ export function ProblemVaultView({
     }
     for (const ref of contestRefs) {
       if (ref.contestSlug && !map.has(ref.contestSlug)) {
-        map.set(ref.contestSlug, { slug: ref.contestSlug, title: ref.contestTitle || ref.contestSlug });
+        map.set(ref.contestSlug, {
+          slug: ref.contestSlug,
+          title: ref.contestTitle || ref.contestSlug,
+        });
       }
     }
     return [...map.values()].sort((a, b) => b.slug.localeCompare(a.slug));
   }, [contestRefs, contests]);
   const [auditContestSlug, setAuditContestSlug] = useState<string>(
-    contestOptions.find((contest) => contest.slug.startsWith("weekly-arena-"))?.slug ?? contestOptions[0]?.slug ?? "",
+    contestOptions.find((contest) => contest.slug.startsWith("weekly-arena-"))
+      ?.slug ??
+      contestOptions[0]?.slug ??
+      "",
   );
   const [drafts, setDrafts] = useState<ProblemDraft[]>(initialDrafts);
   const [selectedId, setSelectedId] = useState<string | null>(
-    initialDrafts.find((d) => d.status === "drafting")?.id ?? initialDrafts[0]?.id ?? null,
+    initialDrafts.find((d) => d.status === "drafting")?.id ??
+      initialDrafts[0]?.id ??
+      null,
   );
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [search, setSearch] = useState("");
@@ -236,9 +258,17 @@ export function ProblemVaultView({
     const query = search.trim().toLowerCase();
     return drafts
       .filter((draft) => {
-        if (statusFilter !== "all" && draft.status !== statusFilter) return false;
+        if (statusFilter !== "all" && draft.status !== statusFilter)
+          return false;
         if (!query) return true;
-        const haystack = [draft.title, draft.paper, draft.id, ...(draft.tags ?? [])].join(" ").toLowerCase();
+        const haystack = [
+          draft.title,
+          draft.paper,
+          draft.id,
+          ...(draft.tags ?? []),
+        ]
+          .join(" ")
+          .toLowerCase();
         return haystack.includes(query);
       })
       .sort((a, b) => {
@@ -250,11 +280,16 @@ export function ProblemVaultView({
 
   const selected = drafts.find((draft) => draft.id === selectedId) ?? null;
   const selectedRefs = selected ? (refsByDraft.get(selected.id) ?? []) : [];
-  const selectedAuditContest = contestOptions.find((contest) => contest.slug === auditContestSlug) ?? null;
-  const isAuditContestBound = Boolean(auditContestSlug && selectedRefs.some((ref) => ref.contestSlug === auditContestSlug));
+  const selectedAuditContest =
+    contestOptions.find((contest) => contest.slug === auditContestSlug) ?? null;
+  const isAuditContestBound = Boolean(
+    auditContestSlug &&
+    selectedRefs.some((ref) => ref.contestSlug === auditContestSlug),
+  );
 
   const contestAudit = useMemo<ContestAuditData>(() => {
-    const contest = contestOptions.find((option) => option.slug === auditContestSlug) ?? null;
+    const contest =
+      contestOptions.find((option) => option.slug === auditContestSlug) ?? null;
     if (!contest) {
       return {
         contest: null,
@@ -269,11 +304,21 @@ export function ProblemVaultView({
     }
 
     const draftPrefix = contestDraftPrefix(contest.slug);
-    const contestSpecificRefs = contestRefs.filter((ref) => ref.contestSlug === contest.slug);
-    const contestRefByDraft = new Map(contestSpecificRefs.map((ref) => [ref.draftId, ref]));
+    const contestSpecificRefs = contestRefs.filter(
+      (ref) => ref.contestSlug === contest.slug,
+    );
+    const contestRefByDraft = new Map(
+      contestSpecificRefs.map((ref) => [ref.draftId, ref]),
+    );
     const contestDrafts = drafts
-      .filter((draft) => (draftPrefix ? draft.id.startsWith(draftPrefix) : false) || contestRefByDraft.has(draft.id))
-      .sort((a, b) => contestDraftSortKey(a.id).localeCompare(contestDraftSortKey(b.id)));
+      .filter(
+        (draft) =>
+          (draftPrefix ? draft.id.startsWith(draftPrefix) : false) ||
+          contestRefByDraft.has(draft.id),
+      )
+      .sort((a, b) =>
+        contestDraftSortKey(a.id).localeCompare(contestDraftSortKey(b.id)),
+      );
 
     const items: WeeklyAuditItem[] = contestDrafts.map((draft) => {
       const ref = contestRefByDraft.get(draft.id) ?? null;
@@ -308,14 +353,23 @@ export function ProblemVaultView({
       bound: items.filter((item) => item.ref).length,
       issueCount: items.reduce((sum, item) => sum + item.issues.length, 0),
       sprintTotal: items.filter((item) => item.phase === "sprint").length,
-      sprintReady: items.filter((item) => item.phase === "sprint" && item.ref?.answerType && item.ref.hasAnswerKey).length,
+      sprintReady: items.filter(
+        (item) =>
+          item.phase === "sprint" &&
+          item.ref?.answerType &&
+          item.ref.hasAnswerKey,
+      ).length,
       grouped,
     };
   }, [auditContestSlug, contestOptions, contestRefs, drafts]);
 
   function selectDraft(id: string) {
     if (id === selectedId) return;
-    if (editForm && !confirm("当前正在编辑，切换草稿将丢弃未保存的修改，确定？")) return;
+    if (
+      editForm &&
+      !confirm("当前正在编辑，切换草稿将丢弃未保存的修改，确定？")
+    )
+      return;
     setSelectedId(id);
     setEditForm(null);
     setError(null);
@@ -388,7 +442,12 @@ export function ProblemVaultView({
 
   async function handlePromote() {
     if (!selected) return;
-    if (!confirm(`确认将「${selected.title || selected.id}」发布到公开题库？此操作不可逆。`)) return;
+    if (
+      !confirm(
+        `确认将「${selected.title || selected.id}」发布到公开题库？此操作不可逆。`,
+      )
+    )
+      return;
 
     setPromoting(true);
     setError(null);
@@ -401,7 +460,12 @@ export function ProblemVaultView({
         setDrafts((current) =>
           current.map((draft) =>
             draft.id === selected.id
-              ? { ...draft, status: "promoted", promoted_problem_id: result.problemId ?? draft.promoted_problem_id }
+              ? {
+                  ...draft,
+                  status: "promoted",
+                  promoted_problem_id:
+                    result.problemId ?? draft.promoted_problem_id,
+                }
               : draft,
           ),
         );
@@ -427,21 +491,29 @@ export function ProblemVaultView({
     }
 
     const supabase = createClient();
-    const { count: submissionCount, error: submissionLookupError } = await supabase
-      .from("submissions")
-      .select("id", { count: "exact", head: true })
-      .eq("draft_problem_id", selected.id);
+    const { count: submissionCount, error: submissionLookupError } =
+      await supabase
+        .from("submissions")
+        .select("id", { count: "exact", head: true })
+        .eq("draft_problem_id", selected.id);
 
     if (submissionLookupError) {
       setError(`删除前检查投稿引用失败：${submissionLookupError.message}`);
       return;
     }
     if ((submissionCount ?? 0) > 0) {
-      setError(`这个草稿已有 ${submissionCount} 条投稿引用，不能直接删除。请先处理或迁移这些投稿。`);
+      setError(
+        `这个草稿已有 ${submissionCount} 条投稿引用，不能直接删除。请先处理或迁移这些投稿。`,
+      );
       return;
     }
 
-    if (!confirm(`确认删除草稿「${selected.title || selected.id}」？删除后无法恢复。`)) return;
+    if (
+      !confirm(
+        `确认删除草稿「${selected.title || selected.id}」？删除后无法恢复。`,
+      )
+    )
+      return;
 
     setDeleting(true);
     setError(null);
@@ -461,7 +533,11 @@ export function ProblemVaultView({
 
     const remaining = drafts.filter((draft) => draft.id !== selected.id);
     setDrafts(remaining);
-    setSelectedId(remaining.find((draft) => draft.status === "drafting")?.id ?? remaining[0]?.id ?? null);
+    setSelectedId(
+      remaining.find((draft) => draft.status === "drafting")?.id ??
+        remaining[0]?.id ??
+        null,
+    );
     setEditForm(null);
     setMessage("草稿已删除。");
   }
@@ -492,7 +568,9 @@ export function ProblemVaultView({
       </div>
 
       {error && (
-        <div className="mb-3 border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-300">{error}</div>
+        <div className="mb-3 border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-300">
+          {error}
+        </div>
       )}
       {message && (
         <div className="mb-3 border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm text-emerald-300">
@@ -550,12 +628,19 @@ export function ProblemVaultView({
             {filteredDrafts.length === 0 ? (
               <div className="p-6 text-center">
                 <Archive className="mx-auto mb-2 size-6 text-zinc-600" />
-                <p className="text-sm text-zinc-500">{drafts.length === 0 ? "草稿箱为空" : "没有匹配的草稿"}</p>
+                <p className="text-sm text-zinc-500">
+                  {drafts.length === 0 ? "草稿箱为空" : "没有匹配的草稿"}
+                </p>
               </div>
             ) : (
               filteredDrafts.map((draft) => {
                 const warnings = draftWarnings(draft);
-                const bound = Boolean(auditContestSlug && (refsByDraft.get(draft.id) ?? []).some((ref) => ref.contestSlug === auditContestSlug));
+                const bound = Boolean(
+                  auditContestSlug &&
+                  (refsByDraft.get(draft.id) ?? []).some(
+                    (ref) => ref.contestSlug === auditContestSlug,
+                  ),
+                );
                 const active = draft.id === selectedId;
                 return (
                   <button
@@ -567,8 +652,12 @@ export function ProblemVaultView({
                     }`}
                   >
                     <div className="flex items-center gap-2">
-                      <p className={`min-w-0 flex-1 truncate text-sm font-bold ${active ? "text-violet-200" : "text-white"}`}>
-                        {draft.title || <span className="text-zinc-500">（无标题）</span>}
+                      <p
+                        className={`min-w-0 flex-1 truncate text-sm font-bold ${active ? "text-violet-200" : "text-white"}`}
+                      >
+                        {draft.title || (
+                          <span className="text-zinc-500">（无标题）</span>
+                        )}
                       </p>
                       <span
                         className={`shrink-0 border px-1.5 py-0.5 text-[10px] font-bold ${
@@ -585,7 +674,9 @@ export function ProblemVaultView({
                       {draft.difficulty ? ` · ${draft.difficulty}` : ""}
                     </p>
                     <div className="mt-1 flex items-center gap-1.5">
-                      <span className="truncate font-mono text-[10px] text-zinc-600">{draft.id}</span>
+                      <span className="truncate font-mono text-[10px] text-zinc-600">
+                        {draft.id}
+                      </span>
                       {bound && (
                         <span className="shrink-0 border border-cyan-400/30 bg-cyan-400/10 px-1 text-[10px] font-bold text-cyan-300">
                           {auditContestSlug.replace(/^weekly-arena-/, "W")}
@@ -608,7 +699,9 @@ export function ProblemVaultView({
         {/* 右侧：详情 / 编辑面板 */}
         <div className="min-w-0 border border-white/10 bg-black/20">
           {!selected ? (
-            <div className="p-10 text-center text-sm text-zinc-500">从左侧选择一个草稿查看完整内容</div>
+            <div className="p-10 text-center text-sm text-zinc-500">
+              从左侧选择一个草稿查看完整内容
+            </div>
           ) : editForm ? (
             <DraftEditor
               form={editForm}
@@ -622,7 +715,11 @@ export function ProblemVaultView({
               draft={selected}
               refs={selectedRefs}
               isAuditContestBound={isAuditContestBound}
-              auditContestLabel={selectedAuditContest?.title || selectedAuditContest?.slug || "当前比赛"}
+              auditContestLabel={
+                selectedAuditContest?.title ||
+                selectedAuditContest?.slug ||
+                "当前比赛"
+              }
               promoting={promoting}
               deleting={deleting}
               onEdit={() => {
@@ -659,7 +756,11 @@ function WeeklyAuditPanel({
     const phaseDiff = weeklyPhaseSortKey(phaseA) - weeklyPhaseSortKey(phaseB);
     return phaseDiff || phaseA.localeCompare(phaseB);
   });
-  const ready = audit.total > 0 && audit.bound === audit.total && audit.issueCount === 0 && audit.sprintReady === audit.sprintTotal;
+  const ready =
+    audit.total > 0 &&
+    audit.bound === audit.total &&
+    audit.issueCount === 0 &&
+    audit.sprintReady === audit.sprintTotal;
 
   return (
     <section className="mb-4 border border-cyan-400/20 bg-cyan-400/[0.04] p-3">
@@ -675,19 +776,28 @@ function WeeklyAuditPanel({
                   : "border-amber-400/40 bg-amber-400/10 text-amber-300"
               }`}
             >
-              {ready ? <CheckCircle2 className="size-3" /> : <AlertTriangle className="size-3" />}
+              {ready ? (
+                <CheckCircle2 className="size-3" />
+              ) : (
+                <AlertTriangle className="size-3" />
+              )}
               {ready ? "可开赛" : "需复核"}
             </span>
           </div>
           <p className="mt-1 text-xs text-zinc-500">
-            {audit.contest ? `${audit.contest.title || audit.contest.slug} · ` : ""}
-            {audit.bound}/{audit.total} 已绑定 · sprint key {audit.sprintReady}/{audit.sprintTotal} · {audit.issueCount} 个检查项
+            {audit.contest
+              ? `${audit.contest.title || audit.contest.slug} · `
+              : ""}
+            {audit.bound}/{audit.total} 已绑定 · sprint key {audit.sprintReady}/
+            {audit.sprintTotal} · {audit.issueCount} 个检查项
           </p>
         </div>
 
         <div className="grid gap-2 text-xs sm:grid-cols-[minmax(12rem,1fr)_repeat(4,auto)]">
           <label className="grid gap-1">
-            <span className="text-[10px] uppercase tracking-wide text-zinc-600">检查比赛</span>
+            <span className="text-[10px] uppercase tracking-wide text-zinc-600">
+              检查比赛
+            </span>
             <select
               value={selectedContestSlug}
               onChange={(event) => onSelectContest(event.target.value)}
@@ -706,8 +816,15 @@ function WeeklyAuditPanel({
           </label>
           <AuditMetric label="草稿" value={String(audit.total)} />
           <AuditMetric label="已绑定" value={`${audit.bound}/${audit.total}`} />
-          <AuditMetric label="计时 key" value={`${audit.sprintReady}/${audit.sprintTotal}`} />
-          <AuditMetric label="问题项" value={String(audit.issueCount)} tone={audit.issueCount > 0 ? "warn" : "ok"} />
+          <AuditMetric
+            label="计时 key"
+            value={`${audit.sprintReady}/${audit.sprintTotal}`}
+          />
+          <AuditMetric
+            label="问题项"
+            value={String(audit.issueCount)}
+            tone={audit.issueCount > 0 ? "warn" : "ok"}
+          />
         </div>
       </div>
 
@@ -715,21 +832,31 @@ function WeeklyAuditPanel({
         <p className="mt-3 text-xs text-zinc-500">暂无可检查的比赛。</p>
       ) : audit.total === 0 ? (
         <p className="mt-3 text-xs text-zinc-500">
-          没有检测到{audit.draftPrefix ? ` ${audit.draftPrefix}* 草稿或` : ""}绑定到该比赛的草稿。
+          没有检测到{audit.draftPrefix ? ` ${audit.draftPrefix}* 草稿或` : ""}
+          绑定到该比赛的草稿。
         </p>
       ) : (
         <div className="mt-3 grid gap-2 xl:grid-cols-4">
           {groups.map(([phase, items]) => {
             const meta = phaseMeta(phase);
-            const sorted = [...items].sort((a, b) => a.dayIndex - b.dayIndex || contestDraftSortKey(a.draft.id).localeCompare(contestDraftSortKey(b.draft.id)));
+            const sorted = [...items].sort(
+              (a, b) =>
+                a.dayIndex - b.dayIndex ||
+                contestDraftSortKey(a.draft.id).localeCompare(
+                  contestDraftSortKey(b.draft.id),
+                ),
+            );
             return (
               <div key={phase} className="border border-white/10 bg-black/25">
                 <div className="flex items-center justify-between border-b border-white/10 px-3 py-2">
-                  <span className={`border px-1.5 py-0.5 text-[10px] font-bold ${meta.className}`}>
+                  <span
+                    className={`border px-1.5 py-0.5 text-[10px] font-bold ${meta.className}`}
+                  >
                     {meta.label}
                   </span>
                   <span className="text-[10px] text-zinc-500">
-                    {sorted.filter((item) => item.issues.length === 0).length}/{sorted.length} OK
+                    {sorted.filter((item) => item.issues.length === 0).length}/
+                    {sorted.length} OK
                   </span>
                 </div>
                 <div className="max-h-56 overflow-y-auto">
@@ -749,7 +876,9 @@ function WeeklyAuditPanel({
                           <span className="shrink-0 font-mono text-[10px] text-zinc-500">
                             {item.ref ? `D${item.dayIndex}` : "--"}
                           </span>
-                          <span className={`min-w-0 flex-1 truncate text-xs font-bold ${active ? "text-violet-200" : "text-zinc-200"}`}>
+                          <span
+                            className={`min-w-0 flex-1 truncate text-xs font-bold ${active ? "text-violet-200" : "text-zinc-200"}`}
+                          >
                             {item.draft.title || item.draft.id}
                           </span>
                           <span
@@ -762,9 +891,13 @@ function WeeklyAuditPanel({
                             {good ? "OK" : item.issues.length}
                           </span>
                         </div>
-                        <p className="mt-0.5 truncate text-[10px] text-zinc-600">{item.slotTitle}</p>
+                        <p className="mt-0.5 truncate text-[10px] text-zinc-600">
+                          {item.slotTitle}
+                        </p>
                         {item.issues.length > 0 && (
-                          <p className="mt-1 truncate text-[10px] text-amber-300">{item.issues.join(" · ")}</p>
+                          <p className="mt-1 truncate text-[10px] text-amber-300">
+                            {item.issues.join(" · ")}
+                          </p>
                         )}
                       </button>
                     );
@@ -779,13 +912,27 @@ function WeeklyAuditPanel({
   );
 }
 
-function AuditMetric({ label, value, tone = "neutral" }: { label: string; value: string; tone?: "neutral" | "ok" | "warn" }) {
+function AuditMetric({
+  label,
+  value,
+  tone = "neutral",
+}: {
+  label: string;
+  value: string;
+  tone?: "neutral" | "ok" | "warn";
+}) {
   return (
     <div className="border border-white/10 bg-black/30 px-3 py-2">
-      <p className="text-[10px] uppercase tracking-wide text-zinc-600">{label}</p>
+      <p className="text-[10px] uppercase tracking-wide text-zinc-600">
+        {label}
+      </p>
       <p
         className={`mt-0.5 font-mono text-sm font-bold ${
-          tone === "ok" ? "text-emerald-300" : tone === "warn" ? "text-amber-300" : "text-zinc-200"
+          tone === "ok"
+            ? "text-emerald-300"
+            : tone === "warn"
+              ? "text-amber-300"
+              : "text-zinc-200"
         }`}
       >
         {value}
@@ -819,7 +966,10 @@ function DraftDetail({
   const guide = draft.learning_guide;
   const hasGuide =
     guide &&
-    (LEARNING_GUIDE_SECTIONS.some(({ key }) => Array.isArray(guide[key]) && (guide[key] as string[]).length > 0) ||
+    (LEARNING_GUIDE_SECTIONS.some(
+      ({ key }) =>
+        Array.isArray(guide[key]) && (guide[key] as string[]).length > 0,
+    ) ||
       (guide.recommendation ?? "").trim());
 
   return (
@@ -834,7 +984,9 @@ function DraftDetail({
             {draft.difficulty ? ` · ${draft.difficulty}` : ""}
             {draft.question_type ? ` · ${draft.question_type}` : ""}
           </p>
-          <p className="mt-0.5 font-mono text-[11px] text-zinc-600">{draft.id}</p>
+          <p className="mt-0.5 font-mono text-[11px] text-zinc-600">
+            {draft.id}
+          </p>
         </div>
         <div className="flex shrink-0 flex-wrap items-center gap-2">
           <span
@@ -895,7 +1047,13 @@ function DraftDetail({
             disabled={promoting}
             className="inline-flex h-8 items-center gap-1.5 border border-violet-500/30 bg-violet-500/10 px-3 text-xs font-bold text-violet-300 transition hover:border-violet-400/50 hover:bg-violet-500/20 disabled:opacity-50"
           >
-            {promoting ? "发布中…" : <>发布到公开题库 <ArrowUpRight className="size-3" /></>}
+            {promoting ? (
+              "发布中…"
+            ) : (
+              <>
+                发布到公开题库 <ArrowUpRight className="size-3" />
+              </>
+            )}
           </button>
         )}
         {draft.status !== "promoted" && (
@@ -903,7 +1061,9 @@ function DraftDetail({
             type="button"
             onClick={onDelete}
             disabled={deleting || refs.length > 0}
-            title={refs.length > 0 ? "这个草稿已被比赛引用，请先解绑" : "删除草稿"}
+            title={
+              refs.length > 0 ? "这个草稿已被比赛引用，请先解绑" : "删除草稿"
+            }
             className="inline-flex h-8 items-center gap-1.5 border border-red-500/30 px-3 text-xs font-bold text-red-300 transition hover:bg-red-500/10 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Trash2 className="size-3.5" />
@@ -914,7 +1074,9 @@ function DraftDetail({
 
       {/* 比赛引用 */}
       <section className="mt-5">
-        <h4 className="text-xs font-black uppercase tracking-wider text-zinc-500">比赛引用</h4>
+        <h4 className="text-xs font-black uppercase tracking-wider text-zinc-500">
+          比赛引用
+        </h4>
         {refs.length === 0 ? (
           <p className="mt-2 text-sm text-zinc-600">未被任何比赛引用</p>
         ) : (
@@ -922,7 +1084,10 @@ function DraftDetail({
             {refs.map((ref) => {
               const phase = phaseMeta(ref.phase);
               return (
-                <div key={ref.contestProblemId} className="border border-white/10 bg-white/[0.02] p-3">
+                <div
+                  key={ref.contestProblemId}
+                  className="border border-white/10 bg-white/[0.02] p-3"
+                >
                   <div className="flex flex-wrap items-center gap-2 text-xs">
                     <Link
                       href={`/contests/${ref.contestSlug}`}
@@ -931,7 +1096,9 @@ function DraftDetail({
                       {ref.contestSlug}
                     </Link>
                     <span className="text-zinc-500">Day {ref.dayIndex}</span>
-                    <span className={`border px-1.5 py-0.5 text-[10px] font-bold ${phase.className}`}>
+                    <span
+                      className={`border px-1.5 py-0.5 text-[10px] font-bold ${phase.className}`}
+                    >
                       {phase.label}
                     </span>
                     <span className="text-zinc-300">{ref.slotTitle}</span>
@@ -945,7 +1112,10 @@ function DraftDetail({
                             : "border-red-500/40 bg-red-500/10 text-red-300"
                         }`}
                       >
-                        answer_type {ref.answerType ? `已配置（${ANSWER_TYPE_LABELS[ref.answerType] ?? ref.answerType}）` : "未配置"}
+                        answer_type{" "}
+                        {ref.answerType
+                          ? `已配置（${ANSWER_TYPE_LABELS[ref.answerType] ?? ref.answerType}）`
+                          : "未配置"}
                       </span>
                       <span
                         className={`inline-flex items-center gap-1 border px-1.5 py-0.5 text-[10px] font-bold ${
@@ -968,7 +1138,9 @@ function DraftDetail({
 
       {/* 题干 */}
       <section className="mt-5">
-        <h4 className="text-xs font-black uppercase tracking-wider text-zinc-500">题干</h4>
+        <h4 className="text-xs font-black uppercase tracking-wider text-zinc-500">
+          题干
+        </h4>
         {draft.statement && draft.statement.length > 0 ? (
           <div className="mt-2 space-y-2 border border-white/10 bg-white/[0.02] p-4 text-sm leading-7 text-zinc-200">
             {draft.statement.map((paragraph, index) => (
@@ -984,7 +1156,9 @@ function DraftDetail({
 
       {/* 答案 */}
       <section className="mt-5">
-        <h4 className="text-xs font-black uppercase tracking-wider text-zinc-500">答案</h4>
+        <h4 className="text-xs font-black uppercase tracking-wider text-zinc-500">
+          答案
+        </h4>
         {draft.answer?.trim() ? (
           <div className="mt-2 border border-white/10 bg-white/[0.02] p-4 text-sm leading-7 text-zinc-200">
             <MathBlock>{draft.answer}</MathBlock>
@@ -996,11 +1170,16 @@ function DraftDetail({
 
       {/* 标签 */}
       <section className="mt-5">
-        <h4 className="text-xs font-black uppercase tracking-wider text-zinc-500">标签</h4>
+        <h4 className="text-xs font-black uppercase tracking-wider text-zinc-500">
+          标签
+        </h4>
         {draft.tags && draft.tags.length > 0 ? (
           <div className="mt-2 flex flex-wrap gap-1.5">
             {draft.tags.map((tag) => (
-              <span key={tag} className="border border-white/10 bg-white/5 px-2 py-0.5 text-xs text-zinc-300">
+              <span
+                key={tag}
+                className="border border-white/10 bg-white/5 px-2 py-0.5 text-xs text-zinc-300"
+              >
                 {tag}
               </span>
             ))}
@@ -1012,12 +1191,18 @@ function DraftDetail({
 
       {/* 来源 */}
       <section className="mt-5">
-        <h4 className="text-xs font-black uppercase tracking-wider text-zinc-500">来源</h4>
+        <h4 className="text-xs font-black uppercase tracking-wider text-zinc-500">
+          来源
+        </h4>
         <p className="mt-2 text-sm text-zinc-400">
           {draft.source_pdf?.trim() ? (
             <>
               <span className="font-mono text-xs">{draft.source_pdf}</span>
-              {draft.source_page ? <span className="text-zinc-500">（第 {draft.source_page} 页）</span> : null}
+              {draft.source_page ? (
+                <span className="text-zinc-500">
+                  （第 {draft.source_page} 页）
+                </span>
+              ) : null}
             </>
           ) : (
             <span className="text-zinc-600">（无来源 PDF）</span>
@@ -1025,7 +1210,8 @@ function DraftDetail({
         </p>
         {draft.answer_pdf?.trim() && (
           <p className="mt-1 text-sm text-zinc-500">
-            答案 PDF：<span className="font-mono text-xs">{draft.answer_pdf}</span>
+            答案 PDF：
+            <span className="font-mono text-xs">{draft.answer_pdf}</span>
           </p>
         )}
       </section>
@@ -1033,7 +1219,9 @@ function DraftDetail({
       {/* 备注 */}
       {draft.notes?.trim() && (
         <section className="mt-5">
-          <h4 className="text-xs font-black uppercase tracking-wider text-zinc-500">备注</h4>
+          <h4 className="text-xs font-black uppercase tracking-wider text-zinc-500">
+            备注
+          </h4>
           <p className="mt-2 whitespace-pre-wrap border border-white/10 bg-white/[0.02] p-3 text-sm leading-6 text-zinc-400">
             {draft.notes}
           </p>
@@ -1043,7 +1231,9 @@ function DraftDetail({
       {/* 学习指南 */}
       {hasGuide && (
         <section className="mt-5">
-          <h4 className="text-xs font-black uppercase tracking-wider text-zinc-500">学习指南</h4>
+          <h4 className="text-xs font-black uppercase tracking-wider text-zinc-500">
+            学习指南
+          </h4>
           <div className="mt-2 grid gap-3 border border-white/10 bg-white/[0.02] p-4">
             {LEARNING_GUIDE_SECTIONS.map(({ key, label }) => {
               const items = guide?.[key];
@@ -1160,7 +1350,9 @@ function DraftEditor({
           <span className="font-bold text-white">题型</span>
           <select
             value={form.question_type}
-            onChange={(e) => onChange({ ...form, question_type: e.target.value })}
+            onChange={(e) =>
+              onChange({ ...form, question_type: e.target.value })
+            }
             className="h-10 border border-white/10 bg-zinc-950 px-3 text-sm text-white outline-none transition focus:border-cyan-400/50"
           >
             <option value="单选">单选</option>
@@ -1172,7 +1364,9 @@ function DraftEditor({
       </div>
 
       <label className="grid gap-1 text-sm">
-        <span className="font-bold text-white">标签（用逗号、顿号或换行分隔）</span>
+        <span className="font-bold text-white">
+          标签（用逗号、顿号或换行分隔）
+        </span>
         <input
           type="text"
           value={form.tags}

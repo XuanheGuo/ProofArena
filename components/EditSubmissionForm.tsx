@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { AlertCircle, Send, X } from 'lucide-react';
-import { createClient } from '@/lib/supabase-client';
+import { useState } from "react";
+import { AlertCircle, Send, X } from "lucide-react";
+import { createClient } from "@/lib/supabase-client";
 import {
   ALLOWED_IMAGE_TYPES,
   MAX_GENERAL_TEXT_CHARS,
@@ -12,17 +12,22 @@ import {
   clampText,
   extensionForImageType,
   isAllowedImage,
-} from '@/lib/security';
-import { ImageUploadField, SelectField, TextArea, TextField } from '@/components/SubmitForm';
-import { MathPreviewTextArea } from '@/components/MathPreviewTextArea';
+} from "@/lib/security";
+import {
+  ImageUploadField,
+  SelectField,
+  TextArea,
+  TextField,
+} from "@/components/SubmitForm";
+import { MathPreviewTextArea } from "@/components/MathPreviewTextArea";
 
-type SolutionKind = 'standard' | 'insight' | 'robust' | 'teaching';
+type SolutionKind = "standard" | "insight" | "robust" | "teaching";
 
 const KINDS: Array<{ value: SolutionKind; label: string }> = [
-  { value: 'standard', label: '标准解' },
-  { value: 'insight', label: '启发解' },
-  { value: 'robust', label: '稳健解' },
-  { value: 'teaching', label: '教学解' },
+  { value: "standard", label: "标准解" },
+  { value: "insight", label: "启发解" },
+  { value: "robust", label: "稳健解" },
+  { value: "teaching", label: "教学解" },
 ];
 
 type ChallengeInfo = {
@@ -36,7 +41,7 @@ type ChallengeInfo = {
 
 export type EditableSubmission = {
   id: string;
-  submission_type: 'problem' | 'solution';
+  submission_type: "problem" | "solution";
   problem_id: string | null;
   problem_source: string | null;
   kind: SolutionKind;
@@ -55,7 +60,9 @@ export type EditableSubmission = {
     verification?: string;
     imageUrls?: string[];
     json?: {
-      solution?: ({ challenge?: ChallengeInfo | null } & Record<string, unknown>) | undefined;
+      solution?:
+        | ({ challenge?: ChallengeInfo | null } & Record<string, unknown>)
+        | undefined;
       [key: string]: unknown;
     };
     [key: string]: unknown;
@@ -74,7 +81,14 @@ function toLines(value: string) {
     .filter(Boolean);
 }
 
-function buildProblemEditMarkdown(form: { title: string; source: string; statement: string; answer: string; tags: string[]; note: string }) {
+function buildProblemEditMarkdown(form: {
+  title: string;
+  source: string;
+  statement: string;
+  answer: string;
+  tags: string[];
+  note: string;
+}) {
   return `# 题目投稿：${form.title}
 
 ## 来源
@@ -84,13 +98,13 @@ ${form.source}
 ${form.statement}
 
 ## 答案
-${form.answer || '（未填写）'}
+${form.answer || "（未填写）"}
 
 ## 标签
-${form.tags.map((tag) => `- ${tag}`).join('\n') || '（未填写）'}
+${form.tags.map((tag) => `- ${tag}`).join("\n") || "（未填写）"}
 
 ## 备注
-${form.note || '（无）'}
+${form.note || "（无）"}
 `;
 }
 
@@ -103,7 +117,9 @@ function buildSolutionEditMarkdown(
     steps: string;
     insight: string;
     verification: string;
-    challenge: (ChallengeInfo & { claim: string; advantages: string[]; risk: string }) | null;
+    challenge:
+      | (ChallengeInfo & { claim: string; advantages: string[]; risk: string })
+      | null;
   },
   problemLabel: string,
 ) {
@@ -115,33 +131,37 @@ ${problemLabel}
 ## 类型
 ${KINDS.find((k) => k.value === form.kind)?.label ?? form.kind}
 
-${form.challenge ? `## 挑战对象
+${
+  form.challenge
+    ? `## 挑战对象
 ${form.challenge.targetSolutionTitle ?? form.challenge.targetSolutionId}
 
 ## 我比它强在哪里
-${form.challenge.claim || '（未填写）'}
+${form.challenge.claim || "（未填写）"}
 
 ## 优势标签
-${form.challenge.advantages.map((item) => `- ${item}`).join('\n') || '（未填写）'}
+${form.challenge.advantages.map((item) => `- ${item}`).join("\n") || "（未填写）"}
 
 ## 风险自评
-${form.challenge.risk || '（未填写）'}
+${form.challenge.risk || "（未填写）"}
 
-` : ''}
+`
+    : ""
+}
 ## 思路来源
 ${form.approach}
 
 ## 关键转化
-${form.keyTransform || '（未填写）'}
+${form.keyTransform || "（未填写）"}
 
 ## 完整步骤
 ${form.steps}
 
 ## 最值得学的地方
-${form.insight || '（未填写）'}
+${form.insight || "（未填写）"}
 
 ## 可验证位置
-${form.verification || '（未填写）'}
+${form.verification || "（未填写）"}
 `;
 }
 
@@ -165,27 +185,42 @@ export function EditSubmissionForm({
   onSaved: (updated: EditableSubmission) => void;
 }) {
   const supabase = createClient();
-  const isProblem = submission.submission_type === 'problem';
+  const isProblem = submission.submission_type === "problem";
   const previousSolution = submission.content.json?.solution ?? {};
-  const challengeMeta = (previousSolution.challenge ?? null) as ChallengeInfo | null;
+  const challengeMeta = (previousSolution.challenge ??
+    null) as ChallengeInfo | null;
   const hasChallenge = Boolean(submission.challenge_target_solution_id);
 
-  const [title, setTitle] = useState(submission.title ?? '');
-  const [kind, setKind] = useState<SolutionKind>(submission.kind ?? 'standard');
-  const [source, setSource] = useState(submission.content.source ?? submission.problem_source ?? '');
-  const [statement, setStatement] = useState(submission.content.statement ?? '');
-  const [answer, setAnswer] = useState(submission.content.answer ?? '');
-  const [tags, setTags] = useState((submission.content.tags ?? []).join('\n'));
-  const [note, setNote] = useState(submission.content.note ?? '');
+  const [title, setTitle] = useState(submission.title ?? "");
+  const [kind, setKind] = useState<SolutionKind>(submission.kind ?? "standard");
+  const [source, setSource] = useState(
+    submission.content.source ?? submission.problem_source ?? "",
+  );
+  const [statement, setStatement] = useState(
+    submission.content.statement ?? "",
+  );
+  const [answer, setAnswer] = useState(submission.content.answer ?? "");
+  const [tags, setTags] = useState((submission.content.tags ?? []).join("\n"));
+  const [note, setNote] = useState(submission.content.note ?? "");
 
-  const [approach, setApproach] = useState(submission.content.approach ?? '');
-  const [keyTransform, setKeyTransform] = useState(submission.content.keyTransform ?? '');
-  const [steps, setSteps] = useState(submission.content.steps ?? '');
-  const [insight, setInsight] = useState(submission.content.insight ?? '');
-  const [verification, setVerification] = useState(submission.content.verification ?? '');
-  const [challengeClaim, setChallengeClaim] = useState(submission.challenge_claim ?? '');
-  const [challengeAdvantages, setChallengeAdvantages] = useState((submission.challenge_advantages ?? []).join('\n'));
-  const [challengeRisk, setChallengeRisk] = useState(submission.challenge_risk ?? '');
+  const [approach, setApproach] = useState(submission.content.approach ?? "");
+  const [keyTransform, setKeyTransform] = useState(
+    submission.content.keyTransform ?? "",
+  );
+  const [steps, setSteps] = useState(submission.content.steps ?? "");
+  const [insight, setInsight] = useState(submission.content.insight ?? "");
+  const [verification, setVerification] = useState(
+    submission.content.verification ?? "",
+  );
+  const [challengeClaim, setChallengeClaim] = useState(
+    submission.challenge_claim ?? "",
+  );
+  const [challengeAdvantages, setChallengeAdvantages] = useState(
+    (submission.challenge_advantages ?? []).join("\n"),
+  );
+  const [challengeRisk, setChallengeRisk] = useState(
+    submission.challenge_risk ?? "",
+  );
 
   const [existingImageUrls, setExistingImageUrls] = useState(
     submission.attachment_urls ?? submission.content.imageUrls ?? [],
@@ -193,7 +228,7 @@ export function EditSubmissionForm({
   const [newImageFiles, setNewImageFiles] = useState<File[]>([]);
   const [uploadingCount, setUploadingCount] = useState(0);
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
 
   const totalImageCount = existingImageUrls.length + newImageFiles.length;
 
@@ -203,11 +238,13 @@ export function EditSubmissionForm({
       .filter(isAllowedImage)
       .slice(0, Math.max(0, MAX_IMAGE_COUNT - existingImageUrls.length));
     if (next.length === newImageFiles.length && files.length > 0) {
-      setError(`图片需为 JPG/PNG/WebP/GIF，单张不超过 ${Math.round(MAX_IMAGE_BYTES / 1024 / 1024)}MB，且总数不超过 ${MAX_IMAGE_COUNT} 张。`);
+      setError(
+        `图片需为 JPG/PNG/WebP/GIF，单张不超过 ${Math.round(MAX_IMAGE_BYTES / 1024 / 1024)}MB，且总数不超过 ${MAX_IMAGE_COUNT} 张。`,
+      );
       return;
     }
     setNewImageFiles(next);
-    setError('');
+    setError("");
   }
 
   function removeExistingImage(index: number) {
@@ -220,14 +257,14 @@ export function EditSubmissionForm({
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
-    setError('');
+    setError("");
 
     if (isProblem && !statement.trim()) {
-      setError('请填写完整题干。');
+      setError("请填写完整题干。");
       return;
     }
     if (!isProblem && (!approach.trim() || !steps.trim())) {
-      setError('请填写思路来源和完整步骤。');
+      setError("请填写思路来源和完整步骤。");
       return;
     }
 
@@ -235,45 +272,61 @@ export function EditSubmissionForm({
     try {
       const { data: userData } = await supabase.auth.getUser();
       const user = userData.user;
-      if (!user) throw new Error('登录状态已失效，请重新登录后再试。');
+      if (!user) throw new Error("登录状态已失效，请重新登录后再试。");
 
       const uploadedUrls: string[] = [];
       if (newImageFiles.length) {
         setUploadingCount(newImageFiles.length);
         for (const file of newImageFiles) {
           if (!isAllowedImage(file)) {
-            throw new Error(`图片需为 JPG/PNG/WebP/GIF，且单张不超过 ${Math.round(MAX_IMAGE_BYTES / 1024 / 1024)}MB。`);
+            throw new Error(
+              `图片需为 JPG/PNG/WebP/GIF，且单张不超过 ${Math.round(MAX_IMAGE_BYTES / 1024 / 1024)}MB。`,
+            );
           }
           const ext = extensionForImageType(file.type);
           const path = `${user.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
           const { error: uploadError } = await supabase.storage
-            .from('submission-images')
-            .upload(path, file, { cacheControl: '3600', contentType: file.type, upsert: false });
-          if (uploadError) throw new Error(uploadError.message || '图片上传失败');
-          const { data: publicUrlData } = supabase.storage.from('submission-images').getPublicUrl(path);
-          if (publicUrlData.publicUrl) uploadedUrls.push(publicUrlData.publicUrl);
+            .from("submission-images")
+            .upload(path, file, {
+              cacheControl: "3600",
+              contentType: file.type,
+              upsert: false,
+            });
+          if (uploadError)
+            throw new Error(uploadError.message || "图片上传失败");
+          const { data: publicUrlData } = supabase.storage
+            .from("submission-images")
+            .getPublicUrl(path);
+          if (publicUrlData.publicUrl)
+            uploadedUrls.push(publicUrlData.publicUrl);
           setUploadingCount((n) => Math.max(0, n - 1));
         }
       }
-      const imageUrls = [...existingImageUrls, ...uploadedUrls].slice(0, MAX_IMAGE_COUNT);
+      const imageUrls = [...existingImageUrls, ...uploadedUrls].slice(
+        0,
+        MAX_IMAGE_COUNT,
+      );
 
       const patch = isProblem
         ? buildProblemPatch(imageUrls)
         : buildSolutionPatch(imageUrls);
 
       const { data, error: updateError } = await supabase
-        .from('submissions')
+        .from("submissions")
         .update(patch)
-        .eq('id', submission.id)
-        .select('*');
+        .eq("id", submission.id)
+        .select("*");
 
-      if (updateError) throw new Error(updateError.message || '保存失败，请稍后再试。');
+      if (updateError)
+        throw new Error(updateError.message || "保存失败，请稍后再试。");
       if (!data || data.length === 0) {
-        throw new Error('没有权限修改这条投稿，或它已经不是"需要修改"状态，请刷新页面后重试。');
+        throw new Error(
+          '没有权限修改这条投稿，或它已经不是"需要修改"状态，请刷新页面后重试。',
+        );
       }
       onSaved(data[0] as EditableSubmission);
     } catch (err) {
-      setError(err instanceof Error ? err.message : '提交失败，请稍后再试。');
+      setError(err instanceof Error ? err.message : "提交失败，请稍后再试。");
     } finally {
       setSubmitting(false);
       setUploadingCount(0);
@@ -310,7 +363,7 @@ export function EditSubmissionForm({
         imageUrls,
       },
       attachment_urls: imageUrls,
-      status: 'pending',
+      status: "pending",
       moderator_notes: null,
     };
   }
@@ -318,13 +371,20 @@ export function EditSubmissionForm({
   function buildSolutionPatch(imageUrls: string[]) {
     const normalizedTitle = clampText(title, MAX_TITLE_CHARS);
     const normalizedApproach = clampText(approach, MAX_GENERAL_TEXT_CHARS);
-    const normalizedKeyTransform = clampText(keyTransform, MAX_GENERAL_TEXT_CHARS);
+    const normalizedKeyTransform = clampText(
+      keyTransform,
+      MAX_GENERAL_TEXT_CHARS,
+    );
     const normalizedSteps = clampText(steps, MAX_GENERAL_TEXT_CHARS);
     const normalizedInsight = clampText(insight, MAX_GENERAL_TEXT_CHARS);
-    const normalizedVerification = clampText(verification, MAX_GENERAL_TEXT_CHARS);
+    const normalizedVerification = clampText(
+      verification,
+      MAX_GENERAL_TEXT_CHARS,
+    );
     const challenge = hasChallenge
       ? {
-          targetSolutionId: submission.challenge_target_solution_id ?? undefined,
+          targetSolutionId:
+            submission.challenge_target_solution_id ?? undefined,
           targetSolutionTitle: challengeMeta?.targetSolutionTitle,
           targetSolutionAuthor: challengeMeta?.targetSolutionAuthor,
           claim: clampText(challengeClaim, MAX_GENERAL_TEXT_CHARS),
@@ -343,7 +403,7 @@ export function EditSubmissionForm({
         verification: normalizedVerification,
         challenge,
       },
-      submission.problem_source ?? submission.problem_id ?? '',
+      submission.problem_source ?? submission.problem_id ?? "",
     );
 
     return {
@@ -372,7 +432,11 @@ export function EditSubmissionForm({
             observationSignal: normalizedApproach,
             challenge,
             ...(challenge
-              ? { challengeClaim: challenge.claim, challengeAdvantages: challenge.advantages, challengeRisk: challenge.risk }
+              ? {
+                  challengeClaim: challenge.claim,
+                  challengeAdvantages: challenge.advantages,
+                  challengeRisk: challenge.risk,
+                }
               : {}),
           },
         },
@@ -381,13 +445,16 @@ export function EditSubmissionForm({
       challenge_advantages: challenge?.advantages ?? [],
       challenge_risk: challenge?.risk ?? null,
       attachment_urls: imageUrls,
-      status: 'pending',
+      status: "pending",
       moderator_notes: null,
     };
   }
 
   return (
-    <form onSubmit={handleSubmit} className="mt-4 space-y-5 rounded border border-cyan-400/25 bg-cyan-400/[0.03] p-5">
+    <form
+      onSubmit={handleSubmit}
+      className="mt-4 space-y-5  border border-cyan-400/25 bg-cyan-400/[0.03] p-5"
+    >
       <div className="flex items-center justify-between gap-3">
         <h4 className="text-sm font-bold text-white">修改并重新提交</h4>
         <button
@@ -403,38 +470,136 @@ export function EditSubmissionForm({
       {isProblem ? (
         <>
           <div className="grid gap-4 sm:grid-cols-2">
-            <TextField required label="题目来源" value={source} onChange={setSource} placeholder="例如：2026 天津卷第 20 题" />
-            <TextField required label="题目标题" value={title} onChange={setTitle} placeholder="用一句话概括题目主题" />
+            <TextField
+              required
+              label="题目来源"
+              value={source}
+              onChange={setSource}
+              placeholder="例如：2026 天津卷第 20 题"
+            />
+            <TextField
+              required
+              label="题目标题"
+              value={title}
+              onChange={setTitle}
+              placeholder="用一句话概括题目主题"
+            />
           </div>
-          <MathPreviewTextArea required label="完整题干" value={statement} onChange={setStatement} rows={8} placeholder="支持 LaTeX：$\frac{1}{2}$、$$\sum_{i=1}^n$$" />
+          <MathPreviewTextArea
+            required
+            label="完整题干"
+            value={statement}
+            onChange={setStatement}
+            rows={8}
+            placeholder="支持 LaTeX：$\frac{1}{2}$、$$\sum_{i=1}^n$$"
+          />
           <div className="grid gap-4 sm:grid-cols-2">
-            <MathPreviewTextArea label="标准答案" value={answer} onChange={setAnswer} rows={4} placeholder="答案，支持 LaTeX" />
-            <TextArea label="标签" value={tags} onChange={setTags} rows={4} placeholder="导数、圆锥曲线、数列" />
+            <MathPreviewTextArea
+              label="标准答案"
+              value={answer}
+              onChange={setAnswer}
+              rows={4}
+              placeholder="答案，支持 LaTeX"
+            />
+            <TextArea
+              label="标签"
+              value={tags}
+              onChange={setTags}
+              rows={4}
+              placeholder="导数、圆锥曲线、数列"
+            />
           </div>
-          <TextArea label="补充说明" value={note} onChange={setNote} rows={3} placeholder="来源链接、图片说明、你希望补充的审核信息" />
+          <TextArea
+            label="补充说明"
+            value={note}
+            onChange={setNote}
+            rows={3}
+            placeholder="来源链接、图片说明、你希望补充的审核信息"
+          />
         </>
       ) : (
         <>
           <div className="grid gap-4 sm:grid-cols-[1.5fr_1fr]">
-            <TextField required label="解法标题" value={title} onChange={setTitle} placeholder="一句话概括这条解法" />
-            <SelectField label="解法类型" value={kind} onChange={(value) => setKind(value as SolutionKind)} options={KINDS.map((k) => k.value)} />
+            <TextField
+              required
+              label="解法标题"
+              value={title}
+              onChange={setTitle}
+              placeholder="一句话概括这条解法"
+            />
+            <SelectField
+              label="解法类型"
+              value={kind}
+              onChange={(value) => setKind(value as SolutionKind)}
+              options={KINDS.map((k) => k.value)}
+            />
           </div>
-          <TextArea required label="思路来源" value={approach} onChange={setApproach} rows={4} placeholder="为什么会想到这条路线？" />
-          <TextArea label="关键转化" value={keyTransform} onChange={setKeyTransform} rows={3} placeholder="真正改变问题形态的一步" />
-          <TextArea required label="完整步骤" value={steps} onChange={setSteps} rows={8} placeholder="写出能独立复算的推理链" />
+          <TextArea
+            required
+            label="思路来源"
+            value={approach}
+            onChange={setApproach}
+            rows={4}
+            placeholder="为什么会想到这条路线？"
+          />
+          <TextArea
+            label="关键转化"
+            value={keyTransform}
+            onChange={setKeyTransform}
+            rows={3}
+            placeholder="真正改变问题形态的一步"
+          />
+          <TextArea
+            required
+            label="完整步骤"
+            value={steps}
+            onChange={setSteps}
+            rows={8}
+            placeholder="写出能独立复算的推理链"
+          />
           <div className="grid gap-4 xl:grid-cols-2">
-            <TextArea label="最值得学的地方" value={insight} onChange={setInsight} rows={4} />
-            <TextArea label="可验证位置" value={verification} onChange={setVerification} rows={4} />
+            <TextArea
+              label="最值得学的地方"
+              value={insight}
+              onChange={setInsight}
+              rows={4}
+            />
+            <TextArea
+              label="可验证位置"
+              value={verification}
+              onChange={setVerification}
+              rows={4}
+            />
           </div>
           {hasChallenge && (
-            <div className="space-y-4 rounded border border-amber-400/20 bg-amber-400/[0.04] p-4">
+            <div className="space-y-4  border border-amber-400/20 bg-amber-400/[0.04] p-4">
               <p className="text-xs font-bold text-amber-300">
-                挑战对象：{challengeMeta?.targetSolutionTitle ?? submission.challenge_target_solution_id}
-                {challengeMeta?.targetSolutionAuthor ? ` / ${challengeMeta.targetSolutionAuthor}` : ''}
+                挑战对象：
+                {challengeMeta?.targetSolutionTitle ??
+                  submission.challenge_target_solution_id}
+                {challengeMeta?.targetSolutionAuthor
+                  ? ` / ${challengeMeta.targetSolutionAuthor}`
+                  : ""}
               </p>
-              <TextArea label="我比它强在哪里" value={challengeClaim} onChange={setChallengeClaim} rows={3} />
-              <TextArea label="优势标签" value={challengeAdvantages} onChange={setChallengeAdvantages} rows={2} placeholder="计算更简、思路更自然" />
-              <TextArea label="风险自评" value={challengeRisk} onChange={setChallengeRisk} rows={2} />
+              <TextArea
+                label="我比它强在哪里"
+                value={challengeClaim}
+                onChange={setChallengeClaim}
+                rows={3}
+              />
+              <TextArea
+                label="优势标签"
+                value={challengeAdvantages}
+                onChange={setChallengeAdvantages}
+                rows={2}
+                placeholder="计算更简、思路更自然"
+              />
+              <TextArea
+                label="风险自评"
+                value={challengeRisk}
+                onChange={setChallengeRisk}
+                rows={2}
+              />
             </div>
           )}
         </>
@@ -444,9 +609,16 @@ export function EditSubmissionForm({
         {existingImageUrls.length > 0 && (
           <div className="grid gap-2 sm:grid-cols-2">
             {existingImageUrls.map((url, index) => (
-              <div key={url} className="group relative overflow-hidden border border-white/10 bg-black/30">
+              <div
+                key={url}
+                className="group relative overflow-hidden border border-white/10 bg-black/30"
+              >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={url} alt="已上传图片" className="h-32 w-full object-contain" />
+                <img
+                  src={url}
+                  alt="已上传图片"
+                  className="h-32 w-full object-contain"
+                />
                 <div className="absolute inset-x-0 bottom-0 flex items-center justify-end gap-2 bg-black/70 px-2 py-1.5 opacity-0 transition-opacity group-hover:opacity-100">
                   <button
                     type="button"
@@ -462,7 +634,12 @@ export function EditSubmissionForm({
           </div>
         )}
         {totalImageCount < MAX_IMAGE_COUNT && (
-          <ImageUploadField files={newImageFiles} onAdd={updateNewImageFiles} onRemove={removeNewImage} uploadingCount={uploadingCount} />
+          <ImageUploadField
+            files={newImageFiles}
+            onAdd={updateNewImageFiles}
+            onRemove={removeNewImage}
+            uploadingCount={uploadingCount}
+          />
         )}
       </div>
 
@@ -477,10 +654,10 @@ export function EditSubmissionForm({
         <button
           type="submit"
           disabled={submitting}
-          className="inline-flex h-10 items-center justify-center gap-2 rounded bg-cyan-400 px-5 text-sm font-bold text-zinc-950 transition active:translate-y-px hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-60"
+          className="inline-flex h-10 items-center justify-center gap-2  bg-cyan-400 px-5 text-sm font-bold text-zinc-950 transition active:translate-y-px hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-60"
         >
           <Send className="size-4" />
-          {submitting ? '提交中…' : '重新提交审核'}
+          {submitting ? "提交中…" : "重新提交审核"}
         </button>
         <button
           type="button"
@@ -491,7 +668,13 @@ export function EditSubmissionForm({
           取消
         </button>
       </div>
-      <p className="text-xs text-zinc-600">图片总数不能超过 {MAX_IMAGE_COUNT} 张，支持 {ALLOWED_IMAGE_TYPES.map((type) => type.replace('image/', '').toUpperCase()).join(' / ')}。重新提交后状态会回到"等待审核"。</p>
+      <p className="text-xs text-zinc-600">
+        图片总数不能超过 {MAX_IMAGE_COUNT} 张，支持{" "}
+        {ALLOWED_IMAGE_TYPES.map((type) =>
+          type.replace("image/", "").toUpperCase(),
+        ).join(" / ")}
+        。重新提交后状态会回到"等待审核"。
+      </p>
     </form>
   );
 }
