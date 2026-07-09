@@ -107,7 +107,7 @@ export async function GET(_req: Request, context: RouteContext) {
       problemId: s.problem_id as string | null,
       draftProblemId: s.draft_problem_id as string | null,
       contestProblemKey: s.contest_problem_key as string | null,
-      status: s.status as "pending" | "approved" | "rejected" | "needs_revision",
+      status: s.status as "pending" | "approved" | "rejected" | "needs_revision" | "precheck_failed",
       createdAt: s.created_at as string,
       isPostContest: Boolean(s.is_post_contest),
     })),

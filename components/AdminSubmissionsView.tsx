@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { publishSubmission } from '@/lib/publish-submission';
 import { createClient } from '@/lib/supabase-client';
 import {
+  AlertCircle,
   Check,
   CheckCircle2,
   ChevronDown,
@@ -29,7 +30,7 @@ import { getSolutionKindMeta } from '@/lib/solution-kinds';
 import { contestSolutionTypeMeta } from '@/lib/contest-meta';
 import type { ContestSolutionType, SolutionScores } from '@/lib/types';
 
-type SubmissionStatus = 'pending' | 'approved' | 'rejected' | 'needs_revision';
+type SubmissionStatus = 'pending' | 'approved' | 'rejected' | 'needs_revision' | 'precheck_failed';
 type SolutionKind = 'standard' | 'insight' | 'robust' | 'teaching';
 
 type SubmissionContent = {
@@ -592,13 +593,15 @@ export function AdminSubmissionsView() {
       approved: 'border-emerald-400/30 bg-emerald-400/[0.06] text-emerald-300',
       rejected: 'border-red-400/30 bg-red-400/[0.06] text-red-300',
       needs_revision: 'border-cyan-400/30 bg-cyan-400/[0.06] text-cyan-300',
+      precheck_failed: 'border-orange-400/30 bg-orange-400/[0.06] text-orange-300',
     };
-    const labels = { pending: '待审核', approved: '已通过', rejected: '已拒绝', needs_revision: '需修改' };
+    const labels = { pending: '待审核', approved: '已通过', rejected: '已拒绝', needs_revision: '需修改', precheck_failed: '预筛未通过' };
     return (
       <span className={`inline-flex items-center gap-1.5 rounded border px-2 py-1 text-xs font-bold ${styles[status as keyof typeof styles]}`}>
         {status === 'pending' && <Clock className="size-3" />}
         {status === 'approved' && <CheckCircle2 className="size-3" />}
         {status === 'rejected' && <XCircle className="size-3" />}
+        {status === 'precheck_failed' && <AlertCircle className="size-3" />}
         {labels[status as keyof typeof labels]}
       </span>
     );

@@ -6,7 +6,7 @@ import { revalidateContestSlug, revalidatePublicProblemPaths } from '@/lib/reval
 import { MAX_TITLE_CHARS, clampText } from '@/lib/security';
 import type { SolutionScores } from '@/lib/types';
 
-type SubmissionStatus = 'pending' | 'approved' | 'rejected' | 'needs_revision';
+type SubmissionStatus = 'pending' | 'approved' | 'rejected' | 'needs_revision' | 'precheck_failed';
 type SolutionKind = 'standard' | 'insight' | 'robust' | 'teaching';
 
 type SubmissionContent = {

@@ -2,12 +2,12 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { CheckCircle2, Clock, Lock, LogIn, MessageSquareText, Timer, XCircle } from "lucide-react";
+import { AlertCircle, CheckCircle2, Clock, Lock, LogIn, MessageSquareText, Timer, XCircle } from "lucide-react";
 import { createClient } from "@/lib/supabase-client";
 import { formatContestDateTime } from "@/lib/format-contest-time";
 import type { Contest, ContestProblem } from "@/lib/types";
 
-type SubmissionStatus = "pending" | "approved" | "rejected" | "needs_revision";
+type SubmissionStatus = "pending" | "approved" | "rejected" | "needs_revision" | "precheck_failed";
 
 type MySubmission = {
   id: string;
@@ -61,6 +61,7 @@ const statusMeta: Record<SubmissionStatus, { label: string; className: string; i
   approved: { label: "已通过", className: "border-emerald-500/40 bg-emerald-500/[0.07] text-emerald-300", icon: CheckCircle2 },
   rejected: { label: "已拒绝", className: "border-red-500/40 bg-red-500/[0.07] text-red-300", icon: XCircle },
   needs_revision: { label: "需修改", className: "border-cyan-400/40 bg-cyan-400/[0.07] text-cyan-300", icon: MessageSquareText },
+  precheck_failed: { label: "预筛未通过", className: "border-orange-500/40 bg-orange-500/[0.07] text-orange-300", icon: AlertCircle },
 };
 
 function matchesContestProblem(sub: MySubmission, cp: ContestProblem) {

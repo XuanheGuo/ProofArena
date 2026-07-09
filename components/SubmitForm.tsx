@@ -9,6 +9,8 @@ import { contestSolutionTypeMeta, contestSolutionTypeOptions } from '@/lib/conte
 import { ALLOWED_IMAGE_TYPES, MAX_CONTEST_THOUGHT_CHARS, MAX_GENERAL_TEXT_CHARS, MAX_IMAGE_BYTES, MAX_IMAGE_COUNT, MAX_TITLE_CHARS, clampText, extensionForImageType, isAllowedImage } from '@/lib/security';
 import { getEffectiveProblemStatus, type Contest, type ContestProblem, type ContestRegistration, type ContestSolutionType } from '@/lib/types';
 import { computeContestSubmitAccess } from '@/lib/contest-access';
+import { parseSubmissionError } from '@/lib/submission-errors';
+import { getSubmissionFailureReasonLabel } from '@/lib/submission-meta';
 import { MathPreviewTextArea } from '@/components/MathPreviewTextArea';
 import { CASVerifier } from '@/components/CASVerifier';
 import { MathBlock } from '@/components/MathBlock';
@@ -232,6 +234,29 @@ function getContestSubmissionState(
   };
 }
 
+// Mirrors the scope_key computation in enforce_submission_rate_limit() /
+// enforce_submission_screening() (023_submission_rate_limit_enforcement.sql)
+// so the frontend can proactively poll the same submission_rate_limits row
+// the trigger writes to, instead of only reacting to a failed insert.
+function computeSubmissionScopeKey(params: {
+  contestProblemId?: string | null;
+  problemId?: string | null;
+  isDraftProblem: boolean;
+}): string | null {
+  if (params.contestProblemId) return `contest_problem:${params.contestProblemId}`;
+  if (params.problemId) return params.isDraftProblem ? `draft_problem:${params.problemId}` : `problem:${params.problemId}`;
+  return null;
+}
+
+function formatCooldownRemaining(ms: number): string {
+  const totalSeconds = Math.max(0, Math.round(ms / 1000));
+  if (totalSeconds < 60) return `约 ${totalSeconds} 秒`;
+  const minutes = Math.round(totalSeconds / 60);
+  if (minutes < 60) return `约 ${minutes} 分钟`;
+  const hours = Math.round(minutes / 60);
+  return `约 ${hours} 小时`;
+}
+
 function toLines(value: string) {
   return value
     .split(/[,，、\n]/)
@@ -373,6 +398,8 @@ export function SubmitForm({
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState<SubmitMode | null>(null);
   const [error, setError] = useState('');
+  const [precheckFailedReason, setPrecheckFailedReason] = useState<string | null>(null);
+  const [rateLimitState, setRateLimitState] = useState<{ cooldownUntil: string } | null>(null);
   const [draftRestored, setDraftRestored] = useState(false);
   const [hasDraftToRestore, setHasDraftToRestore] = useState(false);
   const draftSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -436,6 +463,36 @@ export function SubmitForm({
     contestRegistration,
     Boolean(user),
   );
+
+  const activeScopeKey = mode === 'solution'
+    ? computeSubmissionScopeKey({
+        contestProblemId: activeContestContext?.contestProblem?.id,
+        problemId: solutionForm.problemId || null,
+        isDraftProblem: Boolean(activeContestContext?.contestProblem?.draftProblemId),
+      })
+    : null;
+
+  const refreshRateLimitState = useCallback(async () => {
+    if (!user || !activeScopeKey) {
+      setRateLimitState(null);
+      return;
+    }
+    const { data } = await supabase
+      .from('submission_rate_limits')
+      .select('cooldown_until')
+      .eq('user_id', user.id)
+      .eq('scope_key', activeScopeKey)
+      .maybeSingle();
+    setRateLimitState(data?.cooldown_until ? { cooldownUntil: data.cooldown_until as string } : null);
+  }, [supabase, user, activeScopeKey]);
+
+  useEffect(() => {
+    refreshRateLimitState();
+  }, [refreshRateLimitState]);
+
+  const cooldownUntilMs = rateLimitState ? new Date(rateLimitState.cooldownUntil).getTime() : null;
+  const isCoolingDown = cooldownUntilMs !== null && cooldownUntilMs > now;
+  const cooldownRemainingLabel = isCoolingDown ? formatCooldownRemaining(cooldownUntilMs! - now) : '';
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -590,6 +647,9 @@ export function SubmitForm({
 
   async function submitProblem(imageUrls: string[]) {
     const markdown = buildProblemMarkdown(problemForm);
+    // .select() reads the persisted row back — problem proposals aren't
+    // screened by enforce_submission_screening, so status is always
+    // 'pending' here, but this keeps the shape consistent with submitSolution.
     return supabase.from('submissions').insert({
       submission_type: 'problem',
       problem_id: null,
@@ -608,7 +668,7 @@ export function SubmitForm({
       },
       attachment_urls: imageUrls,
       status: 'pending',
-    });
+    }).select('id, status, failure_reason').single();
   }
 
   function generateDraftId() {
@@ -633,12 +693,12 @@ export function SubmitForm({
       notes: clampText(vaultForm.notes, MAX_GENERAL_TEXT_CHARS),
       status: 'drafting',
     });
-    return { error: err };
+    return { data: null, error: err };
   }
 
   async function submitSolution(imageUrls: string[]) {
     if (activeContestContext && !contestSubmissionState.canSubmit) {
-      return { error: { message: contestSubmissionState.description } };
+      return { data: null, error: { message: contestSubmissionState.description } };
     }
 
     const normalizedTitle = clampText(solutionForm.title, MAX_TITLE_CHARS)
@@ -746,7 +806,7 @@ export function SubmitForm({
         },
       },
       status: 'pending',
-    });
+    }).select('id, status, failure_reason').single();
   }
 
   async function handleSubmit(event: React.FormEvent) {
@@ -759,6 +819,7 @@ export function SubmitForm({
 
     setSubmitting(true);
     setError('');
+    setPrecheckFailedReason(null);
 
     let imageUrls: string[] = [];
     try {
@@ -769,7 +830,7 @@ export function SubmitForm({
       return;
     }
 
-    const { error: submitError } = vaultMode
+    const { data: submitted, error: submitError } = vaultMode
       ? await submitVault()
       : mode === 'problem'
         ? await submitProblem(imageUrls)
@@ -777,7 +838,20 @@ export function SubmitForm({
 
     setSubmitting(false);
     if (submitError) {
-      setError(submitError.message || '提交失败，请稍后再试。');
+      const parsed = parseSubmissionError(submitError);
+      setError(parsed.message);
+      if (parsed.isRateLimited) refreshRateLimitState();
+      return;
+    }
+
+    // The insert itself succeeds even when precheck fails — the row is
+    // still recorded (status: 'precheck_failed'), just kept out of the
+    // normal review queue. Don't clear the form so the user can fix and
+    // resubmit, and refresh the cooldown state since a failing attempt may
+    // have just started/extended one (enforce_submission_screening).
+    if (submitted?.status === 'precheck_failed') {
+      setPrecheckFailedReason(submitted.failure_reason ?? null);
+      refreshRateLimitState();
       return;
     }
 
@@ -1243,37 +1317,55 @@ export function SubmitForm({
         </div>
       )}
 
+      {precheckFailedReason !== null && (
+        <div className="rounded border border-amber-400/30 bg-amber-400/[0.06] px-4 py-3">
+          <p className="text-sm text-amber-300">
+            预筛未通过：{getSubmissionFailureReasonLabel(precheckFailedReason)}，请修改后重新提交。
+          </p>
+        </div>
+      )}
+
       {error && (
         <div className="rounded border border-red-400/30 bg-red-400/[0.06] px-4 py-3">
           <p className="text-sm text-red-300">{error}</p>
         </div>
       )}
 
+      {isCoolingDown && (
+        <div className="rounded border border-orange-400/30 bg-orange-400/[0.06] px-4 py-3">
+          <p className="text-sm text-orange-300">提交冷却中，请在{cooldownRemainingLabel}后重试。</p>
+        </div>
+      )}
+
       <div className="flex flex-col gap-3 border-t border-white/10 pt-5 sm:flex-row sm:items-center sm:justify-between">
         <button
           type="submit"
-          disabled={submitting || (mode === 'solution' && availableProblems.length === 0) || (mode === 'solution' && activeContestContext && !contestSubmissionState.canSubmit)}
+          disabled={submitting || isCoolingDown || (mode === 'solution' && availableProblems.length === 0) || (mode === 'solution' && activeContestContext && !contestSubmissionState.canSubmit)}
           className="inline-flex h-11 items-center justify-center gap-2 rounded bg-cyan-400 px-8 text-sm font-bold text-zinc-950 transition hover:bg-cyan-300 disabled:opacity-50"
         >
           <Send className="size-4" />
           {submitting
             ? '保存中...'
-            : vaultMode
-              ? '存入草稿箱'
-              : mode === 'problem'
-                ? '提交题目'
-                : contestContext
-                  ? contestSubmissionState.isPostContest ? '提交赛后补充' : '提交参赛解法'
-                  : '提交解法'}
+            : isCoolingDown
+              ? '冷却中...'
+              : vaultMode
+                ? '存入草稿箱'
+                : mode === 'problem'
+                  ? '提交题目'
+                  : contestContext
+                    ? contestSubmissionState.isPostContest ? '提交赛后补充' : '提交参赛解法'
+                    : '提交解法'}
         </button>
         <p className="text-xs leading-5 text-zinc-600">
-          {vaultMode
-            ? '保存为草稿，可随时在草稿箱中编辑或发布到公开题库。'
-            : mode === 'problem'
-              ? '题目审核通过后会进入题库，再继续收集多种解法。'
-              : contestContext
-                ? contestSubmissionState.description
-                : '解法会绑定到所选题目，审核通过后进入对比视图。'}
+          {isCoolingDown
+            ? `提交过于频繁，请在${cooldownRemainingLabel}后再试。`
+            : vaultMode
+              ? '保存为草稿，可随时在草稿箱中编辑或发布到公开题库。'
+              : mode === 'problem'
+                ? '题目审核通过后会进入题库，再继续收集多种解法。'
+                : contestContext
+                  ? contestSubmissionState.description
+                  : '解法会绑定到所选题目，审核通过后进入对比视图。'}
         </p>
       </div>
     </form>

@@ -24,6 +24,8 @@ import { getInsightNode } from "@/data/insights";
 import { getKnowledgeNode } from "@/data/knowledge";
 import { matchTagsToKnowledge } from "@/data/tag-matcher";
 import { checkSolutionQuality } from "@/lib/quality-checker";
+import { parseSubmissionError } from "@/lib/submission-errors";
+import { getSubmissionFailureReasonLabel } from "@/lib/submission-meta";
 import { createClient } from "@/lib/supabase-client";
 import { MathBlock } from "@/components/MathBlock";
 import { ScoreBar } from "@/components/ScoreBar";
@@ -139,8 +141,9 @@ export function StudioWorkspace({ problems }: { problems: ProblemOption[] }) {
   const [previewMode, setPreviewMode] = useState<"card" | "markdown" | "json">("card");
   const [copied, setCopied] = useState(false);
   const [user, setUser] = useState<User | null>(null);
-  const [submitStatus, setSubmitStatus] = useState<"idle" | "submitting" | "done" | "error">("idle");
+  const [submitStatus, setSubmitStatus] = useState<"idle" | "submitting" | "done" | "error" | "precheck_failed">("idle");
   const [submitError, setSubmitError] = useState("");
+  const [precheckFailedReason, setPrecheckFailedReason] = useState<string | null>(null);
   const supabase = createClient();
 
   useEffect(() => {
@@ -325,24 +328,35 @@ ${state.scoringReason || "（未填写）"}
 
     setSubmitStatus("submitting");
     setSubmitError("");
+    setPrecheckFailedReason(null);
 
-    const { error } = await supabase.from("submissions").insert({
-      submission_type: "solution",
-      problem_id: selectedProblem.id,
-      problem_source: selectedProblem.source,
-      user_id: user.id,
-      kind: state.kind,
-      title: state.title,
-      content: {
-        markdown: markdownPreview,
-        json: exportJson,
-      },
-      status: "pending",
-    });
+    const { data, error } = await supabase
+      .from("submissions")
+      .insert({
+        submission_type: "solution",
+        problem_id: selectedProblem.id,
+        problem_source: selectedProblem.source,
+        user_id: user.id,
+        kind: state.kind,
+        title: state.title,
+        content: {
+          markdown: markdownPreview,
+          json: exportJson,
+        },
+        status: "pending",
+      })
+      .select("id, status, failure_reason")
+      .single();
 
     if (error) {
       setSubmitStatus("error");
-      setSubmitError(error.message || "提交失败，请稍后再试。");
+      setSubmitError(parseSubmissionError(error).message);
+      return;
+    }
+
+    if (data?.status === "precheck_failed") {
+      setSubmitStatus("precheck_failed");
+      setPrecheckFailedReason(data.failure_reason ?? null);
       return;
     }
 
@@ -553,6 +567,11 @@ ${state.scoringReason || "（未填写）"}
                   )}
                   {missingFields.length > 0 && <p className="text-xs text-amber-300">还缺：{missingFields.join("、")}</p>}
                   {submitStatus === "error" && <p className="text-xs text-red-300">{submitError}</p>}
+                  {submitStatus === "precheck_failed" && (
+                    <p className="text-xs text-amber-300">
+                      预筛未通过：{getSubmissionFailureReasonLabel(precheckFailedReason)}，请修改后重新提交。
+                    </p>
+                  )}
                 </div>
               </div>
             )}

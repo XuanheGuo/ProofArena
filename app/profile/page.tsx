@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase-client';
 import { hasSupabasePublicEnv } from '@/lib/supabase-env';
 import { MathBlock } from '@/components/MathBlock';
 import { EditSubmissionForm, type EditableSubmission } from '@/components/EditSubmissionForm';
+import { getSubmissionFailureReasonLabel } from '@/lib/submission-meta';
 import { User } from '@supabase/supabase-js';
 import { useRouter } from 'next/navigation';
 import {
@@ -21,15 +22,16 @@ import {
   XCircle,
 } from 'lucide-react';
 
-const SUBMISSIONS_SELECT = 'id, title, submission_type, problem_id, problem_source, kind, status, created_at, updated_at, moderator_notes, content, contest_id, contest_slug, attachment_urls, challenge_target_solution_id, challenge_claim, challenge_advantages, challenge_risk';
+const SUBMISSIONS_SELECT = 'id, title, submission_type, problem_id, problem_source, kind, status, failure_reason, created_at, updated_at, moderator_notes, content, contest_id, contest_slug, attachment_urls, challenge_target_solution_id, challenge_claim, challenge_advantages, challenge_risk';
 
 type Submission = EditableSubmission & {
-  status: 'pending' | 'approved' | 'rejected' | 'needs_revision';
+  status: 'pending' | 'approved' | 'rejected' | 'needs_revision' | 'precheck_failed';
   created_at: string;
   updated_at: string;
   moderator_notes?: string | null;
   contest_id?: string | null;
   contest_slug?: string | null;
+  failure_reason?: string | null;
 };
 
 type PublishedSolution = {
@@ -56,7 +58,42 @@ type AppProfile = {
 };
 
 function SubmissionProgress({ submission }: { submission: Submission }) {
-  const { status, moderator_notes } = submission;
+  const { status, moderator_notes, failure_reason } = submission;
+
+  // precheck_failed never enters human review — it was auto-flagged at
+  // submit time (enforce_submission_screening,
+  // 023_submission_rate_limit_enforcement.sql), so the normal
+  // submitted -> reviewing -> result progress doesn't apply. Show a
+  // distinct 2-step state with the failure reason instead.
+  if (status === 'precheck_failed') {
+    return (
+      <div className="mt-4">
+        <div className="flex items-center gap-0">
+          <div className="flex items-center">
+            <div className="flex flex-col items-center">
+              <div className="flex size-7 items-center justify-center rounded-full border-2 border-cyan-400 bg-cyan-400 text-xs font-bold text-zinc-950">
+                <CheckCircle2 className="size-4" />
+              </div>
+              <span className="mt-1.5 text-[10px] font-medium text-white whitespace-nowrap">已提交</span>
+            </div>
+            <div className="mb-5 h-px w-12 bg-cyan-400 sm:w-20" />
+          </div>
+          <div className="flex items-center">
+            <div className="flex flex-col items-center">
+              <div className="flex size-7 items-center justify-center rounded-full border-2 border-current text-amber-400">
+                <AlertCircle className="size-4" />
+              </div>
+              <span className="mt-1.5 text-[10px] font-medium text-amber-400 whitespace-nowrap">预筛未通过</span>
+            </div>
+          </div>
+        </div>
+        <div className="mt-4 rounded border border-amber-400/30 bg-amber-400/[0.06] px-4 py-3">
+          <p className="text-xs font-bold text-amber-300">未进入人工审核</p>
+          <p className="mt-1 text-sm text-zinc-300">{getSubmissionFailureReasonLabel(failure_reason)}，请修改后重新提交。</p>
+        </div>
+      </div>
+    );
+  }
 
   const steps = [
     { key: 'submitted', label: '已提交', done: true },
