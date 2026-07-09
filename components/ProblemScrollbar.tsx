@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { ProblemSummary } from "@/lib/types";
+import { getScrollBehavior } from "@/lib/scroll-behavior";
 
 export function ProblemScrollbar({ problems }: { problems: ProblemSummary[] }) {
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -53,7 +54,7 @@ export function ProblemScrollbar({ problems }: { problems: ProblemSummary[] }) {
   }, [problems]);
 
   function scrollTo(id: string) {
-    document.getElementById(`card-${id}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    document.getElementById(`card-${id}`)?.scrollIntoView({ behavior: getScrollBehavior(), block: "center" });
   }
 
   if (problems.length < 2) return null;

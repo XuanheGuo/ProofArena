@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ChevronDown, Search, SlidersHorizontal, X } from "lucide-react";
+import { ChevronDown, LayoutList, Rows3, Search, SlidersHorizontal, X } from "lucide-react";
 import type { Difficulty, ExamRegion, ProblemSummary, QuestionType } from "@/lib/types";
 import { ProblemCard } from "@/components/ProblemCard";
 import { ProblemScrollbar } from "@/components/ProblemScrollbar";
@@ -48,6 +48,20 @@ export function ProblemExplorer({ problems }: ProblemExplorerProps) {
     difficulties.includes(initialDifficulty as (typeof difficulties)[number]) ? (initialDifficulty as (typeof difficulties)[number]) : "全部难度"
   );
   const [topic, setTopic] = useState(initialTopic);
+  const [compact, setCompact] = useState(false);
+
+  useEffect(() => {
+    try {
+      setCompact(localStorage.getItem("proofarena-problem-view") === "compact");
+    } catch {}
+  }, []);
+
+  function toggleCompact(next: boolean) {
+    setCompact(next);
+    try {
+      localStorage.setItem("proofarena-problem-view", next ? "compact" : "detailed");
+    } catch {}
+  }
 
   const topics = useMemo(
     () => ["全部专题", ...Array.from(new Set(problems.flatMap((p) => p.tags))).sort()],
@@ -195,24 +209,46 @@ export function ProblemExplorer({ problems }: ProblemExplorerProps) {
           <span className="font-mono text-xs uppercase tracking-wider text-zinc-500">
             {filtered.length} / {problems.length} 道题
           </span>
-          {hasFilters ? (
-            <button type="button" onClick={resetFilters} className="flex items-center gap-1.5 text-xs text-zinc-500 hover:text-white">
-              <X className="size-3.5" />
-              清除筛选
-            </button>
-          ) : (
-            <span className="flex items-center gap-1.5 text-xs text-zinc-600">
-              <SlidersHorizontal className="size-3.5" />
-              可按卷别、题型、难度与专题筛选
-            </span>
-          )}
+          <div className="flex flex-wrap items-center gap-4">
+            {hasFilters ? (
+              <button type="button" onClick={resetFilters} className="flex items-center gap-1.5 text-xs text-zinc-500 hover:text-white">
+                <X className="size-3.5" />
+                清除筛选
+              </button>
+            ) : (
+              <span className="flex items-center gap-1.5 text-xs text-zinc-600">
+                <SlidersHorizontal className="size-3.5" />
+                可按卷别、题型、难度与专题筛选
+              </span>
+            )}
+            <div className="flex border border-white/10 text-xs text-zinc-500">
+              <button
+                type="button"
+                onClick={() => toggleCompact(false)}
+                aria-pressed={!compact}
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 transition ${!compact ? "bg-white/10 text-white" : "hover:text-white"}`}
+              >
+                <Rows3 className="size-3.5" />
+                详细
+              </button>
+              <button
+                type="button"
+                onClick={() => toggleCompact(true)}
+                aria-pressed={compact}
+                className={`flex items-center gap-1.5 border-l border-white/10 px-2.5 py-1.5 transition ${compact ? "bg-white/10 text-white" : "hover:text-white"}`}
+              >
+                <LayoutList className="size-3.5" />
+                紧凑
+              </button>
+            </div>
+          </div>
         </div>
 
         {filtered.length ? (
           <div className="grid gap-4">
             {filtered.map((problem, index) => (
               <div key={problem.id} id={`card-${problem.id}`}>
-                <ProblemCard problem={problem} rank={index + 1} />
+                <ProblemCard problem={problem} rank={index + 1} compact={compact} />
               </div>
             ))}
           </div>

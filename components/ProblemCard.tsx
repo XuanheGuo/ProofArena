@@ -12,7 +12,7 @@ const typeStyles = {
   解答: "border-emerald-400/30 text-emerald-300",
 };
 
-export function ProblemCard({ problem, rank }: { problem: ProblemSummary; rank?: number }) {
+export function ProblemCard({ problem, rank, compact = false }: { problem: ProblemSummary; rank?: number; compact?: boolean }) {
   const examSolution = getBestSolution(problem, "examReady");
   const eleganceRanking = [...problem.solutions].sort((a, b) => b.scores.elegance - a.scores.elegance);
   const elegantSolution = eleganceRanking.find((solution) => solution.id !== examSolution.id) ?? eleganceRanking[0];
@@ -20,7 +20,7 @@ export function ProblemCard({ problem, rank }: { problem: ProblemSummary; rank?:
   return (
     <Link
       href={`/problems/${problem.id}`}
-      className="group grid min-h-72 overflow-hidden border border-white/10 bg-zinc-950/75 transition hover:border-cyan-400/45 hover:bg-zinc-900 md:grid-cols-[5.25rem_minmax(0,1fr)]"
+      className={`group grid ${compact ? "" : "min-h-72"} overflow-hidden border border-white/10 bg-zinc-950/75 transition hover:border-cyan-400/45 hover:bg-zinc-900 md:grid-cols-[5.25rem_minmax(0,1fr)]`}
     >
       <div className="flex items-center justify-between border-b border-white/10 px-5 py-4 md:flex-col md:border-r md:border-b-0 md:px-3">
         <span className="font-mono text-xs uppercase text-zinc-500">题目</span>
@@ -52,7 +52,7 @@ export function ProblemCard({ problem, rank }: { problem: ProblemSummary; rank?:
         <p className="mt-3 line-clamp-2 text-sm leading-7 text-zinc-400">
           <MathBlock>{problem.excerpt}</MathBlock>
         </p>
-        <div className="mt-6 hidden border border-white/10 bg-zinc-950/90 md:block">
+        <div className={`mt-6 ${compact ? "hidden" : "hidden md:block"} border border-white/10 bg-zinc-950/90`}>
           <div className="flex items-center justify-between border-b border-white/10 px-3 py-2.5">
             <span className="flex items-center gap-2 text-xs font-bold text-white">
               <Compass className="size-3.5 text-cyan-300" />
@@ -94,7 +94,7 @@ export function ProblemCard({ problem, rank }: { problem: ProblemSummary; rank?:
             </div>
           </div>
         </div>
-        <div className="mt-5 flex flex-wrap items-center justify-between gap-2 border-t border-white/10 pt-4 md:hidden">
+        <div className={`mt-5 flex flex-wrap items-center justify-between gap-2 border-t border-white/10 pt-4 ${compact ? "" : "md:hidden"}`}>
           <span className="text-xs text-zinc-500">{problem.solutions.length} 条解法</span>
           <span className="inline-flex items-center gap-1.5 text-xs font-bold text-cyan-300">
             进入详情
