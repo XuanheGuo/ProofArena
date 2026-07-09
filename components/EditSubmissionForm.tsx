@@ -150,7 +150,7 @@ ${form.verification || '（未填写）'}
 // is the live, contest-critical insert path) — this only ever runs an
 // UPDATE, gated server-side by the "Authors can revise needs_revision
 // submissions" RLS policy + enforce_submission_revision_fields trigger
-// (018_submission_author_revision.sql), which also forces status back to
+// (019_submission_author_revision.sql), which also forces status back to
 // 'pending' and clears moderator_notes regardless of what this component
 // sends. Scope: non-contest submissions only — the policy simply won't
 // match contest-bound rows, so this form is never rendered for those

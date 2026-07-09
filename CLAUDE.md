@@ -30,7 +30,7 @@ Supabase (problems, solutions, contests, ...)
   →  components/ (rendering)
 ```
 
-**Content submission/review flow:** `SubmitForm` (client) inserts into `submissions` (status starts `pending`, enforced server-side by a BEFORE INSERT trigger regardless of what the client sends) → a moderator reviews at `/admin/submissions` (`AdminSubmissionsView`) and sets `approved` / `rejected` / `needs_revision` (+ `moderator_notes`) → `approved` triggers `lib/publish-submission.ts` to insert into `problems`/`solutions`. If a submission is `needs_revision`, its author can edit and resubmit it from `/profile` (`EditSubmissionForm`) — gated by an author-only UPDATE RLS policy + trigger (`018_submission_author_revision.sql`) that forces the row back to `pending` and clears `moderator_notes`, scoped to non-contest submissions only.
+**Content submission/review flow:** `SubmitForm` (client) inserts into `submissions` (status starts `pending`, enforced server-side by a BEFORE INSERT trigger regardless of what the client sends) → a moderator reviews at `/admin/submissions` (`AdminSubmissionsView`) and sets `approved` / `rejected` / `needs_revision` (+ `moderator_notes`) → `approved` triggers `lib/publish-submission.ts` to insert into `problems`/`solutions`. If a submission is `needs_revision`, its author can edit and resubmit it from `/profile` (`EditSubmissionForm`) — gated by an author-only UPDATE RLS policy + trigger (`019_submission_author_revision.sql`) that forces the row back to `pending` and clears `moderator_notes`, scoped to non-contest submissions only.
 
 **Solution kinds** (`lib/solution-kinds.ts`): `standard` | `insight` | `robust` | `teaching` — maps to badge labels and colors.
 
