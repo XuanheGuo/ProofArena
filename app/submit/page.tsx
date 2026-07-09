@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { SubmitForm } from "@/components/SubmitForm";
 import { getContest } from "@/lib/contests";
+import { getMyContestRegistration } from "@/lib/contest-registration";
 import { getProblems } from "@/lib/db";
 import { adaptProblemDraftToProblem, getProblemDraftForContestDisplay } from "@/lib/problem-drafts";
 import { isContestProblemLocked } from "@/lib/types";
@@ -40,6 +41,7 @@ export default async function SubmitPage({
   const initialProblemId = typeof params.problem === "string" ? params.problem : undefined;
   const initialForkSolutionId = typeof params.fork === "string" ? params.fork : undefined;
   const contest = contestSlug ? await getContest(contestSlug) : undefined;
+  const contestRegistration = contest ? await getMyContestRegistration(contest.id) : null;
 
   // A contest problem may be backed by either a public problem (problemId)
   // or a Problem Vault draft (draftProblemId).  Find the match either way.
@@ -175,6 +177,7 @@ export default async function SubmitPage({
             initialProblemId={initialProblemId}
             initialForkSolutionId={initialForkSolutionId}
             contestContext={contest ? { contest, contestProblem } : undefined}
+            contestRegistration={contestRegistration}
           />
         </section>
 

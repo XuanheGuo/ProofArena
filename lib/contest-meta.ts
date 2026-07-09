@@ -1,4 +1,28 @@
-import type { ContestAwardType, ContestProblemPhase, ContestSolutionType, ContestStatus } from "@/lib/types";
+import type { ContestAccessMode, ContestAwardType, ContestProblemPhase, ContestRegistrationStatus, ContestSolutionType, ContestStatus } from "@/lib/types";
+
+export const accessModeMeta: Record<ContestAccessMode, { label: string; description: string }> = {
+  open: {
+    label: "公开（open）",
+    description: "登录用户即可直接提交，无需报名。",
+  },
+  approval: {
+    label: "报名审批（approval）",
+    description: "用户需先申请参赛，管理员批准后才能提交。",
+  },
+  invite: {
+    label: "邀请制（invite）",
+    description: "只有管理员邀请的用户才能提交，不支持自助报名。",
+  },
+};
+
+export const contestRegistrationStatusMeta: Record<ContestRegistrationStatus, { label: string; className: string }> = {
+  invited: { label: "已邀请", className: "border-cyan-400/40 bg-cyan-400/[0.07] text-cyan-300" },
+  pending: { label: "待审核", className: "border-amber-400/40 bg-amber-400/[0.07] text-amber-300" },
+  approved: { label: "已批准", className: "border-emerald-500/40 bg-emerald-500/[0.07] text-emerald-300" },
+  rejected: { label: "已拒绝", className: "border-red-500/40 bg-red-500/[0.07] text-red-300" },
+  removed: { label: "已移除", className: "border-zinc-500/40 bg-zinc-800 text-zinc-400" },
+  suspended: { label: "已暂停", className: "border-orange-500/40 bg-orange-500/[0.07] text-orange-300" },
+};
 
 export const contestStatusMeta: Record<ContestStatus, { label: string; className: string }> = {
   draft: {

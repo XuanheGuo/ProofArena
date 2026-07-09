@@ -7,7 +7,8 @@ import type { User } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase-client';
 import { contestSolutionTypeMeta, contestSolutionTypeOptions } from '@/lib/contest-meta';
 import { ALLOWED_IMAGE_TYPES, MAX_CONTEST_THOUGHT_CHARS, MAX_GENERAL_TEXT_CHARS, MAX_IMAGE_BYTES, MAX_IMAGE_COUNT, MAX_TITLE_CHARS, clampText, extensionForImageType, isAllowedImage } from '@/lib/security';
-import { getEffectiveProblemStatus, type Contest, type ContestProblem, type ContestSolutionType } from '@/lib/types';
+import { getEffectiveProblemStatus, type Contest, type ContestProblem, type ContestRegistration, type ContestSolutionType } from '@/lib/types';
+import { computeContestSubmitAccess } from '@/lib/contest-access';
 import { MathPreviewTextArea } from '@/components/MathPreviewTextArea';
 import { CASVerifier } from '@/components/CASVerifier';
 import { MathBlock } from '@/components/MathBlock';
@@ -124,7 +125,13 @@ function clearContestDraft(key: string) {
   }
 }
 
-function getContestSubmissionState(contest?: Contest, contestProblem?: ContestProblem, now = Date.now()) {
+function getContestSubmissionState(
+  contest?: Contest,
+  contestProblem?: ContestProblem,
+  now = Date.now(),
+  registration: ContestRegistration | null = null,
+  isLoggedIn = false,
+) {
   if (!contest) {
     return {
       canSubmit: true,
@@ -143,6 +150,20 @@ function getContestSubmissionState(contest?: Contest, contestProblem?: ContestPr
       isPostContest: false,
       label: '比赛时间未配置完整',
       description: '请等待管理员设置开始和结束时间后再提交。',
+    };
+  }
+
+  // Registration gate mirrors the order enforced server-side in
+  // enforce_contest_submission_window() (021_contest_submission_registration_gate.sql):
+  // it's checked before the draft/window state below, so an unregistered
+  // user finds out they need to register even before the contest starts.
+  const submitAccess = computeContestSubmitAccess(contest, registration, isLoggedIn);
+  if (!submitAccess.canSubmit) {
+    return {
+      canSubmit: false,
+      isPostContest: false,
+      label: submitAccess.label,
+      description: submitAccess.description,
     };
   }
 
@@ -308,6 +329,7 @@ export function SubmitForm({
   initialProblemId,
   initialForkSolutionId,
   contestContext,
+  contestRegistration = null,
   vaultMode = false,
 }: {
   problems: ProblemOption[];
@@ -317,6 +339,7 @@ export function SubmitForm({
     contest: Contest;
     contestProblem?: ContestProblem;
   };
+  contestRegistration?: ContestRegistration | null;
   vaultMode?: boolean;
 }) {
   const isContestMode = Boolean(contestContext);
@@ -406,7 +429,13 @@ export function SubmitForm({
         contestProblem: selectedContestProblem,
       }
     : undefined;
-  const contestSubmissionState = getContestSubmissionState(activeContestContext?.contest, activeContestContext?.contestProblem, now);
+  const contestSubmissionState = getContestSubmissionState(
+    activeContestContext?.contest,
+    activeContestContext?.contestProblem,
+    now,
+    contestRegistration,
+    Boolean(user),
+  );
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
