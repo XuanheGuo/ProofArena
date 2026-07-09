@@ -250,6 +250,8 @@ export const contests: Contest[] = [
     discussionStartAt: iso(5),
     discussionEndAt: iso(10),
     status: "draft",
+    accessMode: "invite",
+    visibility: "public",
     rules: [
       "第一场采用小规模邀请制，建议 10-30 人参与。每位参赛者可以为同一道题提交多个解法或思路补充，最终按质量评审。",
       "正式评分以正确性、推理清晰度、方法优雅度、表达质量和讨论贡献为核心；平台互评只作为参考，不直接替代人工评审。",
@@ -343,6 +345,8 @@ export const contests: Contest[] = [
     discussionStartAt: weeklyIso(5, 17, 0),
     discussionEndAt: weeklyIso(7, 0, 0),
     status: "draft",
+    accessMode: "open",
+    visibility: "public",
     rules: [
       "总分 = 普通题原始分 × 挑战倍率 + 计时题分 + 解答题分 + 可选奖励分 − 违规扣分。",
       "普通题 Day 1-5 每天 2 道开放（10:00-17:00，北京时间）；计时题每天 3 道同步开放，手动解锁后限时 120 秒，答错或超时不计分，不吃挑战倍率。",

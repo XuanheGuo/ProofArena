@@ -13,6 +13,8 @@ type ContestRow = {
   tagline: string;
   rules: string[];
   status: Contest["status"];
+  access_mode: Contest["accessMode"];
+  visibility: Contest["visibility"];
   start_at: string;
   end_at: string;
   discussion_start_at: string | null;
@@ -73,6 +75,8 @@ function toContest(row: ContestRow): Contest {
     discussionStartAt: row.discussion_start_at,
     discussionEndAt: row.discussion_end_at,
     status: row.status,
+    accessMode: row.access_mode ?? "open",
+    visibility: row.visibility ?? "public",
     problems: (row.contest_problems ?? [])
       .map((problem): ContestProblem => ({
         id: problem.id,

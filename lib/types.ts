@@ -22,6 +22,33 @@ export type SolutionKind = "standard" | "insight" | "robust" | "teaching";
 
 export type ContestStatus = "draft" | "active" | "judging" | "finished";
 
+export type ContestAccessMode = "open" | "approval" | "invite";
+
+export type ContestVisibility = "public" | "private";
+
+export type ContestRegistrationStatus =
+  | "invited"
+  | "pending"
+  | "approved"
+  | "rejected"
+  | "removed"
+  | "suspended";
+
+export type ContestRegistrationRole = "participant" | "reviewer" | "admin";
+
+export interface ContestRegistration {
+  id: string;
+  contestId: string;
+  userId: string;
+  status: ContestRegistrationStatus;
+  role: ContestRegistrationRole;
+  note: string;
+  invitedBy?: string | null;
+  approvedBy?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export type ContestSolutionType =
   | "standard"
   | "clever"
@@ -290,6 +317,8 @@ export interface Contest {
   discussionStartAt?: string | null;
   discussionEndAt?: string | null;
   status: ContestStatus;
+  accessMode: ContestAccessMode;
+  visibility: ContestVisibility;
   problems: ContestProblem[];
   awards: ContestAward[];
 }
