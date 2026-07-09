@@ -34,6 +34,7 @@ import { difficultyBadgeClass } from "@/lib/problem-presentation";
 import { getSolutionKindMeta } from "@/lib/solution-kinds";
 import { contestSolutionTypeMeta } from "@/lib/contest-meta";
 import { mathVizProblemIds } from "@/lib/math-viz-problem-ids";
+import { getScrollBehavior } from "@/lib/scroll-behavior";
 
 const FunctionGraphPanel = dynamic(
   () => import("@/components/FunctionGraphPanel").then((mod) => mod.FunctionGraphPanel),
@@ -443,14 +444,14 @@ export function ProblemDetailExperience({
   function showSolutions() {
     setActiveTab("solutions");
     requestAnimationFrame(() => {
-      document.getElementById("solutions-content")?.scrollIntoView({ block: "start", behavior: "smooth" });
+      document.getElementById("solutions-content")?.scrollIntoView({ block: "start", behavior: getScrollBehavior() });
     });
   }
 
   function showComparison() {
     setActiveTab("comparison");
     requestAnimationFrame(() => {
-      document.getElementById("proof-graph-comparison-content")?.scrollIntoView({ block: "start", behavior: "smooth" });
+      document.getElementById("proof-graph-comparison-content")?.scrollIntoView({ block: "start", behavior: getScrollBehavior() });
     });
   }
 

@@ -49,7 +49,7 @@ ProofArena 是一个面向高中数学学习者、教师和内容贡献者的解
 
 环境建议：
 
-- Node.js 20+
+- Node.js 20 或 22（LTS，参见 `.nvmrc`）；不建议使用 Node 25 等非 LTS 版本 —— 本仓库在 Node 25 下 `npm run build:webpack` 会在 webpack 的 WasmHash 步骤崩溃
 - npm 10+
 
 ```bash
@@ -70,13 +70,19 @@ npm run build:webpack
 
 ## Supabase 可选配置
 
-没有 `.env.local` 时，应用会使用 `data/problems.ts` 和 `data/contests.ts` 的静态数据。要启用登录、投稿、审核、评分和比赛后台，需要配置：
+没有 `.env.local` 时，应用会使用 `data/problems.ts` 和 `data/contests.ts` 的静态数据。要启用登录、投稿、审核、评分和比赛后台，复制模板并填入真实值：
+
+```bash
+cp .env.example .env.local
+```
 
 ```bash
 NEXT_PUBLIC_SUPABASE_URL=...
 NEXT_PUBLIC_SUPABASE_ANON_KEY=...
 SUPABASE_SERVICE_ROLE_KEY=...
 ```
+
+`.env.local` 已在 `.gitignore` 中，切勿提交真实密钥；`.env.example` 只包含变量名，可安全提交。
 
 然后按顺序执行 `supabase/migrations/001_initial_schema.sql` 到 `008_contest_thought_arena.sql`。详细说明见 [Supabase 设置](./docs/SUPABASE_SETUP.md)。
 
