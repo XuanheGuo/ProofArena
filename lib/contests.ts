@@ -384,6 +384,7 @@ export type ContestThoughtEntry = {
   createdAt: string;
   rating: ContestThoughtRatingSummary | null;
   comments: ContestThoughtComment[];
+  hideFromArena?: boolean;
   // When true the entry represents an aggregated placeholder for a still-open
   // contest problem: content/images/comments/rating are all empty. The count
   // of redacted submissions is in `redactedCount`.
@@ -404,6 +405,10 @@ type ContestThoughtRow = {
     markdown?: string;
     imageUrls?: string[];
     images?: string[];
+    contest?: {
+      hideFromArena?: boolean;
+    };
+    hideFromArena?: boolean;
   } | null;
   attachment_urls?: string[] | null;
   is_post_contest: boolean | null;
@@ -449,6 +454,7 @@ export async function getContestThoughts(contestSlug: string, contest?: Contest 
   if (error || !submissions || submissions.length === 0) return [];
 
   const allRows = submissions as unknown as ContestThoughtRow[];
+  if (allRows.length === 0) return [];
 
   // Partition into open (redact) vs closed (show full content) rows.
   const openRows: ContestThoughtRow[] = [];
@@ -544,6 +550,7 @@ export async function getContestThoughts(contestSlug: string, contest?: Contest 
   }
 
   const fullEntries = closedRows.map((submission) => {
+    const hideFromArena = Boolean(submission.content?.contest?.hideFromArena || submission.content?.hideFromArena);
     const profile = firstProfile(submission.user_profiles);
     const imageUrls = (submission.attachment_urls ?? submission.content?.imageUrls ?? submission.content?.images ?? [])
       .filter((url): url is string => typeof url === "string" && isPublicSubmissionImageUrl(url))
@@ -564,15 +571,16 @@ export async function getContestThoughts(contestSlug: string, contest?: Contest 
       problemId: submission.problem_id,
       draftProblemId: submission.draft_problem_id,
       contestProblemKey: submission.contest_problem_key,
-      title: submission.title,
-      author: profile?.display_name || profile?.username || "匿名用户",
-      userId: submission.user_id,
-      contentText: submission.content?.thought || submission.content?.approach || submission.content?.markdown || "",
-      imageUrls,
+      title: hideFromArena ? "" : submission.title,
+      author: hideFromArena ? "" : profile?.display_name || profile?.username || "匿名用户",
+      userId: hideFromArena ? null : submission.user_id,
+      contentText: hideFromArena ? "" : submission.content?.thought || submission.content?.approach || submission.content?.markdown || "",
+      imageUrls: hideFromArena ? [] : imageUrls,
       isPostContest: Boolean(submission.is_post_contest),
       createdAt: submission.created_at,
-      rating,
-      comments: commentMap.get(submission.id) ?? [],
+      rating: hideFromArena ? null : rating,
+      comments: hideFromArena ? [] : commentMap.get(submission.id) ?? [],
+      hideFromArena,
     };
   });
 
