@@ -18,3 +18,24 @@ test("precheck catches forbidden Lean tokens with positions", () => {
 test("precheck ignores comments, nested comments, and strings", () => {
   assert.deepEqual(leanStaticPrecheck('-- sorry\n/- axiom /- unsafe -/ admit -/\ndef label := "sorry axiom"'), []);
 });
+
+test("precheck ignores 'sorry' inside an identifier and still flags a namespaced axiom", () => {
+  assert.deepEqual(leanStaticPrecheck("theorem sorryNotUsed : True := by\n  trivial"), []);
+  const result = leanStaticPrecheck("namespace Foo\naxiom hidden : False\nend Foo");
+  assert.deepEqual(result.map((item) => item.code), ["LEAN_POLICY_AXIOM"]);
+});
+
+test("an ordinary primed Mathlib-style identifier does not blind the scanner to a later sorry", () => {
+  const source = "theorem mul_left_cancel' (a b c : Nat) (h : a * b = a * c) : b = c := by\n  sorry\n";
+  const result = leanStaticPrecheck(source);
+  assert.deepEqual(result.map((item) => item.code), ["LEAN_POLICY_SORRY"]);
+});
+
+test("multiple primed identifiers before a real sorry still detect it", () => {
+  const source = [
+    "theorem h' (n : Nat) : n = n := rfl",
+    "theorem ne_of_gt' (a b : Nat) (h : a < b) : a ≠ b := by",
+    "  sorry",
+  ].join("\n");
+  assert.deepEqual(leanStaticPrecheck(source).map((item) => item.code), ["LEAN_POLICY_SORRY"]);
+});

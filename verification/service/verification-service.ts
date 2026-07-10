@@ -3,12 +3,19 @@ import {
   MAX_CONCURRENT_TASKS, RATE_LIMIT_REQUESTS, RATE_LIMIT_WINDOW_MINUTES,
 } from "../domain/policies";
 import type {
-  VerificationActor, VerificationMessage, VerificationRequest, VerificationResult, VerificationTaskDto,
+  VerificationActor, VerificationMessage, VerificationRequest, VerificationResult, VerificationTaskDto, VerificationTaskStatus,
 } from "../domain/types";
 import { LeanEngine } from "../engines/lean/lean-engine";
 import type { VerificationRepository } from "../repositories/types";
 import type { VerificationConfig } from "./config";
 import { createSourceHash, leanStaticPrecheck } from "./normalization";
+
+// The only unique constraint on verification_tasks is the partial index on
+// (source_hash) WHERE status IN ('queued','running'); any other error (network
+// blip, FK violation, etc.) must not be silently reinterpreted as a race.
+function isActiveHashConflict(error: unknown): boolean {
+  return Boolean(error) && typeof error === "object" && (error as { code?: unknown }).code === "23505";
+}
 
 export class VerificationService {
   constructor(
@@ -31,6 +38,14 @@ export class VerificationService {
     if (sourceSize > this.config.maxSourceBytes) throw new VerificationError("Lean 源码超过允许的大小。", "source_too_large", "resource_limit", 413);
     await this.repository.authorize(actor, request);
 
+    // Rate-limit before any cache/active lookup so repeatedly requesting an
+    // already-cached source cannot bypass the per-user request budget (each
+    // hit still inserts a full audit row via createCached below).
+    const since = new Date(Date.now() - RATE_LIMIT_WINDOW_MINUTES * 60_000).toISOString();
+    if (await this.repository.countRecent(actor.userId, since) >= RATE_LIMIT_REQUESTS) {
+      throw new VerificationError("验证请求过于频繁，请稍后重试。", "rate_limited", "rate_limited", 429);
+    }
+
     const normalizedRequest = { ...request, environment };
     const options = { ignoreImports: true, mathlibOptions: false, timeoutSeconds: this.config.timeoutSeconds };
     const sourceHash = createSourceHash({
@@ -46,10 +61,6 @@ export class VerificationService {
       const shared = await this.waitForSharedResult(sourceHash, signal);
       if (shared) return this.repository.createCached(input, shared);
     }
-    const since = new Date(Date.now() - RATE_LIMIT_WINDOW_MINUTES * 60_000).toISOString();
-    if (await this.repository.countRecent(actor.userId, since) >= RATE_LIMIT_REQUESTS) {
-      throw new VerificationError("验证请求过于频繁，请稍后重试。", "rate_limited", "rate_limited", 429);
-    }
     if (await this.repository.countRunning(actor.userId) >= MAX_CONCURRENT_TASKS) {
       throw new VerificationError("当前运行中的验证任务过多。", "concurrency_limit", "rate_limited", 429);
     }
@@ -57,40 +68,57 @@ export class VerificationService {
     let task: VerificationTaskDto;
     try { task = await this.repository.create(input); }
     catch (error) {
+      if (!isActiveHashConflict(error)) throw error;
       const raced = await this.repository.findActive(sourceHash);
       if (raced?.userId === actor.userId) return raced;
-      if (raced) {
-        const shared = await this.waitForSharedResult(sourceHash, signal);
-        if (shared) return this.repository.createCached(input, shared);
+      if (!raced) throw error;
+      const shared = await this.waitForSharedResult(sourceHash, signal);
+      if (shared) return this.repository.createCached(input, shared);
+      try {
         task = await this.repository.create(input);
-      } else {
-        throw error;
+      } catch (retryError) {
+        if (!isActiveHashConflict(retryError)) throw retryError;
+        throw new VerificationError("与你相同的验证请求正在处理中，请稍后重试。", "concurrent_task_conflict", "rate_limited", 409);
       }
     }
 
     const precheck = leanStaticPrecheck(request.source);
     if (precheck.length) {
-      return this.repository.finish(task.id, "completed", {
+      return this.finishWithRetry(task.id, "completed", {
         valid: false, compiles: undefined, verdict: "invalid_request", engine: "lean", provider: "axle",
         environment, messages: precheck, failedDeclarations: [], sourceHash, cached: false,
       });
     }
 
     await this.repository.markRunning(task.id);
+    let result: VerificationResult;
     try {
-      const result = await this.leanEngine.verify({
+      result = await this.leanEngine.verify({
         ...normalizedRequest, engine: "lean", environment, options,
       }, signal);
-      return await this.repository.finish(task.id, "completed", { ...result, sourceHash, cached: false });
     } catch (error) {
       const normalized = this.normalizeFailure(error, sourceHash, environment);
       const status = normalized.verdict === "cancelled" ? "cancelled" : "failed";
-      return this.repository.finish(task.id, status, normalized);
+      return this.finishWithRetry(task.id, status, normalized);
     }
+    // A persistence failure here must never be reinterpreted as a provider
+    // failure -- doing so would silently discard a real accepted/rejected
+    // result. Retry the same write once; if it still fails, let the error
+    // propagate so the row is left "running" for recoverStale() to reconcile
+    // later rather than being overwritten with a fabricated verdict.
+    return this.finishWithRetry(task.id, "completed", { ...result, sourceHash, cached: false });
   }
 
   get(id: string, actor: VerificationActor) { return this.repository.getById(id, actor); }
   list(actor: VerificationActor, filters?: Parameters<VerificationRepository["list"]>[1]) { return this.repository.list(actor, filters); }
+
+  private async finishWithRetry(id: string, status: VerificationTaskStatus, result: VerificationResult): Promise<VerificationTaskDto> {
+    try {
+      return await this.repository.finish(id, status, result);
+    } catch {
+      return this.repository.finish(id, status, result);
+    }
+  }
 
   private async waitForSharedResult(sourceHash: string, signal?: AbortSignal): Promise<VerificationTaskDto | null> {
     const deadline = Date.now() + (this.config.timeoutSeconds + 30) * 1000;

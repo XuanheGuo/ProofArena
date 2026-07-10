@@ -26,14 +26,19 @@ export function createSourceHash(input: {
   })).digest("hex");
 }
 
-// Lightweight lexer: removes comments and string/character literals before token checks.
-// This is fast feedback, not a Lean parser or security boundary.
+// Lightweight lexer: removes comments and double-quoted string literals before
+// token checks. This is fast feedback, not a Lean parser or security boundary.
+// Note: a bare `'` is deliberately NOT treated as a string/char delimiter here.
+// Lean/Mathlib identifiers routinely end in a prime (h', foo', mul_left_cancel')
+// -- toggling a persistent quote-mode on every `'` would let one ordinary,
+// unpaired prime silently blind the scanner to everything after it, including
+// a real sorry/admit/axiom/unsafe later in the same file.
 export function leanStaticPrecheck(source: string): VerificationMessage[] {
   let code = "";
   let index = 0;
   let blockDepth = 0;
   let inLine = false;
-  let quote: '"' | "'" | null = null;
+  let quote: '"' | null = null;
   while (index < source.length) {
     const char = source[index];
     const next = source[index + 1];
@@ -49,7 +54,7 @@ export function leanStaticPrecheck(source: string): VerificationMessage[] {
       else code += char === "\n" ? "\n" : " ";
     } else if (char === "-" && next === "-") { inLine = true; code += "  "; index += 1; }
     else if (char === "/" && next === "-") { blockDepth = 1; code += "  "; index += 1; }
-    else if (char === '"' || char === "'") { quote = char; code += " "; }
+    else if (char === '"') { quote = char; code += " "; }
     else code += char;
     index += 1;
   }

@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { VerificationError } from "../domain/errors";
+import { CACHEABLE_VERDICTS } from "../domain/policies";
 import type {
   VerificationActor, VerificationMessage, VerificationRequest, VerificationResult,
   VerificationTaskDto, VerificationTaskStatus, VerificationVerdict,
@@ -99,7 +100,7 @@ export class SupabaseVerificationRepository implements VerificationRepository {
   }
 
   async findCache(sourceHash: string): Promise<VerificationTaskDto | null> {
-    const { data } = await this.db.from("verification_tasks").select("*").eq("source_hash", sourceHash).eq("status", "completed").in("verdict", ["accepted", "rejected"]).order("created_at", { ascending: false }).limit(1).maybeSingle();
+    const { data } = await this.db.from("verification_tasks").select("*").eq("source_hash", sourceHash).eq("status", "completed").in("verdict", Array.from(CACHEABLE_VERDICTS)).order("created_at", { ascending: false }).limit(1).maybeSingle();
     return data ? mapTask(data as Row) : null;
   }
 
