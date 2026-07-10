@@ -41,13 +41,38 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_verification_tasks_one_active_hash
 
 ALTER TABLE verification_tasks ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can view own verification tasks" ON verification_tasks;
 CREATE POLICY "Users can view own verification tasks" ON verification_tasks FOR SELECT
   USING (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Moderators can view verification tasks" ON verification_tasks;
 CREATE POLICY "Moderators can view verification tasks" ON verification_tasks FOR SELECT
   USING (
     auth.jwt() ->> 'email' = 'xuanheguo@icloud.com'
     OR EXISTS (SELECT 1 FROM user_profiles p WHERE p.id = auth.uid() AND p.role IN ('moderator', 'admin'))
   );
+
+-- No INSERT/UPDATE/DELETE policy is defined for any role: Postgres RLS
+-- default-denies those commands entirely for anon/authenticated. All writes
+-- go through the service-role client (lib/supabase-server.ts createServiceClient),
+-- which bypasses RLS. This is intentional defense-in-depth, not an oversight.
+
+-- Guard against internally-inconsistent rows even from the trusted service-role
+-- write path (RLS already blocks external forgery; these are a second layer).
+ALTER TABLE verification_tasks DROP CONSTRAINT IF EXISTS verification_tasks_terminal_verdict_check;
+ALTER TABLE verification_tasks ADD CONSTRAINT verification_tasks_terminal_verdict_check
+  CHECK (status NOT IN ('completed', 'failed', 'cancelled') OR verdict IS NOT NULL);
+
+ALTER TABLE verification_tasks DROP CONSTRAINT IF EXISTS verification_tasks_running_started_check;
+ALTER TABLE verification_tasks ADD CONSTRAINT verification_tasks_running_started_check
+  CHECK (status <> 'running' OR started_at IS NOT NULL);
+
+ALTER TABLE verification_tasks DROP CONSTRAINT IF EXISTS verification_tasks_cache_source_check;
+ALTER TABLE verification_tasks ADD CONSTRAINT verification_tasks_cache_source_check
+  CHECK (NOT cached OR cache_source_id IS NOT NULL);
+
+ALTER TABLE verification_tasks DROP CONSTRAINT IF EXISTS verification_tasks_accepted_consistency_check;
+ALTER TABLE verification_tasks ADD CONSTRAINT verification_tasks_accepted_consistency_check
+  CHECK (verdict <> 'accepted' OR (valid AND jsonb_array_length(failed_declarations) = 0));
 
 -- Writes are server-only via service role. Public pages consume only this redacted view.
 CREATE OR REPLACE VIEW public_verification_summaries WITH (security_barrier = true) AS
