@@ -4,6 +4,11 @@ import { getVerificationActor, isVerificationAdmin, parseCreateBody, taskRespons
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+// VerificationService.create() synchronously awaits a full AXLE round-trip,
+// which can be configured up to MAX_TIMEOUT_SECONDS=300s (see
+// verification/domain/policies.ts). Without this, Vercel's default function
+// duration can kill the request well before AXLE responds.
+export const maxDuration = 300;
 
 export async function POST(request: NextRequest) {
   try {

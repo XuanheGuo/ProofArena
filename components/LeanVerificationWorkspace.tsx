@@ -5,7 +5,7 @@ import { CheckCircle2, Clock3, Loader2, ShieldCheck } from "lucide-react";
 import { Badge, Button, Panel } from "@/components/ui";
 import type { VerificationTaskDto } from "@/verification/domain/types";
 import { isStrictlyLeanVerified } from "@/verification/domain/policies";
-import { getVerificationDisplay } from "@/verification/ui-meta";
+import { getVerificationDisplay, toBadgeTone } from "@/verification/ui-meta";
 
 const STARTER = `import Mathlib
 
@@ -19,7 +19,7 @@ function Result({ task }: { task: VerificationTaskDto }) {
   return (
     <Panel tone="subtle" className="p-4">
       <div className="flex flex-wrap items-center gap-2">
-        <Badge tone={display.tone === "success" ? "verified" : display.tone === "danger" ? "danger" : display.tone === "warning" ? "warning" : "neutral"}>{display.label}</Badge>
+        <Badge tone={toBadgeTone(display.tone)}>{display.label}</Badge>
         {verified && <Badge tone="verified"><ShieldCheck className="size-3" /> Lean Verified</Badge>}
         {task.cached && <Badge tone="neutral">缓存结果</Badge>}
       </div>
@@ -29,10 +29,10 @@ function Result({ task }: { task: VerificationTaskDto }) {
         <div><dt>任务</dt><dd className="mt-1 font-mono text-zinc-300">{task.id.slice(0, 8)}</dd></div>
       </dl>
       {(task.messages.length > 0 || (task.failedDeclarations?.length ?? 0) > 0) && (
-        <div className="mt-4 space-y-2">
+        <div className="mt-4 max-h-96 space-y-2 overflow-y-auto">
           {task.messages.map((message, index) => (
             <div key={`${message.code ?? "message"}-${index}`} className="border-l border-amber-400/40 pl-3 text-sm leading-6 text-zinc-300">
-              <span className="mr-2 font-mono text-xs text-zinc-500">{message.line ? `${message.line}${message.column ? `:${message.column}` : ""}` : message.severity}</span>
+              <span className="mr-2 font-mono text-xs text-zinc-500">{message.line !== undefined ? `${message.line}${message.column !== undefined ? `:${message.column}` : ""}` : message.severity}</span>
               {message.message}
             </div>
           ))}

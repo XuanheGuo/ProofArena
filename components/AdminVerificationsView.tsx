@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Activity, RefreshCw } from "lucide-react";
 import { Badge, Button, Panel } from "@/components/ui";
 import type { VerificationTaskDto } from "@/verification/domain/types";
-import { getVerificationDisplay } from "@/verification/ui-meta";
+import { getVerificationDisplay, toBadgeTone } from "@/verification/ui-meta";
 
 export function AdminVerificationsView({ tasks }: { tasks: VerificationTaskDto[] }) {
   const [health, setHealth] = useState<{ healthy?: boolean; enabled?: boolean; provider?: string; latencyMs?: number; message?: string } | null>(null);
@@ -37,10 +37,13 @@ export function AdminVerificationsView({ tasks }: { tasks: VerificationTaskDto[]
               const display = getVerificationDisplay(task);
               const retryable = ["provider_error", "timeout"].includes(task.verdict);
               return <tr key={task.id} className="text-zinc-400">
-                <td className="whitespace-nowrap px-3 py-3">{new Date(task.createdAt).toLocaleString("zh-CN")}</td>
+                {/* Explicit timeZone: this table is server-rendered from a force-dynamic
+                    page, so server and client must format identically regardless of the
+                    host machine's local zone, or React hydration will mismatch. */}
+                <td className="whitespace-nowrap px-3 py-3">{new Date(task.createdAt).toLocaleString("zh-CN", { timeZone: "Asia/Shanghai" })}</td>
                 <td className="px-3 py-3"><div className="font-mono">{task.userId?.slice(0, 8)}</div><div>{task.problemId || task.solutionId || task.submissionId || "—"}</div></td>
                 <td className="px-3 py-3">{task.engine} / {task.provider}</td>
-                <td className="px-3 py-3"><Badge tone={task.verdict === "accepted" ? "verified" : task.verdict === "rejected" ? "danger" : "warning"}>{display.label}</Badge></td>
+                <td className="px-3 py-3"><Badge tone={toBadgeTone(display.tone)}>{display.label}</Badge></td>
                 <td className="px-3 py-3">{task.durationMs === undefined ? "—" : `${task.durationMs} ms`}</td>
                 <td className="px-3 py-3">{task.cached ? "是" : "否"}</td>
                 <td className="max-w-xs px-3 py-3"><div className="font-mono text-zinc-500">{task.providerErrorCode || "—"}</div>{task.messages.slice(0, 2).map((message, i) => <div key={i} className="mt-1">{message.message}</div>)}</td>
