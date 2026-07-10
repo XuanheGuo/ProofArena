@@ -16,6 +16,7 @@ import {
   TrendingUp,
   Users,
   BookOpen,
+  Activity,
 } from "lucide-react";
 import { Badge, Panel } from "@/components/ui";
 
@@ -253,6 +254,13 @@ export function AdminPanel({ stats, userEmail }: AdminPanelProps) {
             title="推理图谱"
             description="编辑题目的推理图谱节点、变换路径和方法边界"
             accent="text-violet-300"
+          />
+          <EntryCard
+            href="/admin/verifications"
+            icon={Activity}
+            title="数学验证"
+            description="查看 Lean 验证状态、规范化诊断与 Provider 健康"
+            accent="text-emerald-300"
           />
           <EntryCard
             href="/studio"

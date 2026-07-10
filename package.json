@@ -14,6 +14,7 @@
     "start:standalone": "node .next/standalone/server.js",
     "seed": "npx tsx scripts/seed-problems.mts",
     "fix:summaries": "npx tsx scripts/fix-solution-summaries.mts",
+    "test": "node --import tsx --test verification/api.test.ts verification/ui-meta.test.ts verification/providers/axle/axle-provider.test.ts verification/service/*.test.ts",
     "lint": "tsc --noEmit"
   },
   "dependencies": {

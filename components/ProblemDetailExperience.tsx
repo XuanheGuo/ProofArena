@@ -45,6 +45,7 @@ import { getSolutionKindMeta } from "@/lib/solution-kinds";
 import { contestSolutionTypeMeta } from "@/lib/contest-meta";
 import { mathVizProblemIds } from "@/lib/math-viz-problem-ids";
 import { getScrollBehavior } from "@/lib/scroll-behavior";
+import { LeanVerificationWorkspace } from "@/components/LeanVerificationWorkspace";
 
 const FunctionGraphPanel = dynamic(
   () =>
@@ -72,7 +73,7 @@ const MathVisualization = dynamic(
 );
 
 type DetailTab =
-  "problem" | "comparison" | "solutions" | "knowledge" | "related" | "graph";
+  "problem" | "comparison" | "solutions" | "verification" | "knowledge" | "related" | "graph";
 
 const allTabs: Array<{
   id: DetailTab;
@@ -83,6 +84,7 @@ const allTabs: Array<{
   { id: "problem", label: "题目" },
   { id: "comparison", label: "比较" },
   { id: "solutions", label: "解法" },
+  { id: "verification", label: "形式化验证" },
   { id: "knowledge", label: "知识点" },
   { id: "related", label: "相关题" },
   { id: "graph", label: "动态图像", requiresGraph: true },
@@ -485,6 +487,7 @@ export function ProblemDetailExperience({
   contestContext,
   contestLock,
   isDraftProblem,
+  leanVerificationEnabled = false,
 }: {
   problem: Problem;
   knowledgeNodes: KnowledgeNode[];
@@ -503,6 +506,7 @@ export function ProblemDetailExperience({
   // submission target yet — solutions can't attach to a draft id — so the
   // submit CTA must not preselect it in the submission form.
   isDraftProblem?: boolean;
+  leanVerificationEnabled?: boolean;
 }) {
   const graphSpec = graphSpecRegistry[problem.id];
   const hasMathViz = mathVizProblemIds.has(problem.id);
@@ -978,6 +982,10 @@ export function ProblemDetailExperience({
               </div>
             )}
           </section>
+        )}
+
+        {activeTab === "verification" && (
+          <LeanVerificationWorkspace problemId={problem.id} enabled={leanVerificationEnabled} />
         )}
 
         {activeTab === "solutions" && (

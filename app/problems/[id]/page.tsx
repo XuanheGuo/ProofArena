@@ -144,6 +144,7 @@ export default async function ProblemDetailPage({
       knowledgeNodes={knowledgeNodes}
       relatedProblems={relatedProblems}
       contestLock={contestLock ?? undefined}
+      leanVerificationEnabled={process.env.LEAN_VERIFICATION_ENABLED === "true"}
     />
   );
 }

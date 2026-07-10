@@ -309,6 +309,7 @@ export default async function ContestProblemDetailPage({
       relatedProblems={relatedProblems}
       contestContext={contestContext}
       isDraftProblem={isDraftProblem}
+      leanVerificationEnabled={process.env.LEAN_VERIFICATION_ENABLED === "true"}
     />
   );
 }
