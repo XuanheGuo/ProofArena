@@ -4,10 +4,17 @@ interface RadarDatum {
   value: number;
 }
 
+export interface RadarSeries {
+  data: RadarDatum[];
+  color: string;
+  label?: string;
+}
+
 interface RadarChartProps {
   data: RadarDatum[];
   max?: number;
   color?: string;
+  series?: RadarSeries[];
   className?: string;
 }
 
@@ -32,21 +39,23 @@ export function RadarChart({
   data,
   max = 10,
   color = "var(--accent)",
+  series,
   className,
 }: RadarChartProps) {
   const count = data.length;
-  const dataPoints = data.map((d, i) =>
-    pointFor(i, count, Math.max(0, Math.min(max, d.value)) / max),
-  );
-  const dataPolygon = dataPoints.map((p) => `${p.x},${p.y}`).join(" ");
+  const chartSeries = series?.length ? series : [{ data, color }];
 
   return (
     <svg
       viewBox={`0 0 ${SIZE} ${SIZE}`}
       className={`overflow-visible ${className ?? "mx-auto w-full max-w-72"}`}
       role="img"
-      aria-label={data
-        .map((d) => `${d.label} ${d.value.toFixed(1)}`)
+      aria-label={chartSeries
+        .map((item) =>
+          `${item.label ? `${item.label}：` : ""}${item.data
+            .map((d) => `${d.label} ${d.value.toFixed(1)}`)
+            .join("，")}`,
+        )
         .join("，")}
     >
       {RING_RATIOS.map((ratio) => (
@@ -77,16 +86,34 @@ export function RadarChart({
           />
         );
       })}
-      <polygon
-        points={dataPolygon}
-        fill={color}
-        fillOpacity={0.18}
-        stroke={color}
-        strokeWidth={2}
-      />
-      {dataPoints.map((p, i) => (
-        <circle key={data[i].key} cx={p.x} cy={p.y} r={3.5} fill={color} />
-      ))}
+      {chartSeries.map((item, seriesIndex) => {
+        const dataPoints = item.data.map((d, i) =>
+          pointFor(i, count, Math.max(0, Math.min(max, d.value)) / max),
+        );
+        const dataPolygon = dataPoints.map((p) => `${p.x},${p.y}`).join(" ");
+
+        return (
+          <g key={item.label ?? seriesIndex}>
+            <polygon
+              points={dataPolygon}
+              fill={item.color}
+              fillOpacity={0.14}
+              stroke={item.color}
+              strokeWidth={2}
+              strokeDasharray={seriesIndex ? "5 3" : undefined}
+            />
+            {dataPoints.map((p, i) => (
+              <circle
+                key={item.data[i].key}
+                cx={p.x}
+                cy={p.y}
+                r={3.5}
+                fill={item.color}
+              />
+            ))}
+          </g>
+        );
+      })}
       {data.map((d, i) => {
         const p = pointFor(i, count, 1.2);
         const anchor =

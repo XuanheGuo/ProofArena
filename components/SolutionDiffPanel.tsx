@@ -6,6 +6,7 @@ import type { ReactNode } from "react";
 import { ChevronDown, GitBranch, GitCompare } from "lucide-react";
 import { MathBlock } from "@/components/MathBlock";
 import { Listbox } from "@/components/Listbox";
+import { RadarChart } from "@/components/RadarChart";
 import { stripMathDelimiters } from "@/lib/math-normalizer";
 import type {
   Problem,
@@ -165,64 +166,64 @@ function KeyTransformSection({
 }
 
 function ScoresSection({ solA, solB }: { solA: Solution; solB: Solution }) {
+  const series = [
+    {
+      label: "路线 A",
+      color: "#67e8f9",
+      data: SCORE_ROWS.map(({ key, label }) => ({
+        key,
+        label,
+        value: solA.scores[key] ?? 0,
+      })),
+    },
+    {
+      label: "路线 B",
+      color: "#fcd34d",
+      data: SCORE_ROWS.map(({ key, label }) => ({
+        key,
+        label,
+        value: solB.scores[key] ?? 0,
+      })),
+    },
+  ];
+
   return (
     <div className="space-y-2">
       <SectionHeader title="五维评分对比" source="field" />
-      <div className="border border-white/5 bg-black/20 p-3">
-        <div className="mb-2 grid grid-cols-[4rem_minmax(0,1fr)_minmax(0,1fr)] gap-2 text-[10px] font-bold text-zinc-600">
-          <span>维度</span>
-          <span className="truncate text-cyan-300">
-            <MathBlock>{solA.title}</MathBlock>
-          </span>
-          <span className="truncate text-amber-300">
-            <MathBlock>{solB.title}</MathBlock>
-          </span>
-        </div>
-        <div className="space-y-1.5">
-          {SCORE_ROWS.map((row) => {
-            const a = solA.scores[row.key] ?? 0;
-            const b = solB.scores[row.key] ?? 0;
-            return (
-              <div
-                key={row.key}
-                className="grid grid-cols-[4rem_minmax(0,1fr)_minmax(0,1fr)] items-center gap-2 text-[11px]"
-              >
-                <span className="text-zinc-500">{row.label}</span>
-                <div className="min-w-0">
-                  <div className="mb-0.5 flex items-center justify-between gap-1">
-                    <span className="truncate text-zinc-500">A</span>
-                    <span className="font-bold text-cyan-300">
-                      {a.toFixed(1)}
-                    </span>
-                  </div>
-                  <div className="h-1.5 overflow-hidden bg-white/10">
-                    <div
-                      className="h-full bg-cyan-300"
-                      style={{
-                        width: `${Math.max(0, Math.min(100, a * 10))}%`,
-                      }}
-                    />
-                  </div>
-                </div>
-                <div className="min-w-0">
-                  <div className="mb-0.5 flex items-center justify-between gap-1">
-                    <span className="truncate text-zinc-500">B</span>
-                    <span className="font-bold text-amber-300">
-                      {b.toFixed(1)}
-                    </span>
-                  </div>
-                  <div className="h-1.5 overflow-hidden bg-white/10">
-                    <div
-                      className="h-full bg-amber-300"
-                      style={{
-                        width: `${Math.max(0, Math.min(100, b * 10))}%`,
-                      }}
-                    />
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+      <div className="border border-white/5 bg-black/20 p-3 sm:p-4">
+        <RadarChart data={series[0].data} series={series} />
+        <div className="mt-3 grid gap-2 text-xs sm:grid-cols-2">
+          {[
+            {
+              solution: solA,
+              line: "实线",
+              containerClass: "border-cyan-400/20 bg-cyan-400/[0.04]",
+              textClass: "text-cyan-300",
+              route: "路线 A",
+            },
+            {
+              solution: solB,
+              line: "虚线",
+              containerClass: "border-amber-400/20 bg-amber-400/[0.04]",
+              textClass: "text-amber-300",
+              route: "路线 B",
+            },
+          ].map(({ solution, line, containerClass, textClass, route }) => (
+            <div
+              key={solution.id}
+              className={`min-w-0 border px-3 py-2 ${containerClass}`}
+            >
+              <p className={`truncate font-bold ${textClass}`}>
+                {route}（{line}）·{" "}
+                <MathBlock>{solution.title}</MathBlock>
+              </p>
+              <p className="mt-1 text-[11px] tabular-nums text-zinc-400">
+                {SCORE_ROWS.map(({ key, label }) =>
+                  `${label} ${(solution.scores[key] ?? 0).toFixed(1)}`,
+                ).join(" · ")}
+              </p>
+            </div>
+          ))}
         </div>
       </div>
     </div>
