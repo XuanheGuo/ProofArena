@@ -27,16 +27,7 @@ SUPABASE_SERVICE_ROLE_KEY=...
 
 ## 3. 执行 migration
 
-当前项目没有接入 Supabase CLI，migration 以 SQL 文件形式维护。新库按文件编号依次执行：
-
-1. `supabase/migrations/001_initial_schema.sql`
-2. `supabase/migrations/002_repair_submissions_schema.sql`
-3. `supabase/migrations/003_repair_submission_review_policies.sql`
-4. `supabase/migrations/004_contest_arena_mvp.sql`
-5. `supabase/migrations/005_contest_submission_window.sql`
-6. `supabase/migrations/006_contest_problem_unlock_mode.sql`
-7. `supabase/migrations/007_solution_ratings_allow_static.sql`
-8. `supabase/migrations/008_contest_thought_arena.sql`
+当前项目没有接入 Supabase CLI，migration 以 SQL 文件形式维护。新库必须按文件编号顺序执行 `001_initial_schema.sql` 至当前最新 migration（现为 `024_unified_verification_system.sql`），不能只停在早期比赛 migration。
 
 执行方式：
 
@@ -60,6 +51,7 @@ SUPABASE_SERVICE_ROLE_KEY=...
 | `solution_ratings` | 解法互评 |
 | `contest_submission_ratings` | 比赛投稿成为正式解法前的思路互评 |
 | `awards` | 比赛奖项 |
+| `verification_tasks` | 独立、可审计的数学验证任务与结果 |
 
 `008_contest_thought_arena.sql` 还会创建 `submission-images` storage bucket，并重写比赛投稿窗口 trigger，使比赛投稿同时受比赛状态和单题开放时间约束。
 

@@ -126,6 +126,7 @@ flowchart LR
 - [比赛模块](./docs/CONTESTS.md)
 - [第一场比赛启动方案](./docs/FIRST_CONTEST_PLAN.md)
 - [CAS 校验服务](./docs/CAS.md)
+- [统一数学验证系统](./docs/VERIFICATION.md)
 - [内容与数据规范](./docs/CONTENT_GUIDE.md)
 - [五维评分规则](./docs/SCORING.md)
 - [路线图](./docs/ROADMAP.md)
@@ -146,7 +147,7 @@ flowchart LR
 - 题库内容验证还没有构建期 schema
 - 比赛思路互评刚进入 008 migration，前后台写入与展示仍需要继续打磨
 - JSXGraph 可视化仍按题目特化，尚未形成通用配置协议
-- 自动化测试很少，主要依赖 TypeScript 和生产构建兜底
+- 新增验证核心的 Node 单元测试；其他业务自动化测试仍较少
 
 ## 协议
 
