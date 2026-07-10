@@ -377,7 +377,15 @@ export interface Problem extends PedagogicalAnnotations {
 // Lightweight DTOs for list/preview surfaces (problem list, home stats, related
 // problems) that don't need full solution text. Keep in sync with the fields
 // ProblemCard/ProblemExplorer/ProblemScrollbar actually read.
-export type SolutionSummary = Pick<Solution, "id" | "title" | "inspiration" | "scores">;
+// verificationStatus is just the `verification.status` enum (fetched via a
+// jsonb path selector, not the full Verification blob) so ProblemCard can
+// show a CAS badge without pulling verification's statement/checks/scope text.
+export type SolutionSummary = Pick<
+  Solution,
+  "id" | "title" | "inspiration" | "scores"
+> & {
+  verificationStatus: VerificationStatus;
+};
 
 export type ProblemSummary = Pick<
   Problem,

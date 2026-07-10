@@ -25,8 +25,11 @@ import type {
   Solution,
 } from "@/lib/types";
 import { MathBlock } from "@/components/MathBlock";
-import { ScoreBar } from "@/components/ScoreBar";
-import { VerificationPanel } from "@/components/VerificationPanel";
+import { RadarChart, RadarChartLegend } from "@/components/RadarChart";
+import {
+  VerificationBadge,
+  VerificationPanel,
+} from "@/components/VerificationPanel";
 import { SolutionTreePanel } from "@/components/SolutionTreePanel";
 import { SolutionRatingPanel } from "@/components/SolutionRatingPanel";
 import { ProofGraphMatrix } from "@/components/ProofGraphMatrix";
@@ -93,10 +96,6 @@ const scoreRows: Array<[keyof Solution["scores"], string]> = [
   ["explanation", "讲解友好"],
 ];
 
-function scoreTone(index: number) {
-  return index === 1 ? "red" : index === 2 ? "amber" : "cyan";
-}
-
 function SolutionCompareCard({
   solution,
   rank,
@@ -137,6 +136,7 @@ function SolutionCompareCard({
                 赛后
               </span>
             )}
+            <VerificationBadge status={solution.verification.status} />
             {solution.thinkingCues?.forkOf && (
               <a
                 href={`#${solution.thinkingCues.forkOf.solutionId}`}
@@ -272,15 +272,21 @@ function SolutionCompareCard({
                     默认折叠
                   </span>
                 </summary>
-                <div className="space-y-3 border-t border-white/10 p-4">
-                  {scoreRows.map(([key, label], index) => (
-                    <ScoreBar
-                      key={key}
-                      label={label}
-                      value={solution.scores[key]}
-                      tone={scoreTone(index)}
-                    />
-                  ))}
+                <div className="space-y-4 border-t border-white/10 p-4">
+                  <RadarChart
+                    data={scoreRows.map(([key, label]) => ({
+                      key,
+                      label,
+                      value: solution.scores[key],
+                    }))}
+                  />
+                  <RadarChartLegend
+                    data={scoreRows.map(([key, label]) => ({
+                      key,
+                      label,
+                      value: solution.scores[key],
+                    }))}
+                  />
                   <p className="pt-2 text-xs leading-6 text-zinc-500">
                     <MathBlock>{solution.scoringReason}</MathBlock>
                   </p>
@@ -525,6 +531,34 @@ export function ProblemDetailExperience({
     return true;
   });
   const [activeTab, setActiveTab] = useState<DetailTab>("solutions");
+  // Keeps the ?tab= query param in sync with the active tab (via raw
+  // history.replaceState, not next/navigation's useSearchParams — this
+  // component is already fully client-rendered, so there's no need to opt
+  // the static /problems/[id] page into a Suspense boundary for it) so
+  // shared links and page refreshes land back on the tab the user was
+  // reading instead of always resetting to "solutions". See
+  // docs/UI_UX_AUDIT.md item 2.
+  function selectTab(tab: DetailTab) {
+    setActiveTab(tab);
+    if (typeof window === "undefined") return;
+    const url = new URL(window.location.href);
+    if (tab === "solutions") {
+      url.searchParams.delete("tab");
+    } else {
+      url.searchParams.set("tab", tab);
+    }
+    window.history.replaceState(null, "", url);
+  }
+  useEffect(() => {
+    const requested = new URLSearchParams(window.location.search).get(
+      "tab",
+    ) as DetailTab | null;
+    if (requested && tabs.some((tab) => tab.id === requested)) {
+      setActiveTab(requested);
+    }
+    // Mount-only: reads the URL once to restore the shared/refreshed tab.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [showGuide, setShowGuide] = useState(false);
   const tabScrollerRef = useRef<HTMLDivElement>(null);
   const [showTabOverflowHint, setShowTabOverflowHint] = useState(false);
@@ -594,7 +628,7 @@ export function ProblemDetailExperience({
   }
 
   function showSolutions() {
-    setActiveTab("solutions");
+    selectTab("solutions");
     requestAnimationFrame(() => {
       document
         .getElementById("solutions-content")
@@ -603,7 +637,7 @@ export function ProblemDetailExperience({
   }
 
   function showComparison() {
-    setActiveTab("comparison");
+    selectTab("comparison");
     requestAnimationFrame(() => {
       document
         .getElementById("proof-graph-comparison-content")
@@ -826,7 +860,7 @@ export function ProblemDetailExperience({
               <button
                 key={tab.id}
                 type="button"
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => selectTab(tab.id)}
                 aria-pressed={activeTab === tab.id}
                 className={`h-10 shrink-0 border px-4 text-sm font-bold transition ${
                   activeTab === tab.id

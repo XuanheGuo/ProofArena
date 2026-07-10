@@ -18,8 +18,11 @@ import {
 } from "lucide-react";
 import type { Solution } from "@/lib/types";
 import { MathBlock } from "@/components/MathBlock";
-import { ScoreBar } from "@/components/ScoreBar";
-import { VerificationPanel } from "@/components/VerificationPanel";
+import { RadarChart, RadarChartLegend } from "@/components/RadarChart";
+import {
+  VerificationBadge,
+  VerificationPanel,
+} from "@/components/VerificationPanel";
 import { getSolutionAverage } from "@/data/problems";
 import { getInsightNode } from "@/data/insights";
 import { getKnowledgeNode } from "@/data/knowledge";
@@ -41,7 +44,7 @@ function ThinkingCuesPanel({ solution }: { solution: Solution }) {
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-4 py-3">
         <div className="flex items-center gap-2">
           <Lightbulb className="size-4 text-amber-300" />
-          <h3 className="text-sm font-bold text-white">💡 思维线索</h3>
+          <h3 className="text-sm font-bold text-white">思维线索</h3>
         </div>
         {typeof thinkingCues.confidence === "number" && (
           <span className="font-mono text-[10px] uppercase tracking-widest text-zinc-600">
@@ -154,6 +157,7 @@ export function SolutionCard({
             <span className="border border-white/10 px-2 py-1 text-xs text-zinc-500">
               {kindMeta.description}
             </span>
+            <VerificationBadge status={solution.verification.status} />
             {solution.tags.map((tag) => (
               <span
                 key={tag}
@@ -501,15 +505,21 @@ export function SolutionCard({
               <p className="mb-4 text-xs leading-5 text-zinc-600">
                 分数用于辅助比较，重点仍是画像、场景和局限。
               </p>
-              <div className="space-y-3.5">
-                {scoreLabels.map(([key, label], index) => (
-                  <ScoreBar
-                    key={key}
-                    label={label}
-                    value={solution.scores[key]}
-                    tone={index === 1 ? "red" : index === 2 ? "amber" : "cyan"}
-                  />
-                ))}
+              <RadarChart
+                data={scoreLabels.map(([key, label]) => ({
+                  key,
+                  label,
+                  value: solution.scores[key],
+                }))}
+              />
+              <div className="mt-4">
+                <RadarChartLegend
+                  data={scoreLabels.map(([key, label]) => ({
+                    key,
+                    label,
+                    value: solution.scores[key],
+                  }))}
+                />
               </div>
             </div>
             <div className="border-l-2 border-amber-400 bg-amber-400/5 p-4">

@@ -24,6 +24,9 @@ export const contestRegistrationStatusMeta: Record<ContestRegistrationStatus, { 
   suspended: { label: "已暂停", className: "border-orange-500/40 bg-orange-500/[0.07] text-orange-300" },
 };
 
+// active/judging read [data-theme] CSS variables directly (app/globals.css)
+// rather than hardcoded Tailwind color literals, so they can't silently fall
+// out of the light/dark override whitelist — see docs/UI_UX_AUDIT.md A2.
 export const contestStatusMeta: Record<ContestStatus, { label: string; className: string }> = {
   draft: {
     label: "未开始",
@@ -31,11 +34,13 @@ export const contestStatusMeta: Record<ContestStatus, { label: string; className
   },
   active: {
     label: "进行中",
-    className: "border-emerald-500/50 bg-emerald-500/15 text-emerald-300",
+    className:
+      "border-[var(--verified-border)] bg-[var(--verified-soft)] text-[var(--verified)]",
   },
   judging: {
     label: "评审中",
-    className: "border-amber-500/50 bg-amber-500/15 text-amber-300",
+    className:
+      "border-[var(--contest-border)] bg-[var(--contest-soft)] text-[var(--contest)]",
   },
   finished: {
     label: "已结束",

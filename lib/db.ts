@@ -114,12 +114,13 @@ function toSolutionSummary(row: Record<string, unknown>): SolutionSummary {
     title: row.title as string,
     inspiration: row.inspiration as string,
     scores: row.scores as SolutionScores,
+    verificationStatus: row.verification_status as Solution['verification']['status'],
   };
 }
 
 function pickSolutionSummary(solution: Solution): SolutionSummary {
-  const { id, title, inspiration, scores } = solution;
-  return { id, title, inspiration, scores };
+  const { id, title, inspiration, scores, verification } = solution;
+  return { id, title, inspiration, scores, verificationStatus: verification.status };
 }
 
 function toProblemSummary(row: Record<string, unknown>): ProblemSummary {
@@ -237,7 +238,7 @@ export async function getProblemsByIds(ids: string[]): Promise<Problem[]> {
 }
 
 const SUMMARY_COLUMNS =
-  'id, year, region, paper, number, difficulty, question_type, tags, title, statement, heat, proof_graph, solutions(id, title, inspiration, scores)';
+  'id, year, region, paper, number, difficulty, question_type, tags, title, statement, heat, proof_graph, solutions(id, title, inspiration, scores, verification_status:verification->>status)';
 
 // Lightweight query for list/preview surfaces (problem list, home stats,
 // related problems) — skips answer/learning_guide/solution_tree/*_matches and

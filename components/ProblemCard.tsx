@@ -13,12 +13,16 @@ import type { ProblemSummary } from "@/lib/types";
 import { getBestSolution, getLearningIndex } from "@/lib/db";
 import { MathBlock } from "@/components/MathBlock";
 import { difficultyBadgeClass } from "@/lib/problem-presentation";
+import { VerificationBadge } from "@/components/VerificationPanel";
 
+// Reads [data-theme] CSS variables directly (app/globals.css) rather than
+// hardcoded Tailwind color literals, so it can't silently fall out of the
+// light/dark override whitelist — see docs/UI_UX_AUDIT.md A2.
 const typeStyles = {
-  单选: "border-cyan-400/30 text-cyan-300",
-  多选: "border-red-400/30 text-red-300",
-  填空: "border-amber-400/30 text-amber-300",
-  解答: "border-emerald-400/30 text-emerald-300",
+  单选: "border-[var(--accent-border)] text-[var(--accent)]",
+  多选: "border-[var(--danger-border)] text-[var(--danger)]",
+  填空: "border-[var(--contest-border)] text-[var(--contest)]",
+  解答: "border-[var(--verified-border)] text-[var(--verified)]",
 };
 
 export function ProblemCard({
@@ -97,9 +101,12 @@ export function ProblemCard({
           </div>
           <div className="grid items-stretch gap-px bg-white/10 sm:grid-cols-[1fr_1fr_7rem]">
             <div className="min-w-0 bg-zinc-950 p-3">
-              <span className="flex items-center gap-1.5 text-[11px] text-zinc-500">
-                <TimerReset className="size-3.5 text-red-400" />
-                标准解
+              <span className="flex items-center justify-between gap-1.5 text-[11px] text-zinc-500">
+                <span className="flex items-center gap-1.5">
+                  <TimerReset className="size-3.5 text-red-400" />
+                  标准解
+                </span>
+                <VerificationBadge status={examSolution.verificationStatus} />
               </span>
               <strong className="mt-1.5 block truncate text-xs text-zinc-200">
                 <MathBlock>{examSolution.title}</MathBlock>
@@ -109,9 +116,14 @@ export function ProblemCard({
               </p>
             </div>
             <div className="min-w-0 bg-zinc-950 p-3">
-              <span className="flex items-center gap-1.5 text-[11px] text-zinc-500">
-                <Sparkles className="size-3.5 text-amber-300" />
-                启发解
+              <span className="flex items-center justify-between gap-1.5 text-[11px] text-zinc-500">
+                <span className="flex items-center gap-1.5">
+                  <Sparkles className="size-3.5 text-amber-300" />
+                  启发解
+                </span>
+                <VerificationBadge
+                  status={elegantSolution.verificationStatus}
+                />
               </span>
               <strong className="mt-1.5 block truncate text-xs text-zinc-200">
                 <MathBlock>{elegantSolution.title}</MathBlock>

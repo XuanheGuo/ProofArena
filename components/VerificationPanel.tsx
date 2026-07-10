@@ -1,31 +1,61 @@
 import { CheckCircle2, CircleAlert, FlaskConical } from "lucide-react";
 import { MathBlock } from "@/components/MathBlock";
-import type { Verification } from "@/lib/types";
+import type { Verification, VerificationStatus } from "@/lib/types";
 
-const statusMap = {
+// className values read [data-theme] CSS variables directly (app/globals.css)
+// rather than hardcoded Tailwind color literals, so they can't silently fall
+// out of the light/dark override whitelist — see docs/UI_UX_AUDIT.md A2.
+// Exported so compact verification badges (ProblemCard, SolutionCard,
+// SolutionCompareCard) share the same status → label/icon/color mapping.
+export const verificationStatusMeta: Record<
+  VerificationStatus,
+  { label: string; className: string; icon: typeof CheckCircle2 }
+> = {
   verified: {
     label: "CAS 已验证",
-    className: "border-emerald-500/25 bg-emerald-500/8 text-emerald-300",
+    className:
+      "border-[var(--verified-border)] bg-[var(--verified-soft)] text-[var(--verified)]",
     icon: CheckCircle2,
   },
   partial: {
     label: "部分验证",
-    className: "border-amber-500/25 bg-amber-500/8 text-amber-300",
+    className:
+      "border-[var(--contest-border)] bg-[var(--contest-soft)] text-[var(--contest)]",
     icon: CircleAlert,
   },
   manual: {
     label: "人工复核",
-    className: "border-cyan-500/25 bg-cyan-500/8 text-cyan-300",
+    className:
+      "border-[var(--accent-border)] bg-[var(--accent-soft)] text-[var(--accent)]",
     icon: FlaskConical,
   },
 };
+
+export function VerificationBadge({
+  status,
+  className,
+}: {
+  status: VerificationStatus;
+  className?: string;
+}) {
+  const state = verificationStatusMeta[status];
+  const StatusIcon = state.icon;
+  return (
+    <span
+      className={`inline-flex items-center gap-1 border px-1.5 py-0.5 text-[10px] font-bold ${state.className} ${className ?? ""}`}
+    >
+      <StatusIcon className="size-3" />
+      {state.label}
+    </span>
+  );
+}
 
 export function VerificationPanel({
   verification,
 }: {
   verification: Verification;
 }) {
-  const state = statusMap[verification.status];
+  const state = verificationStatusMeta[verification.status];
   const StatusIcon = state.icon;
 
   return (

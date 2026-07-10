@@ -186,6 +186,59 @@ export default async function HomePage() {
         </div>
       </section>
 
+      {/* Compact horizontally-scrollable version of "动态战况" for viewports
+          below lg, where the hero's side panel is hidden — previously the
+          module simply disappeared on mobile. See docs/UI_UX_AUDIT.md item 5. */}
+      {hasArenaStatus && (
+        <div className="border-b border-white/10 bg-zinc-950 py-3 lg:hidden">
+          <div className="mx-auto flex max-w-7xl gap-2 overflow-x-auto px-4 pb-1 md:px-6">
+            {currentContest && (
+              <Link
+                href={`/contests/${currentContest.slug}`}
+                className="surface-panel-subtle pressable flex shrink-0 items-center gap-2 bg-zinc-950 px-3 py-2"
+              >
+                <Flame className="size-3.5 shrink-0 text-amber-300" />
+                <span className="whitespace-nowrap text-[10px] font-bold uppercase tracking-wide text-amber-300">
+                  比赛进行中
+                </span>
+                <span className="max-w-32 truncate text-xs font-bold text-white">
+                  <MathBlock>{currentContest.title}</MathBlock>
+                </span>
+              </Link>
+            )}
+            {topBySolutions && (
+              <Link
+                href={`/problems/${topBySolutions.id}`}
+                className="surface-panel-subtle pressable flex shrink-0 items-center gap-2 bg-zinc-950 px-3 py-2"
+              >
+                <span className="whitespace-nowrap text-[10px] font-bold uppercase tracking-wide text-cyan-300">
+                  对比最多
+                </span>
+                <span className="max-w-28 truncate text-xs font-bold text-white">
+                  <MathBlock>{topBySolutions.title}</MathBlock>
+                </span>
+                <span className="shrink-0 font-display text-sm font-black tabular-nums text-cyan-300">
+                  {topBySolutions.solutions.length}
+                </span>
+              </Link>
+            )}
+            {topByHeat && topByHeat.id !== topBySolutions?.id && (
+              <Link
+                href={`/problems/${topByHeat.id}`}
+                className="surface-panel-subtle pressable flex shrink-0 items-center gap-2 bg-zinc-950 px-3 py-2"
+              >
+                <span className="whitespace-nowrap text-[10px] font-bold uppercase tracking-wide text-emerald-300">
+                  热度最高
+                </span>
+                <span className="max-w-28 truncate text-xs font-bold text-white">
+                  <MathBlock>{topByHeat.title}</MathBlock>
+                </span>
+              </Link>
+            )}
+          </div>
+        </div>
+      )}
+
       <section className="border-b border-white/10 bg-zinc-950 py-14">
         <div className="mx-auto max-w-7xl px-4 md:px-6">
           <div className="mb-6 flex items-center gap-2 text-sm font-bold text-white">

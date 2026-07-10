@@ -144,18 +144,18 @@ const VAULT_SOURCE_TYPES = [
 const VAULT_DIFFICULTIES = ["基础", "中档", "压轴"];
 const VAULT_QUESTION_TYPES = ["单选", "多选", "填空", "解答"];
 
-function readContestDraft(key: string): ContestDraft | null {
+function readDraft<T>(key: string): T | null {
   try {
     const raw =
       typeof window !== "undefined" ? localStorage.getItem(key) : null;
     if (!raw) return null;
-    return JSON.parse(raw) as ContestDraft;
+    return JSON.parse(raw) as T;
   } catch {
     return null;
   }
 }
 
-function writeContestDraft(key: string, draft: ContestDraft) {
+function writeDraft<T>(key: string, draft: T) {
   try {
     localStorage.setItem(key, JSON.stringify(draft));
   } catch {
@@ -163,13 +163,64 @@ function writeContestDraft(key: string, draft: ContestDraft) {
   }
 }
 
-function clearContestDraft(key: string) {
+function clearDraft(key: string) {
   try {
     localStorage.removeItem(key);
   } catch {
     // ignore
   }
 }
+
+// Only checks specific fields, not "any string field on the draft" — several
+// draft shapes have fields that default to a non-empty string (SolutionDraft's
+// `kind`, VaultDraft's `year`/`region`/`difficulty`/`questionType`), so a
+// blank, untouched form would otherwise always read as "has content" and the
+// autosave/beforeunload logic would overwrite a real saved draft with one.
+function draftHasContent(draft: unknown, keys: string[]): boolean {
+  if (!draft || typeof draft !== "object") return false;
+  const record = draft as Record<string, unknown>;
+  return keys.some((key) => {
+    const value = record[key];
+    return typeof value === "string" && value.trim().length > 0;
+  });
+}
+
+function generalDraftContentKeys(mode: SubmitMode): string[] {
+  return mode === "solution" ? ["title", "approach"] : ["title", "statement"];
+}
+
+// Draft auto-save keys for the non-contest submission flow (problem / vault /
+// plain solution). Mirrors the contest draft pattern above but scoped
+// separately, since these forms have a different shape and no contest slug.
+// See docs/UI_UX_AUDIT.md item 1.
+function problemDraftKey() {
+  return "pa:draft:v1:problem";
+}
+function solutionDraftKey(problemId: string) {
+  return `pa:draft:v1:solution:${problemId || "any"}`;
+}
+function vaultDraftKey() {
+  return "pa:draft:v1:vault";
+}
+
+type ProblemDraft = typeof initialProblemForm;
+type VaultDraft = typeof initialVaultForm;
+type SolutionDraft = Pick<
+  typeof initialSolutionForm,
+  | "title"
+  | "kind"
+  | "approach"
+  | "keyTransform"
+  | "steps"
+  | "insight"
+  | "verification"
+  | "challengeTargetSolutionId"
+  | "challengeClaim"
+  | "challengeAdvantages"
+  | "challengeRisk"
+  | "observationWhy"
+  | "transformationJustification"
+>;
 
 function getContestSubmissionState(
   contest?: Contest,
@@ -494,6 +545,12 @@ export function SubmitForm({
   const [draftRestored, setDraftRestored] = useState(false);
   const [hasDraftToRestore, setHasDraftToRestore] = useState(false);
   const draftSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [generalDraftRestored, setGeneralDraftRestored] = useState(false);
+  const [hasGeneralDraftToRestore, setHasGeneralDraftToRestore] =
+    useState(false);
+  const generalDraftSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
   const [problemForm, setProblemForm] = useState(initialProblemForm);
   const [vaultForm, setVaultForm] = useState(initialVaultForm);
   const [solutionForm, setSolutionForm] = useState({
@@ -660,7 +717,7 @@ export function SubmitForm({
   // On mount (and when problem changes), check if a saved draft exists.
   useEffect(() => {
     if (!activeDraftKey) return;
-    const saved = readContestDraft(activeDraftKey);
+    const saved = readDraft<ContestDraft>(activeDraftKey);
     if (saved && (saved.approach || saved.title)) {
       setHasDraftToRestore(true);
     } else {
@@ -685,7 +742,7 @@ export function SubmitForm({
     draftSaveTimer.current = setTimeout(() => {
       const parsed = JSON.parse(draftToSaveStr) as ContestDraft;
       if (parsed.approach || parsed.title) {
-        writeContestDraft(activeDraftKey, parsed);
+        writeDraft(activeDraftKey, parsed);
       }
     }, 1500);
     return () => {
@@ -695,7 +752,7 @@ export function SubmitForm({
 
   const restoreDraft = useCallback(() => {
     if (!activeDraftKey) return;
-    const saved = readContestDraft(activeDraftKey);
+    const saved = readDraft<ContestDraft>(activeDraftKey);
     if (!saved) return;
     setSolutionForm((current) => ({
       ...current,
@@ -710,9 +767,118 @@ export function SubmitForm({
   }, [activeDraftKey]);
 
   function discardDraft() {
-    if (activeDraftKey) clearContestDraft(activeDraftKey);
+    if (activeDraftKey) clearDraft(activeDraftKey);
     setHasDraftToRestore(false);
     setDraftRestored(false);
+  }
+  // ─────────────────────────────────────────────────────────────────────────
+
+  // ── General (non-contest) draft auto-save ─────────────────────────────────
+  // Covers problem submissions, plain solution submissions, and Problem Vault
+  // drafts — the contest flow above already has its own mechanism. Same
+  // debounce/restore/beforeunload-flush shape, different keys/shapes.
+  // See docs/UI_UX_AUDIT.md item 1.
+  // Precedence matches the form-body render logic below
+  // (`mode === "solution" ? ... : vaultMode ? ... : ...`): a "solution" mode
+  // selection always wins over vaultMode, since toggling to "上传解法" swaps
+  // in the plain solution form even on a Problem Vault page.
+  const activeGeneralDraftKey = isContestMode
+    ? null
+    : mode === "solution"
+      ? solutionDraftKey(solutionForm.problemId)
+      : vaultMode
+        ? vaultDraftKey()
+        : problemDraftKey();
+
+  useEffect(() => {
+    setGeneralDraftRestored(false);
+    if (!activeGeneralDraftKey) {
+      setHasGeneralDraftToRestore(false);
+      return;
+    }
+    const saved = readDraft<Record<string, unknown>>(activeGeneralDraftKey);
+    setHasGeneralDraftToRestore(
+      draftHasContent(saved, generalDraftContentKeys(mode)),
+    );
+  }, [activeGeneralDraftKey, mode]);
+
+  const generalDraftToSave = isContestMode
+    ? null
+    : mode === "solution"
+      ? ({
+          title: solutionForm.title,
+          kind: solutionForm.kind,
+          approach: solutionForm.approach,
+          keyTransform: solutionForm.keyTransform,
+          steps: solutionForm.steps,
+          insight: solutionForm.insight,
+          verification: solutionForm.verification,
+          challengeTargetSolutionId: solutionForm.challengeTargetSolutionId,
+          challengeClaim: solutionForm.challengeClaim,
+          challengeAdvantages: solutionForm.challengeAdvantages,
+          challengeRisk: solutionForm.challengeRisk,
+          observationWhy: solutionForm.observationWhy,
+          transformationJustification:
+            solutionForm.transformationJustification,
+        } satisfies SolutionDraft)
+      : vaultMode
+        ? vaultForm
+        : problemForm;
+  const generalDraftToSaveStr = generalDraftToSave
+    ? JSON.stringify(generalDraftToSave)
+    : null;
+
+  useEffect(() => {
+    if (!activeGeneralDraftKey || !generalDraftToSaveStr) return;
+    if (generalDraftSaveTimer.current)
+      clearTimeout(generalDraftSaveTimer.current);
+    generalDraftSaveTimer.current = setTimeout(() => {
+      const parsed = JSON.parse(generalDraftToSaveStr);
+      if (draftHasContent(parsed, generalDraftContentKeys(mode))) {
+        writeDraft(activeGeneralDraftKey, parsed);
+      }
+    }, 1500);
+    return () => {
+      if (generalDraftSaveTimer.current)
+        clearTimeout(generalDraftSaveTimer.current);
+    };
+  }, [activeGeneralDraftKey, generalDraftToSaveStr, mode]);
+
+  // Flush any pending debounced write immediately and warn before the tab
+  // closes/reloads with unsaved, non-trivial draft content.
+  useEffect(() => {
+    function handleBeforeUnload(event: BeforeUnloadEvent) {
+      if (!activeGeneralDraftKey || done) return;
+      if (!draftHasContent(generalDraftToSave, generalDraftContentKeys(mode)))
+        return;
+      writeDraft(activeGeneralDraftKey, generalDraftToSave);
+      event.preventDefault();
+      event.returnValue = "";
+    }
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [activeGeneralDraftKey, generalDraftToSave, done, mode]);
+
+  const restoreGeneralDraft = useCallback(() => {
+    if (!activeGeneralDraftKey) return;
+    if (mode === "solution") {
+      const saved = readDraft<SolutionDraft>(activeGeneralDraftKey);
+      if (saved) setSolutionForm((current) => ({ ...current, ...saved }));
+    } else if (vaultMode) {
+      const saved = readDraft<VaultDraft>(activeGeneralDraftKey);
+      if (saved) setVaultForm((current) => ({ ...current, ...saved }));
+    } else {
+      const saved = readDraft<ProblemDraft>(activeGeneralDraftKey);
+      if (saved) setProblemForm((current) => ({ ...current, ...saved }));
+    }
+    setGeneralDraftRestored(true);
+    setHasGeneralDraftToRestore(false);
+  }, [activeGeneralDraftKey, vaultMode, mode]);
+
+  function discardGeneralDraft() {
+    if (activeGeneralDraftKey) clearDraft(activeGeneralDraftKey);
+    setHasGeneralDraftToRestore(false);
+    setGeneralDraftRestored(false);
   }
   // ─────────────────────────────────────────────────────────────────────────
 
@@ -1063,7 +1229,8 @@ export function SubmitForm({
     }
 
     setDone(mode);
-    if (activeDraftKey) clearContestDraft(activeDraftKey);
+    if (activeDraftKey) clearDraft(activeDraftKey);
+    if (activeGeneralDraftKey) clearDraft(activeGeneralDraftKey);
     if (vaultMode) {
       setVaultForm(initialVaultForm);
     } else if (mode === "problem") {
@@ -1192,6 +1359,39 @@ export function SubmitForm({
         </p>
       )}
 
+      {/* General (non-contest) draft restore banner */}
+      {!isContestMode && hasGeneralDraftToRestore && !generalDraftRestored && (
+        <div className="flex items-center justify-between gap-3 border border-amber-400/30 bg-amber-400/[0.06] px-4 py-3">
+          <div className="flex items-center gap-2 text-sm">
+            <RotateCcw className="size-4 shrink-0 text-amber-400" />
+            <span className="text-zinc-300">
+              发现上次未提交的草稿，是否恢复？
+            </span>
+          </div>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={restoreGeneralDraft}
+              className="inline-flex h-8 items-center border border-amber-400/40 bg-amber-400/10 px-3 text-xs font-bold text-amber-300 hover:bg-amber-400/15"
+            >
+              恢复草稿
+            </button>
+            <button
+              type="button"
+              onClick={discardGeneralDraft}
+              className="inline-flex h-8 items-center border border-white/10 px-3 text-xs text-zinc-500 hover:text-white"
+            >
+              忽略
+            </button>
+          </div>
+        </div>
+      )}
+      {!isContestMode && generalDraftRestored && (
+        <p className="text-xs text-zinc-600">
+          已恢复上次草稿。提交成功后自动清除。
+        </p>
+      )}
+
       {!isContestMode && (
         <div className="grid grid-cols-2 gap-2 border border-white/10 bg-black/20 p-1">
           {[
@@ -1208,6 +1408,7 @@ export function SubmitForm({
                   setMode(value as SubmitMode);
                   setDone(null);
                   setError("");
+                  setGeneralDraftRestored(false);
                 }}
                 className={`inline-flex h-11 items-center justify-center gap-2 text-sm font-bold transition ${
                   active

@@ -2,14 +2,34 @@ import type { HTMLAttributes } from "react";
 import { cn } from "@/lib/cn";
 
 type BadgeTone =
-  "neutral" | "accent" | "success" | "warning" | "danger" | "violet";
+  | "neutral"
+  | "accent"
+  | "success"
+  | "verified"
+  | "warning"
+  | "contest"
+  | "danger"
+  | "violet";
 
+// Tones read the [data-theme] CSS variables directly (app/globals.css) instead
+// of hardcoded Tailwind color literals, so they can't fall out of sync with
+// whatever shades the [data-theme] override list happens to whitelist — see
+// docs/UI_UX_AUDIT.md A2. "success"/"verified" and "warning"/"contest" are
+// the same underlying token under two names for call-site readability.
 const toneClass: Record<BadgeTone, string> = {
   neutral: "border-white/10 bg-white/[0.03] text-zinc-400",
-  accent: "border-cyan-400/30 bg-cyan-400/[0.06] text-cyan-300",
-  success: "border-emerald-500/35 bg-emerald-500/[0.07] text-emerald-300",
-  warning: "border-amber-400/35 bg-amber-400/[0.07] text-amber-300",
-  danger: "border-red-500/35 bg-red-500/[0.07] text-red-300",
+  accent:
+    "border-[var(--accent-border)] bg-[var(--accent-soft)] text-[var(--accent)]",
+  success:
+    "border-[var(--verified-border)] bg-[var(--verified-soft)] text-[var(--verified)]",
+  verified:
+    "border-[var(--verified-border)] bg-[var(--verified-soft)] text-[var(--verified)]",
+  warning:
+    "border-[var(--contest-border)] bg-[var(--contest-soft)] text-[var(--contest)]",
+  contest:
+    "border-[var(--contest-border)] bg-[var(--contest-soft)] text-[var(--contest)]",
+  danger:
+    "border-[var(--danger-border)] bg-[var(--danger-soft)] text-[var(--danger)]",
   violet: "border-violet-400/30 bg-violet-400/[0.06] text-violet-300",
 };
 
