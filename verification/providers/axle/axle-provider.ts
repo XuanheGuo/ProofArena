@@ -16,6 +16,10 @@ function position(value: unknown, key: string): number | undefined {
   return typeof found === "number" ? found : undefined;
 }
 
+function isMessageBucket(value: unknown): value is MessageBucket {
+  return Boolean(value) && typeof value === "object";
+}
+
 function normalizeBucket(bucket: MessageBucket | undefined, source: "lean" | "provider"): VerificationMessage[] {
   const output: VerificationMessage[] = [];
   for (const [key, severity] of [["errors", "error"], ["warnings", "warning"], ["infos", "info"]] as const) {
@@ -73,6 +77,18 @@ export class AxleProvider implements VerificationProviderAdapter<LeanVerificatio
       try { raw = await response.json() as AxleResponse; }
       catch { throw new ProviderAdapterError("Lean 验证服务返回了无法识别的结果。", "provider_error", "invalid_json"); }
       if (typeof raw.okay !== "boolean") throw new ProviderAdapterError("Lean 验证服务返回字段不完整。", "provider_error", "invalid_response");
+      // A successful-looking response must actually carry the fields that back that
+      // conclusion. An "okay:true" with missing/malformed diagnostic fields is a
+      // truncated or malformed response, not evidence of a clean proof -- fail closed
+      // rather than silently treating "field absent" the same as "field present and empty".
+      if (raw.okay) {
+        const hasMessageBuckets = isMessageBucket(raw.lean_messages) && isMessageBucket(raw.tool_messages);
+        const declarations = raw.failed_declarations;
+        const hasValidDeclarationsShape = Array.isArray(declarations) && declarations.every((item) => typeof item === "string");
+        if (!hasMessageBuckets || !hasValidDeclarationsShape) {
+          throw new ProviderAdapterError("Lean 验证服务返回字段不完整。", "provider_error", "incomplete_response");
+        }
+      }
       const messages = [
         ...normalizeBucket(raw.lean_messages, "lean"),
         ...normalizeBucket(raw.tool_messages, "provider"),

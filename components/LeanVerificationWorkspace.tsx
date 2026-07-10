@@ -90,7 +90,7 @@ export function LeanVerificationWorkspace({ problemId, enabled }: { problemId: s
     <section className="space-y-4">
       <div>
         <h2 className="text-xl font-black text-white">Lean 形式化验证</h2>
-        <p className="mt-2 text-sm leading-6 text-zinc-500">提交完整 Lean 文件。服务端会固定 Provider 与环境；`sorry`、`admit`、`axiom`、`unsafe` 或失败声明不会获得验证徽章。</p>
+        <p className="mt-2 text-sm leading-6 text-zinc-500">提交完整 Lean 文件。服务端会固定 Provider 与环境；`sorry`、`admit`、`axiom`、`unsafe` 或失败声明不会获得验证徽章。文件中的 <code>import</code> 语句仅供阅读参考——实际验证始终使用服务端固定的环境（含 Mathlib），不会按你写的 import 解析。</p>
       </div>
       {!enabled && <div className="border border-amber-400/30 bg-amber-400/[0.06] p-4 text-sm text-amber-200">形式化验证暂时不可用；已有验证历史仍可查看。</div>}
       <Panel className="p-4">

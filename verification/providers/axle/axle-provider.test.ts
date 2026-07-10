@@ -51,6 +51,25 @@ test("does not accept HTTP success when failed declarations are non-empty", asyn
   assert.equal(result.verdict, "rejected");
 });
 
+test("fails closed when okay:true but diagnostic fields are entirely missing", async () => {
+  await assert.rejects(() => provider(async () => json({ okay: true })).verify(request),
+    (error: unknown) => error instanceof ProviderAdapterError && error.providerErrorCode === "incomplete_response");
+  await assert.rejects(() => provider(async () => json({ okay: true, lean_messages: {}, tool_messages: {} })).verify(request),
+    (error: unknown) => error instanceof ProviderAdapterError && error.providerErrorCode === "incomplete_response");
+});
+
+test("fails closed when okay:true but failed_declarations contains non-string entries", async () => {
+  await assert.rejects(() => provider(async () => json({
+    okay: true, lean_messages: {}, tool_messages: {}, failed_declarations: [{ name: "my_theorem" }],
+  })).verify(request), (error: unknown) => error instanceof ProviderAdapterError && error.providerErrorCode === "incomplete_response");
+});
+
+test("tolerates missing diagnostic fields when okay:false (already rejecting)", async () => {
+  const result = await provider(async () => json({ okay: false })).verify(request);
+  assert.equal(result.valid, false);
+  assert.equal(result.verdict, "rejected");
+});
+
 for (const [status, verdict, code] of [
   [400, "invalid_request", "http_400"], [422, "invalid_request", "http_422"],
   [401, "provider_error", "auth_401"], [403, "provider_error", "auth_403"],

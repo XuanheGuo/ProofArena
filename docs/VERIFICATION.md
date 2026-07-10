@@ -44,7 +44,9 @@ The full-file MVP uses `POST {AXLE_BASE_URL}/api/v1/check` with `Authorization: 
 }
 ```
 
-The adapter reads only documented fields: `okay`, `lean_messages`, `tool_messages`, `failed_declarations`, `timings.total_ms`, and optional `request_id`. It validates untrusted JSON defensively and does not persist the complete raw response. HTTP 400/422 maps to `invalid_request`, 429 to `rate_limited`, 401/403/5xx and malformed responses to `provider_error`, and AbortController expiry to `timeout`. Provider authentication details are stored only as an admin-visible, sanitized code.
+The adapter reads only documented fields: `okay`, `lean_messages`, `tool_messages`, `failed_declarations`, `timings.total_ms`, and optional `request_id`. It validates untrusted JSON defensively and does not persist the complete raw response. HTTP 400/422 maps to `invalid_request`, 429 to `rate_limited`, 401/403/5xx and malformed responses to `provider_error`, and AbortController expiry to `timeout`. Provider authentication details are stored only as an admin-visible, sanitized code. A response with `okay:true` but missing or malformed `lean_messages`/`tool_messages`/`failed_declarations` is treated as an incomplete/malformed response (`provider_error`), never as an implicit pass — "field absent" is never conflated with "field present and empty."
+
+`ignore_imports` is always sent as `true` and is not user-configurable. Per AXLE's documented behavior, this means any `import ...` lines in the submitted source are **superseded**, not executed: AXLE substitutes its own prebuilt environment cache tied to the `environment` value instead of resolving the user's own imports. The submitted source is still sent verbatim (including any import lines) for readability/auditing, but those lines have no effect on what actually gets checked. The verification workspace UI discloses this next to the source editor.
 
 `accepted` requires all of:
 
