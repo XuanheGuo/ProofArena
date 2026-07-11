@@ -100,10 +100,10 @@ export class CapabilityService {
           runId: run.id,
           providerKey: result.providerKey,
           producerVersion: result.producerVersion ?? null,
-          status: "published",
+          status: "draft",
           payload: result.artifactPayload,
           summary: result.summary ?? "",
-          isPublic: true,
+          isPublic: false,
           createdBy: actor.userId,
         });
 

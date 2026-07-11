@@ -72,8 +72,18 @@ export class SupabaseArtifactRepository implements ArtifactRepository {
   async findById(id: string, actor: Actor): Promise<ArtifactRecord | null> {
     let query = this.db.from("artifacts").select("*").eq("id", id);
 
-    if (!isModerator({ role: actor.role, email: actor.email })) {
-      query = query.or(`created_by.eq.${actor.userId},is_public.eq.true`);
+    // Moderators can see all
+    const isMod = isModerator({ role: actor.role, email: actor.email });
+
+    if (!isMod) {
+      // Anonymous or non-moderator users
+      if (actor.userId === "anon" || !actor.userId) {
+        // Anon: only public artifacts
+        query = query.eq("is_public", true);
+      } else {
+        // Authenticated non-moderator: own artifacts + public
+        query = query.or(`created_by.eq.${actor.userId},is_public.eq.true`);
+      }
     }
 
     const { data, error } = await query.maybeSingle();
@@ -88,8 +98,14 @@ export class SupabaseArtifactRepository implements ArtifactRepository {
   async findByRunId(runId: string, actor: Actor): Promise<ArtifactRecord[]> {
     let query = this.db.from("artifacts").select("*").eq("run_id", runId);
 
-    if (!isModerator({ role: actor.role, email: actor.email })) {
-      query = query.or(`created_by.eq.${actor.userId},is_public.eq.true`);
+    const isMod = isModerator({ role: actor.role, email: actor.email });
+
+    if (!isMod) {
+      if (actor.userId === "anon" || !actor.userId) {
+        query = query.eq("is_public", true);
+      } else {
+        query = query.or(`created_by.eq.${actor.userId},is_public.eq.true`);
+      }
     }
 
     const { data, error } = await query;
@@ -133,6 +149,8 @@ export class SupabaseArtifactRepository implements ArtifactRepository {
     const isMod = isModerator({ role: actor.role, email: actor.email });
     const isOwner = artifact.createdBy === actor.userId;
 
+    // Moderators and owners can see all evidence
+    // Others can only see public evidence on public artifacts
     if (!isMod && !isOwner) {
       query = query.eq("is_public", true);
     }
