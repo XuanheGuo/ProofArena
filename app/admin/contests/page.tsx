@@ -2,28 +2,15 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { AdminContestsView } from "@/components/AdminContestsView";
-import { createClient, createServiceClient } from "@/lib/supabase-server";
+import { createServiceClient } from "@/lib/supabase-server";
+import { requireModerator } from "@/lib/require-moderator";
 import { getProblems } from "@/lib/db";
 
-function canManageContests(role?: string | null) {
-  return role === "admin" || role === "moderator";
-}
-
 export default async function AdminContestsPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const moderator = await requireModerator();
 
-  if (!user) redirect("/auth/login");
-
-  const { data: profile } = await supabase
-    .from("user_profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single();
-
-  if (!canManageContests(profile?.role)) {
+  if (!moderator.ok) {
+    if (moderator.reason === "unauthenticated") redirect("/auth/login");
     return (
       <main className="min-h-screen bg-zinc-950 px-4 py-16">
         <div className="mx-auto max-w-2xl text-center">

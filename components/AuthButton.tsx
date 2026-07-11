@@ -6,12 +6,9 @@ import { createClient } from "@/lib/supabase-client";
 import Link from "next/link";
 import { LayoutDashboard, LogIn, User as UserIcon, LogOut } from "lucide-react";
 import { hasSupabasePublicEnv } from "@/lib/supabase-env";
+import { isModerator } from "@/lib/is-moderator";
 
 type UserRole = "user" | "contributor" | "moderator" | "admin";
-
-function canReviewSubmissions(role?: UserRole | null) {
-  return role === "admin" || role === "moderator";
-}
 
 export function AuthButton({
   variant = "icon",
@@ -83,7 +80,7 @@ export function AuthButton({
   }
 
   if (user) {
-    const canReview = canReviewSubmissions(role);
+    const canReview = isModerator({ role, email: user.email });
 
     if (variant === "menu") {
       return (

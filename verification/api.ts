@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase-server";
+import { isModerator } from "@/lib/is-moderator";
 import { VerificationError } from "./domain/errors";
 import type { VerificationActor, VerificationTaskDto } from "./domain/types";
 
@@ -11,8 +12,11 @@ export async function getVerificationActor(): Promise<VerificationActor | null> 
   return { userId: data.user.id, email: data.user.email, role: profile?.role as string | undefined };
 }
 
+// Delegates to the shared Authorization predicate (lib/is-moderator.ts)
+// instead of re-declaring the email bypass and role check — see
+// docs/architecture/principle-violations.md VER-006.
 export function isVerificationAdmin(actor: VerificationActor): boolean {
-  return actor.email === "xuanheguo@icloud.com" || ["moderator", "admin"].includes(actor.role ?? "");
+  return isModerator(actor);
 }
 
 export function taskResponse(task: VerificationTaskDto, actor: VerificationActor) {
