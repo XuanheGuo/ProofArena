@@ -14,7 +14,8 @@ function mapVerificationTaskToRunConclusion(task: VerificationTaskDto): RunConcl
     conclusion = "verified";
     evidenceLevel = "machine_checked";
   } else if (task.verdict === "rejected") {
-    conclusion = "refuted";
+    // Lean proof rejected means "this proof attempt failed", NOT "the statement is false"
+    conclusion = "inconclusive";
     evidenceLevel = "machine_checked";
   } else if (task.verdict === "invalid_request") {
     conclusion = "unsupported";
@@ -37,8 +38,8 @@ function mapVerificationTaskToRunConclusion(task: VerificationTaskDto): RunConcl
     },
     assumptions: [],
     claim: task.problemId
-      ? `Solution for problem ${task.problemId} is machine-checkable`
-      : "Lean proof compiles and passes verification",
+      ? `Submitted Lean source for problem ${task.problemId} was machine-checked in the specified environment`
+      : "Submitted Lean source was machine-checked in the specified environment",
     verifiedScope: task.verdict === "accepted" ? ["lean_proof"] : [],
     unverifiedScope: task.verdict === "accepted" ? [] : ["lean_proof"],
     missingConditions: errorMessages.map((m) => m.message),
@@ -71,7 +72,7 @@ describe("LeanVerificationAdapter mapping", () => {
     assert.deepStrictEqual(result.unverifiedScope, []);
   });
 
-  it("maps rejected verdict to refuted conclusion", () => {
+  it("maps rejected verdict to inconclusive conclusion", () => {
     const task: VerificationTaskDto = {
       id: "task_1",
       status: "completed",
@@ -88,7 +89,7 @@ describe("LeanVerificationAdapter mapping", () => {
 
     const result = mapVerificationTaskToRunConclusion(task);
 
-    assert.strictEqual(result.conclusion, "refuted");
+    assert.strictEqual(result.conclusion, "inconclusive");
     assert.strictEqual(result.evidenceLevel, "machine_checked");
     assert.strictEqual(result.coverage.checked, 0);
     assert.deepStrictEqual(result.coverage.failedDeclarations, ["theorem_main"]);

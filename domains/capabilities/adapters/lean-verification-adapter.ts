@@ -1,5 +1,5 @@
 // Wraps the existing VerificationService (verification/index.ts) as a
-// CapabilityAdapter for capability_key="lean_verification". This is the
+// CapabilityAdapter for capability_key="verify.lean". This is the
 // vertical slice that makes capability_runs + artifacts an honest projection
 // of verification_tasks (not a competing parallel implementation).
 //
@@ -16,7 +16,7 @@ import type { VerificationTaskDto, VerificationVerdict } from "@/verification/do
 import { createVerificationService } from "@/verification";
 
 export class LeanVerificationAdapter implements CapabilityAdapter {
-  readonly capabilityKey = "lean_verification";
+  readonly capabilityKey = "verify.lean";
 
   async run(
     actor: Actor,
@@ -30,7 +30,7 @@ export class LeanVerificationAdapter implements CapabilityAdapter {
         status: "failed",
         providerKey: "none",
         errorCode: "INVALID_INPUT",
-        errorMessage: "lean_verification requires proof_source input (string)",
+        errorMessage: "verify.lean requires proof_source input (string)",
       };
     }
 
@@ -119,12 +119,15 @@ function mapVerificationTaskToRunConclusion(task: VerificationTaskDto): RunConcl
     conclusion = "verified";
     evidenceLevel = "machine_checked";
   } else if (task.verdict === "rejected") {
-    conclusion = "refuted";
+    // Lean proof rejected means "this proof attempt failed", NOT "the statement is false"
+    // Only a verified counterexample or negation proof can produce "refuted"
+    conclusion = "inconclusive";
     evidenceLevel = "machine_checked";
   } else if (task.verdict === "invalid_request") {
     conclusion = "unsupported";
     evidenceLevel = "machine_checked";
   } else {
+    // timeout, provider_error, rate_limited, resource_limit, cancelled
     conclusion = "inconclusive";
     evidenceLevel = "machine_checked";
   }
@@ -142,8 +145,8 @@ function mapVerificationTaskToRunConclusion(task: VerificationTaskDto): RunConcl
     },
     assumptions: [],
     claim: task.problemId
-      ? `Solution for problem ${task.problemId} is machine-checkable`
-      : "Lean proof compiles and passes verification",
+      ? `Submitted Lean source for problem ${task.problemId} was machine-checked in the specified environment`
+      : "Submitted Lean source was machine-checked in the specified environment",
     verifiedScope: task.verdict === "accepted" ? ["lean_proof"] : [],
     unverifiedScope: task.verdict === "accepted" ? [] : ["lean_proof"],
     missingConditions: errorMessages.map((m) => m.message),
