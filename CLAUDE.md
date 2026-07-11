@@ -6,18 +6,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```bash
 npm run dev          # start dev server at localhost:3000
-npm run lint         # TypeScript type check (tsc --noEmit)
+npm run lint         # TypeScript type check (tsc --noEmit) + static content reference validation
+npm run test         # node:test suite (lib/*.test.ts, verification/**/*.test.ts)
 npm run build        # static build + postbuild standalone prep
 npm run start        # production server (after build)
 ```
 
-Before committing: run `npm run lint` then `npm run build`.
+Before committing: run `npm run lint`, `npm run test`, then `npm run build`.
 
-There is no test suite. Lint runs TypeScript only — no ESLint or test runner.
+Lint is TypeScript (`tsc --noEmit`) plus `scripts/validate-knowledge-refs.mts`, which checks that every cross-entity string reference in the static content graph (`conceptId`, `problemId`, `knowledgeIds`, `insightIds`, `thinkingCues.forkOf.solutionId`, ...) resolves to a real `data/problems.ts` / `data/knowledge.ts` / `data/insights.ts` entity — no ESLint. Tests use Node's built-in test runner (`node:test`/`node:assert`), not a third-party framework — follow that convention (see `lib/is-moderator.test.ts` or any `verification/*.test.ts` for the style) rather than introducing Jest/Vitest.
 
 ## Architecture
 
-ProofArena is a Next.js App Router app backed by **Supabase** (Postgres + Auth + Storage). Public reads (`/`, `/problems`, `/problems/[id]`, `/contests`) go through a cookie-free client (`lib/supabase-public.ts`) so those routes stay statically cacheable/ISR (`revalidate`); anything requiring a session (submitting, admin, profile) uses the cookie-aware client in `lib/supabase-server.ts` / `lib/supabase-client.ts`. `data/problems.ts` is only a build-time fallback (`markFallbackProblem`) for when Supabase env vars are absent — it is not the source of truth. Authorization is enforced in two layers: Postgres RLS policies + `SECURITY DEFINER` triggers (`supabase/migrations/`) as the hard boundary, and `lib/require-moderator.ts` as the server-action-level check for moderator/admin-only writes (publishing submissions, promoting Problem Vault drafts, etc.).
+ProofArena is a Next.js App Router app backed by **Supabase** (Postgres + Auth + Storage). Public reads (`/`, `/problems`, `/problems/[id]`, `/contests`) go through a cookie-free client (`lib/supabase-public.ts`) so those routes stay statically cacheable/ISR (`revalidate`); anything requiring a session (submitting, admin, profile) uses the cookie-aware client in `lib/supabase-server.ts` / `lib/supabase-client.ts`. `data/problems.ts` is only a build-time fallback (`markFallbackProblem`) for when Supabase env vars are absent — it is not the source of truth. Authorization is enforced in two layers: Postgres RLS policies + `SECURITY DEFINER` triggers (`supabase/migrations/`) as the hard boundary, and `lib/require-moderator.ts` (`requireModerator()`, server-only) as the single application-level moderator/admin check — used by moderator-only server actions (publishing submissions, promoting Problem Vault drafts, ...) and every `/admin/*` page gate. Its underlying predicate lives in `lib/is-moderator.ts` (`isModerator({role, email})`, framework-free) so client components (e.g. `AuthButton.tsx`) and `verification/` can reuse the exact same rule without a server-only import. Do not re-implement the moderator/admin check inline anywhere — always go through one of these two.
 
 **Data flow (public read path):**
 

@@ -1,31 +1,23 @@
-import { createClient } from '@/lib/supabase-server';
+import { requireModerator } from '@/lib/require-moderator';
 
 export type ProofGraphEditorAuth =
   | { ok: true; userId: string }
   | { ok: false; reason: 'unauthenticated' | 'forbidden'; error: string };
 
+// Proof Graph editing is moderator-only; this composes the shared
+// Authorization predicate rather than re-declaring the email bypass and
+// role check (see docs/architecture/principle-violations.md AUTHZ-004).
 export async function requireProofGraphEditor(): Promise<ProofGraphEditorAuth> {
-  const supabase = await createClient();
-  const { data: auth, error: authError } = await supabase.auth.getUser();
-  const user = auth.user;
-
-  if (authError || !user) {
-    return { ok: false, reason: 'unauthenticated', error: '需要登录后才能编辑推理图谱。' };
+  const result = await requireModerator();
+  if (!result.ok) {
+    return {
+      ok: false,
+      reason: result.reason,
+      error:
+        result.reason === 'unauthenticated'
+          ? '需要登录后才能编辑推理图谱。'
+          : '当前账号没有编辑推理图谱的权限。',
+    };
   }
-
-  if (user.email === 'xuanheguo@icloud.com') {
-    return { ok: true, userId: user.id };
-  }
-
-  const { data: profile, error: profileError } = await supabase
-    .from('user_profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single();
-
-  if (profileError || !profile || !['admin', 'moderator'].includes(profile.role as string)) {
-    return { ok: false, reason: 'forbidden', error: '当前账号没有编辑推理图谱的权限。' };
-  }
-
-  return { ok: true, userId: user.id };
+  return { ok: true, userId: result.userId };
 }

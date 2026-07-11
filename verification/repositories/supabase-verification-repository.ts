@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { isModerator } from "@/lib/is-moderator";
 import { VerificationError } from "../domain/errors";
 import { CACHEABLE_VERDICTS } from "../domain/policies";
 import type {
@@ -45,15 +46,11 @@ function mapTask(row: Row): VerificationTaskDto {
   };
 }
 
-function isPrivileged(actor: VerificationActor): boolean {
-  return actor.email === "xuanheguo@icloud.com" || ["moderator", "admin"].includes(actor.role ?? "");
-}
-
 export class SupabaseVerificationRepository implements VerificationRepository {
   constructor(private readonly db: SupabaseClient) {}
 
   async authorize(actor: VerificationActor, request: VerificationRequest): Promise<void> {
-    const privileged = isPrivileged(actor);
+    const privileged = isModerator(actor);
     if (request.problemId) {
       const { data } = await this.db.from("problems").select("id").eq("id", request.problemId).maybeSingle();
       if (!data) throw new VerificationError("关联题目不存在。", "problem_not_found", "invalid_request", 404);
@@ -155,14 +152,14 @@ export class SupabaseVerificationRepository implements VerificationRepository {
 
   async getById(id: string, actor: VerificationActor): Promise<VerificationTaskDto | null> {
     let query = this.db.from("verification_tasks").select("*").eq("id", id);
-    if (!isPrivileged(actor)) query = query.eq("user_id", actor.userId);
+    if (!isModerator(actor)) query = query.eq("user_id", actor.userId);
     const { data } = await query.maybeSingle();
     return data ? mapTask(data as Row) : null;
   }
 
   async list(actor: VerificationActor, filters: { userId?: string; problemId?: string; engine?: string; provider?: string; status?: VerificationTaskStatus; verdict?: VerificationVerdict; limit?: number } = {}): Promise<VerificationTaskDto[]> {
     let query = this.db.from("verification_tasks").select("*").order("created_at", { ascending: false }).limit(Math.min(filters.limit ?? 20, 100));
-    if (!isPrivileged(actor)) query = query.eq("user_id", actor.userId);
+    if (!isModerator(actor)) query = query.eq("user_id", actor.userId);
     else if (filters.userId) query = query.eq("user_id", filters.userId);
     if (filters.problemId) query = query.eq("problem_id", filters.problemId);
     if (filters.engine) query = query.eq("engine", filters.engine);
