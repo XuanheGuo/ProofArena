@@ -6,14 +6,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```bash
 npm run dev          # start dev server at localhost:3000
-npm run lint         # TypeScript type check (tsc --noEmit)
+npm run lint         # TypeScript type check (tsc --noEmit) + static content reference validation
+npm run test         # node:test suite (lib/*.test.ts, verification/**/*.test.ts)
 npm run build        # static build + postbuild standalone prep
 npm run start        # production server (after build)
 ```
 
-Before committing: run `npm run lint` then `npm run build`.
+Before committing: run `npm run lint`, `npm run test`, then `npm run build`.
 
-There is no test suite. Lint runs TypeScript only — no ESLint or test runner.
+Lint is TypeScript (`tsc --noEmit`) plus `scripts/validate-knowledge-refs.mts`, which checks that every cross-entity string reference in the static content graph (`conceptId`, `problemId`, `knowledgeIds`, `insightIds`, `thinkingCues.forkOf.solutionId`, ...) resolves to a real `data/problems.ts` / `data/knowledge.ts` / `data/insights.ts` entity — no ESLint. Tests use Node's built-in test runner (`node:test`/`node:assert`), not a third-party framework — follow that convention (see `lib/is-moderator.test.ts` or any `verification/*.test.ts` for the style) rather than introducing Jest/Vitest.
 
 ## Architecture
 
