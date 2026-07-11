@@ -62,14 +62,9 @@ export class ArtifactPublicationService {
       return { success: false, error: "Cannot publish: provider_trace evidence is marked public" };
     }
 
-    // 6. Publication implementation
-    // NOTE: This is a placeholder. Actual implementation needs direct DB update
-    // via service-role client, which requires extending ArtifactRepository interface.
-    // For Phase 1.1, we document the requirement but defer full implementation.
+    // 6. Call repository.publish()
+    const published = await this.artifactRepository.publish(artifactId, actor.userId);
 
-    return {
-      success: false,
-      error: "Publication not yet implemented - requires repository.updateStatus() method",
-    };
+    return { success: true, artifact: published };
   }
 }

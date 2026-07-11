@@ -7,7 +7,7 @@ import type { ArtifactKind, ArtifactRecord } from "@/contracts/artifact";
 import type { EvidenceKind, EvidenceRecord } from "@/contracts/evidence";
 import { assertProviderTraceStaysPrivate } from "@/contracts/evidence";
 import { assertPublishedBeforePublic } from "@/contracts/artifact";
-import type { ArtifactRepository, CreateArtifactInput, CreateEvidenceInput } from "./artifact-repository";
+import type { ArtifactRepository, CreateArtifactInput, CreateArtifactBundleInput, CreateEvidenceInput } from "./artifact-repository";
 
 type Row = Record<string, unknown>;
 
@@ -162,5 +162,67 @@ export class SupabaseArtifactRepository implements ArtifactRepository {
     }
 
     return (data ?? []).map(mapEvidence);
+  }
+
+  // Phase 1.1: Atomic artifact bundle creation via RPC
+  async createBundle<K extends ArtifactKind>(input: CreateArtifactBundleInput<K>): Promise<ArtifactRecord<K>> {
+    assertPublishedBeforePublic(input.status, input.isPublic);
+
+    const { data: artifactId, error } = await this.db.rpc("create_artifact_bundle", {
+      p_kind: input.kind,
+      p_schema_version: input.schemaVersion,
+      p_run_id: input.runId,
+      p_provider_key: input.providerKey,
+      p_producer_version: input.producerVersion ?? null,
+      p_status: input.status,
+      p_payload: input.payload,
+      p_summary: input.summary,
+      p_is_public: input.isPublic,
+      p_created_by: input.createdBy,
+      p_relations: input.relations,
+      p_evidence: input.evidence,
+    });
+
+    if (error) {
+      throw new Error(`Failed to create artifact bundle: ${error.message}`);
+    }
+
+    // Fetch the created artifact
+    const { data: artifact, error: fetchError } = await this.db
+      .from("artifacts")
+      .select("*")
+      .eq("id", artifactId)
+      .single();
+
+    if (fetchError) {
+      throw new Error(`Failed to fetch created artifact: ${fetchError.message}`);
+    }
+
+    return mapArtifact(artifact) as ArtifactRecord<K>;
+  }
+
+  // Phase 1.1: Artifact publication via RPC
+  async publish(artifactId: string, publishedBy: string): Promise<ArtifactRecord> {
+    const { error } = await this.db.rpc("publish_artifact", {
+      p_artifact_id: artifactId,
+      p_published_by: publishedBy,
+    });
+
+    if (error) {
+      throw new Error(`Failed to publish artifact: ${error.message}`);
+    }
+
+    // Fetch the published artifact
+    const { data, error: fetchError } = await this.db
+      .from("artifacts")
+      .select("*")
+      .eq("id", artifactId)
+      .single();
+
+    if (fetchError) {
+      throw new Error(`Failed to fetch published artifact: ${fetchError.message}`);
+    }
+
+    return mapArtifact(data);
   }
 }
