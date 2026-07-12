@@ -1,70 +1,50 @@
-// Controlled artifact publication service. Artifacts are created as private drafts
-// by default. Publication requires explicit validation and authorization.
-// See PHASE_1_1_AUDIT.md P0-4 for rationale.
-
+// Controlled artifact publication. Artifacts are always created as private
+// drafts (create_artifact_bundle hardcodes draft/is_public=false); this
+// service is the only application path to draft -> published.
+//
+// Authorization policy (Phase 1.1): moderator/admin only. An owner keeps
+// private drafts but cannot self-publish — a published artifact is a
+// platform-level trust statement, so it goes through the same gate as
+// publishing a submission. Enforced by the caller via requireModerator();
+// re-asserted here so the service is safe even if a new call site forgets.
+//
+// The row-level validations that must hold atomically with the flip (input
+// versions themselves published, provider_trace private, idempotent replay)
+// live in the publish_artifact SQL function (migration 030) — this service
+// adds the authorization and the not-found masking.
 import type { Actor } from "@/contracts/capability";
 import type { ArtifactRecord } from "@/contracts/artifact";
-import { isModerator } from "@/lib/is-moderator";
+import { isModerator } from "@/domains/identity/actor";
 import type { ArtifactRepository } from "./artifact-repository";
 
-export interface PublishArtifactRequest {
-  artifactId: string;
-  actor: Actor;
-}
-
-export interface PublishArtifactResult {
-  success: boolean;
-  artifact?: ArtifactRecord;
-  error?: string;
-}
+export type PublishArtifactResult =
+  | { ok: true; artifact: ArtifactRecord }
+  | { ok: false; reason: "not_found" | "forbidden" | "invalid"; error: string };
 
 export class ArtifactPublicationService {
-  constructor(private readonly artifactRepository: ArtifactRepository) {}
+  constructor(private readonly artifacts: ArtifactRepository) {}
 
-  async publish(request: PublishArtifactRequest): Promise<PublishArtifactResult> {
-    const { artifactId, actor } = request;
+  async publish(artifactId: string, actor: Actor): Promise<PublishArtifactResult> {
+    if (!isModerator({ role: actor.role, email: actor.email })) {
+      // Same response as not-found so a non-moderator cannot probe which
+      // private artifact ids exist.
+      return { ok: false, reason: "not_found", error: "Artifact not found" };
+    }
 
-    // 1. Fetch artifact
-    const artifact = await this.artifactRepository.findById(artifactId, actor);
-
+    const artifact = await this.artifacts.getByIdInternal(artifactId);
     if (!artifact) {
-      return { success: false, error: "Artifact not found" };
+      return { ok: false, reason: "not_found", error: "Artifact not found" };
     }
-
-    // 2. Authorization: only owner or moderator can publish
-    const isMod = isModerator({ role: actor.role, email: actor.email });
-    const isOwner = artifact.createdBy === actor.userId;
-
-    if (!isMod && !isOwner) {
-      return { success: false, error: "Not authorized to publish this artifact" };
-    }
-
-    // 3. Validate current state
     if (artifact.status === "published") {
-      return { success: true, artifact }; // Already published, idempotent
+      return { ok: true, artifact }; // idempotent
     }
 
-    if (artifact.status !== "draft") {
-      return { success: false, error: `Cannot publish artifact with status: ${artifact.status}` };
+    try {
+      const published = await this.artifacts.publish(artifactId, actor.userId);
+      return { ok: true, artifact: published };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return { ok: false, reason: "invalid", error: message };
     }
-
-    // 4. Validate payload integrity
-    // TODO: Add schema validation when phase 2 implements schema validators
-    if (!artifact.payload || typeof artifact.payload !== "object") {
-      return { success: false, error: "Artifact payload is invalid" };
-    }
-
-    // 5. Validate evidence (provider_trace must stay private)
-    const evidence = await this.artifactRepository.findEvidenceByArtifactId(artifactId, actor);
-    const publicProviderTrace = evidence.find((ev) => ev.kind === "provider_trace" && ev.isPublic);
-
-    if (publicProviderTrace) {
-      return { success: false, error: "Cannot publish: provider_trace evidence is marked public" };
-    }
-
-    // 6. Call repository.publish()
-    const published = await this.artifactRepository.publish(artifactId, actor.userId);
-
-    return { success: true, artifact: published };
   }
 }
