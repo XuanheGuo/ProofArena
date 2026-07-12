@@ -15,7 +15,9 @@
     "seed": "npx tsx scripts/seed-problems.mts",
     "fix:summaries": "npx tsx scripts/fix-solution-summaries.mts",
     "validate:knowledge-refs": "npx tsx scripts/validate-knowledge-refs.mts",
-    "test": "node --import tsx --test lib/is-moderator.test.ts verification/**/*.test.ts contracts/**/*.test.ts domains/**/*.test.ts",
+    "test": "node --import tsx --test \"lib/**/*.test.ts\" \"verification/**/*.test.ts\" \"contracts/**/*.test.ts\" \"domains/**/*.test.ts\"",
+    "test:rls": "npx tsx scripts/verify-math-hub-rls.mts",
+    "test:api": "npx tsx --test scripts/api-smoke.test.mts",
     "lint": "tsc --noEmit && npm run validate:knowledge-refs"
   },
   "dependencies": {
