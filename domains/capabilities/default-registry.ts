@@ -7,7 +7,10 @@ import type { CapabilityDefinition } from "@/contracts/capability";
 const LEAN_VERIFICATION_DEFINITION: CapabilityDefinition = {
   key: "verify.lean",
   version: 1,
-  acceptedInputTypes: ["solution", "solution_version"],
+  // Exactly the two honest modes: verify a stored, immutable SolutionVersion,
+  // or verify user-supplied ad-hoc source with no binding claim. The vague
+  // "solution" input type is gone on purpose — see input-resolver.ts.
+  acceptedInputTypes: ["solution_version", "ad_hoc_source"],
   outputArtifactKind: "verification_report",
   providerKey: "axle",
   permissionPolicy: () => true,

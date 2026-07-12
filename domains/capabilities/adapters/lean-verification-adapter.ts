@@ -1,15 +1,17 @@
 // Wraps the existing VerificationService (verification/index.ts) as a
-// CapabilityAdapter for capability_key="verify.lean". This is the
-// vertical slice that makes capability_runs + artifacts an honest projection
-// of verification_tasks (not a competing parallel implementation).
+// CapabilityAdapter for capability_key="verify.lean". This is the vertical
+// slice that makes capability_runs + artifacts an honest projection of
+// verification_tasks (not a competing parallel implementation).
 //
 // Key constraints (see docs/ARCHITECTURE_V2.md §6):
-// - Calls createVerificationService().create() ONCE (no double-execution)
-// - All dedup/cache/rate-limit logic stays in the existing service (unchanged)
+// - Calls createVerificationService().create() ONCE (no double-execution);
+//   all dedup/cache/rate-limit logic stays in the existing service, unchanged
 // - Never talks to AXLE directly (that's VerificationService's job)
-// - Maps VerificationTaskDto → CapabilityAdapterResult with RunConclusion payload
-
-import type { Actor, CapabilityRunInputRef } from "@/contracts/capability";
+// - Receives ResolvedCapabilityInputs: the source it executes is exactly what
+//   the input resolver snapshotted, never raw client text
+// - reproject() rebuilds the result from the stored verification_tasks row
+//   for projection repair — a read, never a re-execution
+import type { Actor, CapabilityRunRecord, ResolvedCapabilityInput } from "@/contracts/capability";
 import type { CapabilityAdapter, CapabilityAdapterResult } from "@/platform/providers/provider-adapter";
 import type { RunConclusion } from "@/contracts/evidence";
 import type { VerificationTaskDto, VerificationVerdict } from "@/verification/domain/types";
@@ -20,77 +22,38 @@ export class LeanVerificationAdapter implements CapabilityAdapter {
 
   async run(
     actor: Actor,
-    inputs: CapabilityRunInputRef[],
+    inputs: ResolvedCapabilityInput[],
     configuration: Record<string, unknown>,
-    signal?: AbortSignal
+    signal?: AbortSignal,
   ): Promise<CapabilityAdapterResult> {
-    const sourceInput = inputs.find((inp) => inp.inputKey === "proof_source");
-    if (!sourceInput || typeof sourceInput.value !== "string") {
+    const sourceInput = inputs.find((inp) => inp.role === "proof_source") ?? inputs[0];
+    if (!sourceInput) {
       return {
         status: "failed",
         providerKey: "none",
         errorCode: "INVALID_INPUT",
-        errorMessage: "verify.lean requires proof_source input (string)",
+        errorMessage: "verify.lean requires one proof_source input",
       };
     }
 
-    const problemIdInput = inputs.find((inp) => inp.inputKey === "problem_id");
-    const solutionIdInput = inputs.find((inp) => inp.inputKey === "solution_id");
-
     const verificationService = createVerificationService();
-
     try {
-      const taskDto: VerificationTaskDto = await verificationService.create(
-        {
-          userId: actor.userId,
-          email: actor.email,
-          role: actor.role,
-        },
+      const task: VerificationTaskDto = await verificationService.create(
+        { userId: actor.userId, email: actor.email, role: actor.role },
         {
           engine: "lean",
-          source: sourceInput.value,
-          problemId: problemIdInput?.value as string | undefined,
-          solutionId: solutionIdInput?.value as string | undefined,
-          environment: (configuration.environment as string | undefined),
+          source: sourceInput.source,
+          solutionId: sourceInput.objectType === "solution_version" ? (sourceInput.objectId ?? undefined) : undefined,
+          environment: configuration.environment as string | undefined,
           metadata: configuration,
         },
-        signal
+        signal,
       );
-
-      const status = mapVerificationStatusToAdapterStatus(taskDto.status, taskDto.verdict);
-
-      if (status !== "succeeded") {
-        return {
-          status,
-          providerKey: taskDto.provider,
-          producerVersion: undefined,
-          errorCode: taskDto.providerErrorCode,
-          errorMessage: taskDto.messages.filter((m) => m.severity === "error").map((m) => m.message).join("; "),
-          legacyTaskId: taskDto.id,
-        };
-      }
-
-      const runConclusion = mapVerificationTaskToRunConclusion(taskDto);
-      const evidence = buildEvidence(taskDto);
-
-      return {
-        status: "succeeded",
-        providerKey: taskDto.provider,
-        producerVersion: undefined,
-        artifactPayload: runConclusion,
-        summary: buildSummary(taskDto),
-        legacyTaskId: taskDto.id,
-        evidence,
-      };
+      return mapTaskToAdapterResult(task);
     } catch (error) {
       if (signal?.aborted) {
-        return {
-          status: "cancelled",
-          providerKey: "axle",
-          errorMessage: "Verification cancelled by user",
-        };
+        return { status: "cancelled", providerKey: "axle", errorMessage: "Verification cancelled by user" };
       }
-
       return {
         status: "failed",
         providerKey: "axle",
@@ -99,11 +62,41 @@ export class LeanVerificationAdapter implements CapabilityAdapter {
       };
     }
   }
+
+  async reproject(run: CapabilityRunRecord): Promise<CapabilityAdapterResult | null> {
+    if (!run.legacyVerificationTaskId) return null;
+    const verificationService = createVerificationService();
+    // Read as the run's owner: the same scoping the original execution had.
+    const task = await verificationService.get(run.legacyVerificationTaskId, { userId: run.requestedBy });
+    if (!task) return null;
+    return mapTaskToAdapterResult(task);
+  }
+}
+
+function mapTaskToAdapterResult(task: VerificationTaskDto): CapabilityAdapterResult {
+  const status = mapVerificationStatusToAdapterStatus(task.status, task.verdict);
+  if (status !== "succeeded") {
+    return {
+      status,
+      providerKey: task.provider,
+      errorCode: task.providerErrorCode,
+      errorMessage: task.messages.filter((m) => m.severity === "error").map((m) => m.message).join("; "),
+      legacyTaskId: task.id,
+    };
+  }
+  return {
+    status: "succeeded",
+    providerKey: task.provider,
+    artifactPayload: mapVerificationTaskToRunConclusion(task),
+    summary: buildSummary(task),
+    legacyTaskId: task.id,
+    evidence: buildEvidence(task),
+  };
 }
 
 function mapVerificationStatusToAdapterStatus(
   status: string,
-  verdict: VerificationVerdict
+  verdict: VerificationVerdict,
 ): "succeeded" | "failed" | "timed_out" | "cancelled" {
   if (status === "cancelled") return "cancelled";
   if (verdict === "timeout") return "timed_out";
@@ -111,25 +104,20 @@ function mapVerificationStatusToAdapterStatus(
   return "failed";
 }
 
-function mapVerificationTaskToRunConclusion(task: VerificationTaskDto): RunConclusion {
+export function mapVerificationTaskToRunConclusion(task: VerificationTaskDto): RunConclusion {
   let conclusion: RunConclusion["conclusion"];
-  let evidenceLevel: RunConclusion["evidenceLevel"];
 
   if (task.verdict === "accepted") {
     conclusion = "verified";
-    evidenceLevel = "machine_checked";
   } else if (task.verdict === "rejected") {
-    // Lean proof rejected means "this proof attempt failed", NOT "the statement is false"
-    // Only a verified counterexample or negation proof can produce "refuted"
+    // A rejected Lean proof means "this proof attempt failed to check", NOT
+    // "the statement is false". Only a verified counterexample or negation
+    // proof may ever produce "refuted" — see docs/architecture/verification-semantics.md.
     conclusion = "inconclusive";
-    evidenceLevel = "machine_checked";
   } else if (task.verdict === "invalid_request") {
     conclusion = "unsupported";
-    evidenceLevel = "machine_checked";
   } else {
-    // timeout, provider_error, rate_limited, resource_limit, cancelled
     conclusion = "inconclusive";
-    evidenceLevel = "machine_checked";
   }
 
   const errorMessages = task.messages.filter((m) => m.severity === "error");
@@ -137,16 +125,16 @@ function mapVerificationTaskToRunConclusion(task: VerificationTaskDto): RunConcl
 
   return {
     conclusion,
-    evidenceLevel,
+    evidenceLevel: "machine_checked",
     coverage: {
       checked: failedDeclarations.length === 0 ? 1 : 0,
       total: 1,
       failedDeclarations,
     },
     assumptions: [],
-    claim: task.problemId
-      ? `Submitted Lean source for problem ${task.problemId} was machine-checked in the specified environment`
-      : "Submitted Lean source was machine-checked in the specified environment",
+    claim: task.solutionId
+      ? `The Lean source stored in the referenced version of solution ${task.solutionId} was machine-checked in the specified environment`
+      : "The submitted ad-hoc Lean source was machine-checked in the specified environment",
     verifiedScope: task.verdict === "accepted" ? ["lean_proof"] : [],
     unverifiedScope: task.verdict === "accepted" ? [] : ["lean_proof"],
     missingConditions: errorMessages.map((m) => m.message),
@@ -154,29 +142,31 @@ function mapVerificationTaskToRunConclusion(task: VerificationTaskDto): RunConcl
 }
 
 function buildEvidence(task: VerificationTaskDto): { kind: string; payload: unknown; isPublic: boolean }[] {
-  const evidence: { kind: string; payload: unknown; isPublic: boolean }[] = [];
-
-  evidence.push({
-    kind: "provider_trace",
-    payload: {
-      providerRequestId: task.providerRequestId,
-      provider: task.provider,
-      engine: task.engine,
-      environment: task.environment,
-      durationMs: task.durationMs,
-      cached: task.cached,
-      sourceHash: task.sourceHash,
-      messages: task.messages,
-      resultMetadata: task.resultMetadata,
+  const evidence: { kind: string; payload: unknown; isPublic: boolean }[] = [
+    {
+      kind: "provider_trace",
+      payload: {
+        providerRequestId: task.providerRequestId,
+        provider: task.provider,
+        engine: task.engine,
+        environment: task.environment,
+        durationMs: task.durationMs,
+        cached: task.cached,
+        sourceHash: task.sourceHash,
+        messages: task.messages,
+        resultMetadata: task.resultMetadata,
+      },
+      isPublic: false,
     },
-    isPublic: false,
-  });
+  ];
 
   if (task.verdict === "accepted") {
+    // Public evidence carries the verdict and source hash, never the source
+    // itself — the full source lives in the private input snapshot.
     evidence.push({
       kind: "lean_proof",
       payload: {
-        source: "(stored in capability_run_inputs)",
+        sourceHash: task.sourceHash,
         compiles: task.compiles,
         verdict: task.verdict,
         failedDeclarations: task.failedDeclarations ?? [],
@@ -184,14 +174,11 @@ function buildEvidence(task: VerificationTaskDto): { kind: string; payload: unkn
       isPublic: true,
     });
   }
-
   return evidence;
 }
 
 function buildSummary(task: VerificationTaskDto): string {
-  if (task.verdict === "accepted") {
-    return "Lean proof accepted";
-  }
+  if (task.verdict === "accepted") return "Lean proof accepted";
   if (task.verdict === "rejected") {
     const failed = task.failedDeclarations?.length ?? 0;
     return failed > 0 ? `${failed} declaration(s) failed` : "Proof rejected";

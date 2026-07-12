@@ -1,69 +1,30 @@
-// Tests for LeanVerificationAdapter mapping logic. Uses mock adapter results
-// to verify the VerificationTaskDto → CapabilityAdapterResult transformation
-// without calling the real VerificationService.
+// Tests the REAL exported VerificationTaskDto -> RunConclusion mapping (the
+// mathematical-semantics contract), not a local copy of it: a rejected Lean
+// proof is inconclusive-about-the-statement, never refuted.
 import { describe, it } from "node:test";
 import assert from "node:assert";
 import type { VerificationTaskDto } from "@/verification/domain/types";
-import type { RunConclusion } from "@/contracts/evidence";
+import { mapVerificationTaskToRunConclusion } from "./lean-verification-adapter";
 
-function mapVerificationTaskToRunConclusion(task: VerificationTaskDto): RunConclusion {
-  let conclusion: RunConclusion["conclusion"];
-  let evidenceLevel: RunConclusion["evidenceLevel"];
-
-  if (task.verdict === "accepted") {
-    conclusion = "verified";
-    evidenceLevel = "machine_checked";
-  } else if (task.verdict === "rejected") {
-    // Lean proof rejected means "this proof attempt failed", NOT "the statement is false"
-    conclusion = "inconclusive";
-    evidenceLevel = "machine_checked";
-  } else if (task.verdict === "invalid_request") {
-    conclusion = "unsupported";
-    evidenceLevel = "machine_checked";
-  } else {
-    conclusion = "inconclusive";
-    evidenceLevel = "machine_checked";
-  }
-
-  const errorMessages = task.messages.filter((m) => m.severity === "error");
-  const failedDeclarations = task.failedDeclarations ?? [];
-
+function task(overrides: Partial<VerificationTaskDto>): VerificationTaskDto {
   return {
-    conclusion,
-    evidenceLevel,
-    coverage: {
-      checked: failedDeclarations.length === 0 ? 1 : 0,
-      total: 1,
-      failedDeclarations,
-    },
-    assumptions: [],
-    claim: task.problemId
-      ? `Submitted Lean source for problem ${task.problemId} was machine-checked in the specified environment`
-      : "Submitted Lean source was machine-checked in the specified environment",
-    verifiedScope: task.verdict === "accepted" ? ["lean_proof"] : [],
-    unverifiedScope: task.verdict === "accepted" ? [] : ["lean_proof"],
-    missingConditions: errorMessages.map((m) => m.message),
+    id: "task_1",
+    status: "completed",
+    verdict: "accepted",
+    valid: true,
+    engine: "lean",
+    provider: "axle",
+    messages: [],
+    sourceHash: "abc123",
+    cached: false,
+    createdAt: "2026-07-11T00:00:00Z",
+    ...overrides,
   };
 }
 
-describe("LeanVerificationAdapter mapping", () => {
-  it("maps accepted verdict to verified conclusion", () => {
-    const task: VerificationTaskDto = {
-      id: "task_1",
-      status: "completed",
-      verdict: "accepted",
-      valid: true,
-      compiles: true,
-      engine: "lean",
-      provider: "axle",
-      messages: [],
-      sourceHash: "abc123",
-      cached: false,
-      createdAt: "2026-07-11T00:00:00Z",
-    };
-
-    const result = mapVerificationTaskToRunConclusion(task);
-
+describe("Lean verdict → RunConclusion mapping", () => {
+  it("accepted → verified, full coverage, lean_proof in verifiedScope", () => {
+    const result = mapVerificationTaskToRunConclusion(task({ verdict: "accepted", compiles: true }));
     assert.strictEqual(result.conclusion, "verified");
     assert.strictEqual(result.evidenceLevel, "machine_checked");
     assert.strictEqual(result.coverage.checked, 1);
@@ -72,25 +33,15 @@ describe("LeanVerificationAdapter mapping", () => {
     assert.deepStrictEqual(result.unverifiedScope, []);
   });
 
-  it("maps rejected verdict to inconclusive conclusion", () => {
-    const task: VerificationTaskDto = {
-      id: "task_1",
-      status: "completed",
+  it("rejected → inconclusive (NEVER refuted): a failed proof attempt says nothing about the statement", () => {
+    const result = mapVerificationTaskToRunConclusion(task({
       verdict: "rejected",
       valid: false,
-      engine: "lean",
-      provider: "axle",
       messages: [{ severity: "error", message: "type mismatch", source: "lean" }],
       failedDeclarations: ["theorem_main"],
-      sourceHash: "abc123",
-      cached: false,
-      createdAt: "2026-07-11T00:00:00Z",
-    };
-
-    const result = mapVerificationTaskToRunConclusion(task);
-
+    }));
     assert.strictEqual(result.conclusion, "inconclusive");
-    assert.strictEqual(result.evidenceLevel, "machine_checked");
+    assert.notStrictEqual(result.conclusion, "refuted");
     assert.strictEqual(result.coverage.checked, 0);
     assert.deepStrictEqual(result.coverage.failedDeclarations, ["theorem_main"]);
     assert.deepStrictEqual(result.verifiedScope, []);
@@ -98,106 +49,39 @@ describe("LeanVerificationAdapter mapping", () => {
     assert.deepStrictEqual(result.missingConditions, ["type mismatch"]);
   });
 
-  it("maps invalid_request verdict to unsupported conclusion", () => {
-    const task: VerificationTaskDto = {
-      id: "task_1",
-      status: "completed",
+  it("invalid_request → unsupported", () => {
+    const result = mapVerificationTaskToRunConclusion(task({
       verdict: "invalid_request",
       valid: false,
-      engine: "lean",
-      provider: "axle",
       messages: [{ severity: "error", message: "malformed Lean code", source: "proofarena" }],
-      sourceHash: "abc123",
-      cached: false,
-      createdAt: "2026-07-11T00:00:00Z",
-    };
-
-    const result = mapVerificationTaskToRunConclusion(task);
-
+    }));
     assert.strictEqual(result.conclusion, "unsupported");
-    assert.strictEqual(result.evidenceLevel, "machine_checked");
     assert.deepStrictEqual(result.missingConditions, ["malformed Lean code"]);
   });
 
-  it("maps timeout verdict to inconclusive conclusion", () => {
-    const task: VerificationTaskDto = {
-      id: "task_1",
-      status: "completed",
-      verdict: "timeout",
-      valid: false,
-      engine: "lean",
-      provider: "axle",
-      messages: [],
-      sourceHash: "abc123",
-      cached: false,
-      createdAt: "2026-07-11T00:00:00Z",
-    };
-
-    const result = mapVerificationTaskToRunConclusion(task);
-
-    assert.strictEqual(result.conclusion, "inconclusive");
-    assert.strictEqual(result.evidenceLevel, "machine_checked");
+  it("timeout and provider_error → inconclusive", () => {
+    assert.strictEqual(mapVerificationTaskToRunConclusion(task({ verdict: "timeout", valid: false })).conclusion, "inconclusive");
+    assert.strictEqual(
+      mapVerificationTaskToRunConclusion(task({ verdict: "provider_error", valid: false, status: "failed" })).conclusion,
+      "inconclusive",
+    );
   });
 
-  it("maps provider_error verdict to inconclusive conclusion", () => {
-    const task: VerificationTaskDto = {
-      id: "task_1",
-      status: "failed",
-      verdict: "provider_error",
-      valid: false,
-      engine: "lean",
-      provider: "axle",
-      messages: [{ severity: "error", message: "AXLE unavailable", source: "provider" }],
-      sourceHash: "abc123",
-      cached: false,
-      createdAt: "2026-07-11T00:00:00Z",
-    };
-
-    const result = mapVerificationTaskToRunConclusion(task);
-
-    assert.strictEqual(result.conclusion, "inconclusive");
-    assert.deepStrictEqual(result.missingConditions, ["AXLE unavailable"]);
+  it("version-bound claim names the solution; ad-hoc claim explicitly says ad-hoc", () => {
+    const bound = mapVerificationTaskToRunConclusion(task({ solutionId: "sol_42" }));
+    assert.match(bound.claim, /sol_42/);
+    const adHoc = mapVerificationTaskToRunConclusion(task({}));
+    assert.match(adHoc.claim, /ad-hoc/);
+    assert.doesNotMatch(adHoc.claim, /solution /);
   });
 
-  it("includes problemId in claim when present", () => {
-    const task: VerificationTaskDto = {
-      id: "task_1",
-      status: "completed",
-      verdict: "accepted",
-      valid: true,
-      engine: "lean",
-      provider: "axle",
-      messages: [],
-      sourceHash: "abc123",
-      cached: false,
-      problemId: "prob_123",
-      createdAt: "2026-07-11T00:00:00Z",
-    };
-
-    const result = mapVerificationTaskToRunConclusion(task);
-
-    assert.match(result.claim, /prob_123/);
-  });
-
-  it("handles multiple failed declarations", () => {
-    const task: VerificationTaskDto = {
-      id: "task_1",
-      status: "completed",
+  it("multiple failed declarations are all reported", () => {
+    const result = mapVerificationTaskToRunConclusion(task({
       verdict: "rejected",
       valid: false,
-      engine: "lean",
-      provider: "axle",
-      messages: [],
       failedDeclarations: ["lemma_a", "lemma_b", "theorem_main"],
-      sourceHash: "abc123",
-      cached: false,
-      createdAt: "2026-07-11T00:00:00Z",
-    };
-
-    const result = mapVerificationTaskToRunConclusion(task);
-
+    }));
     assert.strictEqual(result.coverage.checked, 0);
-    assert.strictEqual(result.coverage.failedDeclarations.length, 3);
     assert.deepStrictEqual(result.coverage.failedDeclarations, ["lemma_a", "lemma_b", "theorem_main"]);
   });
 });
