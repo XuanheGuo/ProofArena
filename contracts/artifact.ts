@@ -32,6 +32,8 @@ export interface ArtifactRecord<K extends ArtifactKind = ArtifactKind> {
   isPublic: boolean;
   createdBy: string | null;
   createdAt: string;
+  publishedAt: string | null;
+  publishedBy: string | null;
 }
 
 export function assertPublishedBeforePublic(status: ArtifactStatus, isPublic: boolean): void {

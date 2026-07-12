@@ -8,6 +8,10 @@ export const OBJECT_TYPES = [
   "problem_version",
   "solution_version",
   "submission",
+  // An ad-hoc source is user-supplied content with NO claim of binding to any
+  // stored entity/version. Artifacts produced from it must never carry a
+  // `verifies` relation — see domains/capabilities/input-resolver.ts.
+  "ad_hoc_source",
 ] as const;
 export type ObjectType = (typeof OBJECT_TYPES)[number];
 

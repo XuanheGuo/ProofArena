@@ -22,7 +22,8 @@ export interface Actor {
 
 export interface CapabilityRunInputRef {
   objectType: ObjectType;
-  objectId: string;
+  /** Required for version-bound inputs; forbidden for ad_hoc_source. */
+  objectId?: string;
   versionId?: string;
   role: string;
   inputKey?: string;
@@ -31,12 +32,42 @@ export interface CapabilityRunInputRef {
   snapshot?: unknown;
 }
 
+/**
+ * An input AFTER server-side resolution (domains/capabilities/input-resolver.ts):
+ * the content in `source` is what the adapter actually executes and what
+ * capability_run_inputs.snapshot records. Adapters receive these, never raw
+ * client-supplied CapabilityRunInputRefs — that indirection is what makes a
+ * version-bound artifact's `verifies` claim honest.
+ */
+export interface ResolvedCapabilityInput {
+  objectType: "solution_version" | "ad_hoc_source";
+  objectId: string | null;
+  versionId: string | null;
+  role: string;
+  /** Canonical source to execute. Private — never included in public payloads. */
+  source: string;
+  /** sha256 hex of `source`. */
+  contentHash: string;
+  /** Persisted verbatim to capability_run_inputs.snapshot (private). */
+  snapshot: Record<string, unknown>;
+}
+
 export interface CapabilityRunRequest {
   capabilityKey: CapabilityKey;
   configuration?: Record<string, unknown>;
   inputs: CapabilityRunInputRef[];
   idempotencyKey?: string;
 }
+
+/**
+ * Whether the durable projection (artifact + relations + evidence) of a
+ * succeeded run has been written. Deliberately a separate axis from `status`:
+ * a run whose provider execution succeeded but whose artifact write failed is
+ * still status="succeeded" (the math happened) with projectionStatus="failed"
+ * (the bookkeeping didn't), and is repairable without re-calling the provider.
+ */
+export const PROJECTION_STATUSES = ["pending", "completed", "failed", "not_applicable"] as const;
+export type ProjectionStatus = (typeof PROJECTION_STATUSES)[number];
 
 export interface CapabilityRunRecord {
   id: string;
@@ -51,6 +82,8 @@ export interface CapabilityRunRecord {
   errorCode: string | null;
   errorMessage: string | null;
   costMetadata: Record<string, unknown>;
+  projectionStatus: ProjectionStatus;
+  projectionError: string | null;
   startedAt: string | null;
   completedAt: string | null;
   createdAt: string;

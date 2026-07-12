@@ -1,388 +1,244 @@
-// Input resolution and validation for capability runs. Enforces two distinct modes:
-// 1. version-bound: server extracts canonical content from a specific version
-// 2. ad-hoc: user provides arbitrary source, no version claim
+// Server-side input resolution for capability runs. This is the boundary that
+// makes an Artifact's provenance honest: the client never supplies the content
+// that gets executed for a version-bound input — the server loads the version,
+// extracts the canonical Lean source itself, and snapshots exactly what ran.
 //
-// See docs/PHASE_1_1_COMPLETION_AUDIT.md for rationale.
+// Exactly two modes exist (see docs/ARCHITECTURE_V2.md §6):
+//
+//   solution_version  — verify the exact stored SolutionVersion. The client
+//                       sends only (objectId, versionId); any client-supplied
+//                       value/contentHash/snapshot is rejected, not ignored.
+//                       Artifacts from this mode may carry `verifies`.
+//
+//   ad_hoc_source     — verify a user-supplied Lean source with NO claim of
+//                       binding to any stored entity. Artifacts from this mode
+//                       never carry `verifies` (also enforced in SQL by
+//                       create_artifact_bundle).
+//
+// The old `objectType: "solution" + value: <anything>` shape is intentionally
+// NOT accepted here: that shape is precisely how a caller could make an
+// artifact that *looks* like a verification of a stored solution while
+// actually verifying unrelated text (audit issue P0-5).
+//
+// Framework-free: the version reader is injected, so tests exercise every
+// branch without Supabase. The Supabase-backed reader lives in
+// supabase-version-reader.ts.
 
-import type { Actor, CapabilityRunInputRef } from "@/contracts/capability";
-import { createServiceRoleClient } from "@/lib/supabase-server";
 import { createHash } from "node:crypto";
-import { canonicalize } from "@/domains/content/versioning/content-hash";
+import type { Actor, CapabilityRunInputRef } from "@/contracts/capability";
+import { isModerator } from "@/domains/identity/actor";
 
-export type ObjectType = "problem" | "solution" | "problem_version" | "solution_version" | "submission" | "ad_hoc_source";
+/** Max Lean source accepted for ad-hoc verification, in UTF-16 code units.
+ * Deliberately aligned with verification/domain/policies' source-size cap so
+ * this layer never admits something the VerificationService would reject. */
+export const MAX_AD_HOC_SOURCE_LENGTH = 100_000;
 
+export const INPUT_ERROR_CODES = [
+  "UNSUPPORTED_OBJECT_TYPE",
+  "MISSING_OBJECT_ID",
+  "MISSING_VERSION_ID",
+  "INVALID_VERSION_ID",
+  "VERSION_NOT_FOUND",
+  "VERSION_MISMATCH",
+  "VERSION_HAS_NO_LEAN_SOURCE",
+  "CLIENT_CONTENT_REJECTED",
+  "AD_HOC_MUST_NOT_REFERENCE",
+  "MISSING_SOURCE",
+  "SOURCE_TOO_LARGE",
+  "TOO_MANY_INPUTS",
+] as const;
+export type InputErrorCode = (typeof INPUT_ERROR_CODES)[number];
+
+export class InputResolutionError extends Error {
+  constructor(
+    readonly code: InputErrorCode,
+    message: string,
+    readonly inputIndex?: number,
+  ) {
+    super(message);
+    this.name = "InputResolutionError";
+  }
+}
+
+/** One input after server-side resolution: what will actually be executed and
+ * persisted. `source` is the canonical content handed to the adapter; the
+ * snapshot row stores it so the run is auditable independent of later edits. */
 export interface ResolvedInput {
-  objectType: ObjectType;
+  objectType: "solution_version" | "ad_hoc_source";
+  /** Stable entity id for version-bound inputs; null for ad-hoc. */
   objectId: string | null;
   versionId: string | null;
   role: string;
-  inputKey: string;
-  // Canonical content extracted by server
-  canonicalSource: string;
+  /** Canonical source the adapter executes. Private — never in public payloads. */
+  source: string;
+  /** sha256 hex of `source`. */
   contentHash: string;
-  // Complete snapshot for audit
-  snapshot: {
-    resolvedAt: string;
-    objectType: ObjectType;
-    objectId: string | null;
-    versionId: string | null;
-    contentHash: string;
-    source: string;
-  };
+  /** Persisted verbatim into capability_run_inputs.snapshot (private). */
+  snapshot: Record<string, unknown>;
 }
 
-export interface InputResolutionError {
-  code: string;
-  message: string;
-  inputKey?: string;
+/** Minimal view of a solution version needed for binding + access checks. */
+export interface SolutionVersionRow {
+  id: string;
+  solutionId: string;
+  content: unknown;
+  contentHash: string;
+  publishedAt: string | null;
+  createdBy: string | null;
+}
+
+/** Port for loading versions. Supabase impl: supabase-version-reader.ts. */
+export interface VersionReader {
+  getSolutionVersion(versionId: string): Promise<SolutionVersionRow | null>;
+}
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const MAX_INPUTS = 8;
+
+function sha256(source: string): string {
+  return createHash("sha256").update(source, "utf8").digest("hex");
 }
 
 /**
- * Resolves capability inputs according to their type:
- * - version-bound: fetches version from DB, extracts canonical Lean source
- * - ad-hoc: validates user-provided source, computes hash
+ * The single supported location for a machine-checkable Lean proof inside a
+ * SolutionVersion's content: `content.formalProofs.lean.source`. No fallback
+ * heuristics — guessing that a natural-language proof "looks like Lean" would
+ * silently verify the wrong thing, which is worse than a structured error.
  */
+export function extractLeanSource(content: unknown): string | null {
+  if (content === null || typeof content !== "object") return null;
+  const formalProofs = (content as Record<string, unknown>).formalProofs;
+  if (formalProofs === null || typeof formalProofs !== "object" || formalProofs === undefined) return null;
+  const lean = (formalProofs as Record<string, unknown>).lean;
+  if (lean === null || typeof lean !== "object" || lean === undefined) return null;
+  const source = (lean as Record<string, unknown>).source;
+  return typeof source === "string" && source.trim().length > 0 ? source : null;
+}
+
 export class CapabilityInputResolver {
-  /**
-   * Resolve all inputs for a capability run. Throws on validation failure.
-   */
-  async resolveInputs(
-    actor: Actor,
-    inputs: CapabilityRunInputRef[]
-  ): Promise<ResolvedInput[]> {
-    const resolved: ResolvedInput[] = [];
+  constructor(private readonly versions: VersionReader) {}
 
-    for (const input of inputs) {
-      const result = await this.resolveInput(actor, input);
-      resolved.push(result);
+  async resolve(actor: Actor, inputs: CapabilityRunInputRef[]): Promise<ResolvedInput[]> {
+    if (inputs.length > MAX_INPUTS) {
+      throw new InputResolutionError("TOO_MANY_INPUTS", `at most ${MAX_INPUTS} inputs per run`);
     }
-
+    const resolved: ResolvedInput[] = [];
+    for (const [index, input] of inputs.entries()) {
+      resolved.push(await this.resolveOne(actor, input, index));
+    }
     return resolved;
   }
 
-  private async resolveInput(
-    actor: Actor,
-    input: CapabilityRunInputRef
-  ): Promise<ResolvedInput> {
-    // Validate common fields
-    if (!input.inputKey || typeof input.inputKey !== "string") {
-      throw this.error("INVALID_INPUT_KEY", "inputKey is required and must be a string");
-    }
-
-    if (!input.objectType || typeof input.objectType !== "string") {
-      throw this.error("INVALID_OBJECT_TYPE", "objectType is required", input.inputKey);
-    }
-
-    // Route to type-specific resolver
+  private async resolveOne(actor: Actor, input: CapabilityRunInputRef, index: number): Promise<ResolvedInput> {
     switch (input.objectType) {
       case "solution_version":
-        return this.resolveSolutionVersion(actor, input);
-      case "problem_version":
-        return this.resolveProblemVersion(actor, input);
+        return this.resolveVersionBound(actor, input, index);
       case "ad_hoc_source":
-        return this.resolveAdHocSource(input);
-      case "solution":
-      case "problem":
-      case "submission":
-        // Legacy types: treat as ad-hoc for now (no version binding)
-        // Future: migrate to explicit version-bound mode
-        return this.resolveLegacyInput(input);
+        return this.resolveAdHoc(input, index);
       default:
-        throw this.error("UNSUPPORTED_OBJECT_TYPE", `Unsupported objectType: ${input.objectType}`, input.inputKey);
+        throw new InputResolutionError(
+          "UNSUPPORTED_OBJECT_TYPE",
+          `objectType "${input.objectType}" is not accepted by verify.lean — use "solution_version" (version-bound) or "ad_hoc_source"`,
+          index,
+        );
     }
   }
 
-  /**
-   * Version-bound mode: fetch solution_version, extract Lean source from content.
-   */
-  private async resolveSolutionVersion(
-    actor: Actor,
-    input: CapabilityRunInputRef
-  ): Promise<ResolvedInput> {
+  private async resolveVersionBound(actor: Actor, input: CapabilityRunInputRef, index: number): Promise<ResolvedInput> {
     if (!input.objectId) {
-      throw this.error("MISSING_OBJECT_ID", "solution_version requires objectId (solution stable ID)", input.inputKey);
+      throw new InputResolutionError("MISSING_OBJECT_ID", "solution_version input requires objectId (the solution's stable id)", index);
     }
-
     if (!input.versionId) {
-      throw this.error("MISSING_VERSION_ID", "solution_version requires versionId", input.inputKey);
+      throw new InputResolutionError("MISSING_VERSION_ID", "solution_version input requires versionId", index);
+    }
+    if (!UUID_RE.test(input.versionId)) {
+      throw new InputResolutionError("INVALID_VERSION_ID", "versionId must be a UUID", index);
+    }
+    // Reject — don't silently ignore — client-supplied content on a
+    // version-bound input. Ignoring it would let a caller believe their text
+    // was verified when the stored version's text was.
+    if (input.value !== undefined || input.contentHash !== undefined || input.snapshot !== undefined) {
+      throw new InputResolutionError(
+        "CLIENT_CONTENT_REJECTED",
+        "version-bound inputs must not include value/contentHash/snapshot — the server resolves content from the version itself",
+        index,
+      );
     }
 
-    // Validate UUID format
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    if (!uuidRegex.test(input.versionId)) {
-      throw this.error("INVALID_VERSION_ID", "versionId must be a valid UUID", input.inputKey);
+    const version = await this.versions.getSolutionVersion(input.versionId);
+    // One error for not-found, wrong-solution-but-unreadable, and no-access:
+    // distinguishing them would leak whether a private version exists.
+    if (!version || !this.canRead(actor, version)) {
+      throw new InputResolutionError("VERSION_NOT_FOUND", "solution version not found", index);
+    }
+    if (version.solutionId !== input.objectId) {
+      throw new InputResolutionError(
+        "VERSION_MISMATCH",
+        `version ${input.versionId} does not belong to solution ${input.objectId}`,
+        index,
+      );
     }
 
-    // Fetch version using user's permissions (RLS enforced)
-    const supabase = createServiceRoleClient();
-    const { data: version, error } = await supabase
-      .from("solution_versions")
-      .select("id, solution_id, content, content_hash, published_at, created_by")
-      .eq("id", input.versionId)
-      .single();
-
-    if (error || !version) {
-      // Don't leak existence of private versions
-      throw this.error("VERSION_NOT_FOUND", "Solution version not found or access denied", input.inputKey);
+    const source = extractLeanSource(version.content);
+    if (!source) {
+      throw new InputResolutionError(
+        "VERSION_HAS_NO_LEAN_SOURCE",
+        "this solution version has no formalProofs.lean.source to verify",
+        index,
+      );
     }
-
-    // Verify version belongs to solution
-    if (version.solution_id !== input.objectId) {
-      throw this.error("VERSION_MISMATCH", `Version ${input.versionId} does not belong to solution ${input.objectId}`, input.inputKey);
-    }
-
-    // Check user can read this version (RLS check)
-    const canRead = await this.canReadVersion(actor, version);
-    if (!canRead) {
-      throw this.error("VERSION_ACCESS_DENIED", "You do not have permission to read this version", input.inputKey);
-    }
-
-    // Extract Lean source from content
-    const leanSource = this.extractLeanSource(version.content);
-    if (!leanSource) {
-      throw this.error("VERSION_HAS_NO_LEAN_SOURCE", "This solution version does not contain Lean source code", input.inputKey);
-    }
-
-    // Validate size
-    if (leanSource.length > 100000) {
-      throw this.error("SOURCE_TOO_LARGE", "Lean source exceeds 100KB limit", input.inputKey);
-    }
-
-    // Compute canonical hash
-    const contentHash = createHash("sha256").update(leanSource, "utf8").digest("hex");
 
     return {
       objectType: "solution_version",
       objectId: input.objectId,
-      versionId: input.versionId,
+      versionId: version.id,
       role: input.role || "proof_source",
-      inputKey: input.inputKey,
-      canonicalSource: leanSource,
-      contentHash,
+      source,
+      contentHash: sha256(source),
       snapshot: {
-        resolvedAt: new Date().toISOString(),
-        objectType: "solution_version",
-        objectId: input.objectId,
-        versionId: input.versionId,
-        contentHash,
-        source: leanSource,
+        mode: "version_bound",
+        versionId: version.id,
+        solutionId: version.solutionId,
+        versionContentHash: version.contentHash,
+        source,
       },
     };
   }
 
-  /**
-   * Version-bound mode: fetch problem_version, extract content.
-   */
-  private async resolveProblemVersion(
-    actor: Actor,
-    input: CapabilityRunInputRef
-  ): Promise<ResolvedInput> {
-    if (!input.objectId) {
-      throw this.error("MISSING_OBJECT_ID", "problem_version requires objectId", input.inputKey);
-    }
-
-    if (!input.versionId) {
-      throw this.error("MISSING_VERSION_ID", "problem_version requires versionId", input.inputKey);
-    }
-
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    if (!uuidRegex.test(input.versionId)) {
-      throw this.error("INVALID_VERSION_ID", "versionId must be a valid UUID", input.inputKey);
-    }
-
-    const supabase = createServiceRoleClient();
-    const { data: version, error } = await supabase
-      .from("problem_versions")
-      .select("id, problem_id, content, content_hash, published_at, created_by")
-      .eq("id", input.versionId)
-      .single();
-
-    if (error || !version) {
-      throw this.error("VERSION_NOT_FOUND", "Problem version not found or access denied", input.inputKey);
-    }
-
-    if (version.problem_id !== input.objectId) {
-      throw this.error("VERSION_MISMATCH", `Version ${input.versionId} does not belong to problem ${input.objectId}`, input.inputKey);
-    }
-
-    const canRead = await this.canReadVersion(actor, version);
-    if (!canRead) {
-      throw this.error("VERSION_ACCESS_DENIED", "You do not have permission to read this version", input.inputKey);
-    }
-
-    // Problem versions: use full content as canonical source
-    const canonical = JSON.stringify(version.content);
-    const contentHash = version.content_hash;
-
-    return {
-      objectType: "problem_version",
-      objectId: input.objectId,
-      versionId: input.versionId,
-      role: input.role || "problem_statement",
-      inputKey: input.inputKey,
-      canonicalSource: canonical,
-      contentHash,
-      snapshot: {
-        resolvedAt: new Date().toISOString(),
-        objectType: "problem_version",
-        objectId: input.objectId,
-        versionId: input.versionId,
-        contentHash,
-        source: canonical,
-      },
-    };
-  }
-
-  /**
-   * Ad-hoc mode: accept arbitrary source, no version claim.
-   */
-  private resolveAdHocSource(input: CapabilityRunInputRef): ResolvedInput {
+  private resolveAdHoc(input: CapabilityRunInputRef, index: number): ResolvedInput {
+    // An ad-hoc input claiming an objectId/versionId is exactly the forgery
+    // this resolver exists to prevent — reject rather than strip.
     if (input.objectId || input.versionId) {
-      throw this.error("AD_HOC_NO_VERSION", "ad_hoc_source must not have objectId or versionId", input.inputKey);
+      throw new InputResolutionError(
+        "AD_HOC_MUST_NOT_REFERENCE",
+        "ad_hoc_source inputs must not carry objectId or versionId",
+        index,
+      );
     }
-
-    if (!input.value || typeof input.value !== "string") {
-      throw this.error("MISSING_VALUE", "ad_hoc_source requires value (Lean source code)", input.inputKey);
+    if (typeof input.value !== "string" || input.value.trim().length === 0) {
+      throw new InputResolutionError("MISSING_SOURCE", "ad_hoc_source input requires value (the Lean source string)", index);
+    }
+    if (input.value.length > MAX_AD_HOC_SOURCE_LENGTH) {
+      throw new InputResolutionError("SOURCE_TOO_LARGE", `source exceeds ${MAX_AD_HOC_SOURCE_LENGTH} characters`, index);
     }
 
     const source = input.value;
-
-    // Validate size
-    if (source.length === 0) {
-      throw this.error("EMPTY_SOURCE", "Source code cannot be empty", input.inputKey);
-    }
-
-    if (source.length > 100000) {
-      throw this.error("SOURCE_TOO_LARGE", "Source exceeds 100KB limit", input.inputKey);
-    }
-
-    // Compute hash
-    const contentHash = createHash("sha256").update(source, "utf8").digest("hex");
-
     return {
       objectType: "ad_hoc_source",
       objectId: null,
       versionId: null,
       role: input.role || "proof_source",
-      inputKey: input.inputKey,
-      canonicalSource: source,
-      contentHash,
-      snapshot: {
-        resolvedAt: new Date().toISOString(),
-        objectType: "ad_hoc_source",
-        objectId: null,
-        versionId: null,
-        contentHash,
-        source,
-      },
+      source,
+      contentHash: sha256(source),
+      snapshot: { mode: "ad_hoc", source },
     };
   }
 
-  /**
-   * Legacy compatibility: accept value-based inputs (no version binding).
-   */
-  private resolveLegacyInput(input: CapabilityRunInputRef): ResolvedInput {
-    if (!input.value || typeof input.value !== "string") {
-      throw this.error("MISSING_VALUE", `${input.objectType} requires value`, input.inputKey);
-    }
-
-    const source = input.value;
-
-    if (source.length > 100000) {
-      throw this.error("SOURCE_TOO_LARGE", "Source exceeds 100KB limit", input.inputKey);
-    }
-
-    const contentHash = createHash("sha256").update(source, "utf8").digest("hex");
-
-    return {
-      objectType: input.objectType as ObjectType,
-      objectId: input.objectId || null,
-      versionId: null,
-      role: input.role || "proof_source",
-      inputKey: input.inputKey,
-      canonicalSource: source,
-      contentHash,
-      snapshot: {
-        resolvedAt: new Date().toISOString(),
-        objectType: input.objectType as ObjectType,
-        objectId: input.objectId || null,
-        versionId: null,
-        contentHash,
-        source,
-      },
-    };
-  }
-
-  /**
-   * Extract Lean source from solution content.
-   * Supports multiple conventions:
-   * - content.formalProofs.lean.source
-   * - content.leanSource
-   * - content.proof (if it looks like Lean)
-   */
-  private extractLeanSource(content: any): string | null {
-    if (!content || typeof content !== "object") {
-      return null;
-    }
-
-    // Convention 1: structured formal proofs
-    if (content.formalProofs?.lean?.source) {
-      return content.formalProofs.lean.source;
-    }
-
-    // Convention 2: direct leanSource field
-    if (typeof content.leanSource === "string") {
-      return content.leanSource;
-    }
-
-    // Convention 3: proof field (if it contains Lean keywords)
-    if (typeof content.proof === "string" && this.looksLikeLean(content.proof)) {
-      return content.proof;
-    }
-
-    return null;
-  }
-
-  /**
-   * Heuristic: does this string look like Lean code?
-   */
-  private looksLikeLean(source: string): boolean {
-    const leanKeywords = ["theorem", "lemma", "def", "inductive", "structure", "class", "instance", "import", ":=", "by"];
-    return leanKeywords.some((kw) => source.includes(kw));
-  }
-
-  /**
-   * Check if actor can read a version (RLS logic).
-   */
-  private async canReadVersion(
-    actor: Actor,
-    version: { published_at: string | null; created_by: string | null }
-  ): Promise<boolean> {
-    // Published versions: anyone can read
-    if (version.published_at) {
-      return true;
-    }
-
-    // Unpublished: only owner or moderator
-    if (actor.userId === version.created_by) {
-      return true;
-    }
-
-    // Moderator check
-    if (actor.role === "moderator" || actor.role === "admin") {
-      return true;
-    }
-
-    return false;
-  }
-
-  private error(code: string, message: string, inputKey?: string): InputResolutionError & Error {
-    const err = new Error(message) as InputResolutionError & Error;
-    err.code = code;
-    err.message = message;
-    if (inputKey) {
-      err.inputKey = inputKey;
-    }
-    return err;
+  /** Mirrors the version RLS from migration 029: published readable by all,
+   * unpublished only by creator or moderator/admin. */
+  private canRead(actor: Actor, version: SolutionVersionRow): boolean {
+    if (version.publishedAt !== null) return true;
+    if (version.createdBy !== null && version.createdBy === actor.userId) return true;
+    return isModerator({ role: actor.role, email: actor.email });
   }
 }
