@@ -1,13 +1,19 @@
-// Supabase implementation of ArtifactRepository. RLS policies match the
-// capability_runs pattern: owner/moderator SELECT, service-role-only writes.
+// Supabase implementation of ArtifactRepository. Same two-client split as
+// SupabaseCapabilityRunRepository: writes go through service-role RPCs
+// (SECURITY DEFINER, migration 030); user-facing reads go through the caller's
+// RLS-enforcing client so the SELECT policies in migration 028 decide
+// visibility (public / owner-via-run / moderator) instead of hand-rolled
+// WHERE clauses.
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { isModerator } from "@/lib/is-moderator";
 import type { Actor } from "@/contracts/capability";
 import type { ArtifactKind, ArtifactRecord } from "@/contracts/artifact";
 import type { EvidenceKind, EvidenceRecord } from "@/contracts/evidence";
 import { assertProviderTraceStaysPrivate } from "@/contracts/evidence";
-import { assertPublishedBeforePublic } from "@/contracts/artifact";
-import type { ArtifactRepository, CreateArtifactInput, CreateArtifactBundleInput, CreateEvidenceInput } from "./artifact-repository";
+import {
+  ArtifactAlreadyProjectedError,
+  type ArtifactRepository,
+  type CreateArtifactBundleInput,
+} from "./artifact-repository";
 
 type Row = Record<string, unknown>;
 
@@ -18,13 +24,15 @@ function mapArtifact(row: Row): ArtifactRecord {
     schemaVersion: row.schema_version as number,
     runId: row.run_id as string,
     providerKey: row.provider_key as string,
-    producerVersion: row.producer_version as string | null,
+    producerVersion: (row.producer_version as string | null) ?? null,
     status: row.status as ArtifactRecord["status"],
-    payload: row.payload as unknown,
-    summary: row.summary as string,
+    payload: row.payload,
+    summary: (row.summary as string) ?? "",
     isPublic: Boolean(row.is_public),
-    createdBy: row.created_by as string | null,
+    createdBy: (row.created_by as string | null) ?? null,
     createdAt: row.created_at as string,
+    publishedAt: (row.published_at as string | null) ?? null,
+    publishedBy: (row.published_by as string | null) ?? null,
   };
 }
 
@@ -33,196 +41,92 @@ function mapEvidence(row: Row): EvidenceRecord {
     id: row.id as string,
     artifactId: row.artifact_id as string,
     kind: row.kind as EvidenceKind,
-    payload: row.payload as unknown,
+    payload: row.payload,
     isPublic: Boolean(row.is_public),
     createdAt: row.created_at as string,
   };
 }
 
+function isUniqueViolation(error: unknown): boolean {
+  return typeof error === "object" && error !== null && (error as { code?: string }).code === "23505";
+}
+
 export class SupabaseArtifactRepository implements ArtifactRepository {
-  constructor(private readonly db: SupabaseClient) {}
+  constructor(
+    private readonly writer: SupabaseClient,
+    private readonly reader: SupabaseClient,
+  ) {}
 
-  async create<K extends ArtifactKind>(input: CreateArtifactInput<K>): Promise<ArtifactRecord<K>> {
-    assertPublishedBeforePublic(input.status, input.isPublic);
-
-    const { data, error } = await this.db
-      .from("artifacts")
-      .insert({
-        kind: input.kind,
-        schema_version: input.schemaVersion,
-        run_id: input.runId,
-        provider_key: input.providerKey,
-        producer_version: input.producerVersion ?? null,
-        status: input.status,
-        payload: input.payload,
-        summary: input.summary,
-        is_public: input.isPublic,
-        created_by: input.createdBy,
-      })
-      .select()
-      .single();
-
-    if (error) {
-      throw new Error(`Failed to create artifact: ${error.message}`);
-    }
-
-    return mapArtifact(data) as ArtifactRecord<K>;
-  }
-
-  async findById(id: string, actor: Actor): Promise<ArtifactRecord | null> {
-    let query = this.db.from("artifacts").select("*").eq("id", id);
-
-    // Moderators can see all
-    const isMod = isModerator({ role: actor.role, email: actor.email });
-
-    if (!isMod) {
-      // Anonymous or non-moderator users
-      if (actor.userId === "anon" || !actor.userId) {
-        // Anon: only public artifacts
-        query = query.eq("is_public", true);
-      } else {
-        // Authenticated non-moderator: own artifacts + public
-        query = query.or(`created_by.eq.${actor.userId},is_public.eq.true`);
-      }
-    }
-
-    const { data, error } = await query.maybeSingle();
-
-    if (error) {
-      throw new Error(`Failed to fetch artifact: ${error.message}`);
-    }
-
-    return data ? mapArtifact(data) : null;
-  }
-
-  async findByRunId(runId: string, actor: Actor): Promise<ArtifactRecord[]> {
-    let query = this.db.from("artifacts").select("*").eq("run_id", runId);
-
-    const isMod = isModerator({ role: actor.role, email: actor.email });
-
-    if (!isMod) {
-      if (actor.userId === "anon" || !actor.userId) {
-        query = query.eq("is_public", true);
-      } else {
-        query = query.or(`created_by.eq.${actor.userId},is_public.eq.true`);
-      }
-    }
-
-    const { data, error } = await query;
-
-    if (error) {
-      throw new Error(`Failed to fetch artifacts by run_id: ${error.message}`);
-    }
-
-    return (data ?? []).map(mapArtifact);
-  }
-
-  async createEvidence(input: CreateEvidenceInput): Promise<EvidenceRecord> {
-    assertProviderTraceStaysPrivate(input.kind as EvidenceKind, input.isPublic);
-
-    const { data, error } = await this.db
-      .from("evidence")
-      .insert({
-        artifact_id: input.artifactId,
-        kind: input.kind,
-        payload: input.payload,
-        is_public: input.isPublic,
-      })
-      .select()
-      .single();
-
-    if (error) {
-      throw new Error(`Failed to create evidence: ${error.message}`);
-    }
-
-    return mapEvidence(data);
-  }
-
-  async findEvidenceByArtifactId(artifactId: string, actor: Actor): Promise<EvidenceRecord[]> {
-    const artifact = await this.findById(artifactId, actor);
-    if (!artifact) {
-      return [];
-    }
-
-    let query = this.db.from("evidence").select("*").eq("artifact_id", artifactId);
-
-    const isMod = isModerator({ role: actor.role, email: actor.email });
-    const isOwner = artifact.createdBy === actor.userId;
-
-    // Moderators and owners can see all evidence
-    // Others can only see public evidence on public artifacts
-    if (!isMod && !isOwner) {
-      query = query.eq("is_public", true);
-    }
-
-    const { data, error } = await query;
-
-    if (error) {
-      throw new Error(`Failed to fetch evidence: ${error.message}`);
-    }
-
-    return (data ?? []).map(mapEvidence);
-  }
-
-  // Phase 1.1: Atomic artifact bundle creation via RPC
   async createBundle<K extends ArtifactKind>(input: CreateArtifactBundleInput<K>): Promise<ArtifactRecord<K>> {
-    assertPublishedBeforePublic(input.status, input.isPublic);
+    // The DB CHECK would also catch this, but failing before the network call
+    // gives adapter bugs a precise error instead of a rolled-back bundle.
+    for (const ev of input.evidence) {
+      assertProviderTraceStaysPrivate(ev.kind, ev.isPublic);
+    }
 
-    const { data: artifactId, error } = await this.db.rpc("create_artifact_bundle", {
+    const { data: artifactId, error } = await this.writer.rpc("create_artifact_bundle", {
       p_kind: input.kind,
       p_schema_version: input.schemaVersion,
       p_run_id: input.runId,
       p_provider_key: input.providerKey,
       p_producer_version: input.producerVersion ?? null,
-      p_status: input.status,
       p_payload: input.payload,
       p_summary: input.summary,
-      p_is_public: input.isPublic,
       p_created_by: input.createdBy,
-      p_relations: input.relations,
-      p_evidence: input.evidence,
+      p_relations: input.relations.map((rel) => ({
+        relation: rel.relation,
+        target_type: rel.targetType,
+        target_id: rel.targetId,
+      })),
+      p_evidence: input.evidence.map((ev) => ({
+        kind: ev.kind,
+        payload: ev.payload,
+        is_public: ev.isPublic,
+      })),
     });
-
     if (error) {
-      throw new Error(`Failed to create artifact bundle: ${error.message}`);
+      if (isUniqueViolation(error)) throw new ArtifactAlreadyProjectedError(input.runId);
+      throw error;
     }
 
-    // Fetch the created artifact
-    const { data: artifact, error: fetchError } = await this.db
-      .from("artifacts")
-      .select("*")
-      .eq("id", artifactId)
-      .single();
-
-    if (fetchError) {
-      throw new Error(`Failed to fetch created artifact: ${fetchError.message}`);
-    }
-
-    return mapArtifact(artifact) as ArtifactRecord<K>;
+    const { data, error: fetchError } = await this.writer.from("artifacts").select("*").eq("id", artifactId).single();
+    if (fetchError) throw fetchError;
+    return mapArtifact(data as Row) as ArtifactRecord<K>;
   }
 
-  // Phase 1.1: Artifact publication via RPC
   async publish(artifactId: string, publishedBy: string): Promise<ArtifactRecord> {
-    const { error } = await this.db.rpc("publish_artifact", {
+    const { error } = await this.writer.rpc("publish_artifact", {
       p_artifact_id: artifactId,
       p_published_by: publishedBy,
     });
+    if (error) throw error;
 
-    if (error) {
-      throw new Error(`Failed to publish artifact: ${error.message}`);
-    }
+    const { data, error: fetchError } = await this.writer.from("artifacts").select("*").eq("id", artifactId).single();
+    if (fetchError) throw fetchError;
+    return mapArtifact(data as Row);
+  }
 
-    // Fetch the published artifact
-    const { data, error: fetchError } = await this.db
-      .from("artifacts")
-      .select("*")
-      .eq("id", artifactId)
-      .single();
+  async findById(id: string, _actor: Actor): Promise<ArtifactRecord | null> {
+    const { data, error } = await this.reader.from("artifacts").select("*").eq("id", id).maybeSingle();
+    if (error) throw error;
+    return data ? mapArtifact(data as Row) : null;
+  }
 
-    if (fetchError) {
-      throw new Error(`Failed to fetch published artifact: ${fetchError.message}`);
-    }
+  async findByRunId(runId: string, _actor: Actor): Promise<ArtifactRecord[]> {
+    const { data, error } = await this.reader.from("artifacts").select("*").eq("run_id", runId);
+    if (error) throw error;
+    return (data ?? []).map((row) => mapArtifact(row as Row));
+  }
 
-    return mapArtifact(data);
+  async findEvidenceByArtifactId(artifactId: string, _actor: Actor): Promise<EvidenceRecord[]> {
+    const { data, error } = await this.reader.from("evidence").select("*").eq("artifact_id", artifactId);
+    if (error) throw error;
+    return (data ?? []).map((row) => mapEvidence(row as Row));
+  }
+
+  async getByIdInternal(id: string): Promise<ArtifactRecord | null> {
+    const { data, error } = await this.writer.from("artifacts").select("*").eq("id", id).maybeSingle();
+    if (error) throw error;
+    return data ? mapArtifact(data as Row) : null;
   }
 }

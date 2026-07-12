@@ -4,7 +4,10 @@
 // A capability adapter (domains/capabilities/adapters/*) implements this by
 // wrapping an EXISTING domain service (e.g. VerificationService); it is not a
 // second path to an external provider.
-import type { Actor, CapabilityRunInputRef } from "@/contracts/capability";
+//
+// Adapters receive ResolvedCapabilityInputs — content already resolved and
+// snapshotted by the server-side input resolver — never raw client input.
+import type { Actor, CapabilityRunRecord, ResolvedCapabilityInput } from "@/contracts/capability";
 
 export interface CapabilityAdapterResult {
   /** Present only when the run succeeded and produced a conclusion (§8). */
@@ -22,5 +25,12 @@ export interface CapabilityAdapterResult {
 
 export interface CapabilityAdapter {
   readonly capabilityKey: string;
-  run(actor: Actor, inputs: CapabilityRunInputRef[], configuration: Record<string, unknown>, signal?: AbortSignal): Promise<CapabilityAdapterResult>;
+  run(actor: Actor, inputs: ResolvedCapabilityInput[], configuration: Record<string, unknown>, signal?: AbortSignal): Promise<CapabilityAdapterResult>;
+  /**
+   * Rebuild the adapter result for an already-succeeded run from durable state
+   * (e.g. the verification_tasks row named by run.legacyVerificationTaskId)
+   * WITHOUT re-executing the provider. Used by projection repair when the
+   * artifact bundle write failed after a successful execution.
+   */
+  reproject?(run: CapabilityRunRecord): Promise<CapabilityAdapterResult | null>;
 }
