@@ -99,8 +99,7 @@ domains/
       lean-verification-adapter.ts   # wraps the EXISTING VerificationService, unmodified
   artifacts/
     artifact-repository.ts (interface) + supabase-artifact-repository.ts
-    verification-artifact-mapper.ts  # VerificationTaskDto -> Artifact + Evidence[]
-    current-artifact.ts              # pure staleness/currency check against a version pointer
+    artifact-publication-service.ts  # moderator-gated draft -> published transition
   identity/
     actor.ts                     # re-exports lib/is-moderator.ts + lib/require-moderator.ts as a stable seam
 
@@ -239,10 +238,12 @@ POST /api/capabilities/runs { capabilityKey: "verify.lean", input: {...} }
        - capability_runs row (status projected from task status,
          legacy_verification_task_id = task.id)
        - artifacts row, kind="verification_report", payload = the standardized
-         result (see §8), via verification-artifact-mapper.ts
-       - evidence row(s): kind="provider_trace" (source snapshot + messages,
-         is_public=false always) and, when accepted, kind="lean_proof"
-  -> API responds with { run, artifact }
+         result (see §8), mapped inside lean-verification-adapter.ts
+       - evidence row(s): kind="provider_trace" (diagnostics, is_public=false
+         always) and, when accepted, kind="lean_proof" (source hash only —
+         the full source lives in the private input snapshot)
+  -> API responds with { run }; the artifact is a private draft, read via
+     GET /api/artifacts/[id], published via POST /api/artifacts/[id]/publish
 ```
 
 **Execution source of truth:** `verification_tasks` remains authoritative for

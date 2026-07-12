@@ -155,10 +155,14 @@ async function main() {
     const publishedContent = { formalProofs: { lean: { source: leanSource } } };
     const secretDraftContent = { formalProofs: { lean: { source: "theorem secret_draft : True := trivial" } } };
 
+    // created_at is set explicitly to a moment strictly before published_at so
+    // the CHECK (published_at >= created_at) never races the DB clock.
+    const seededAt = new Date(Date.now() - 60_000).toISOString();
     const { data: publishedVersion, error: pvErr } = await service.from("solution_versions").insert({
       solution_id: solutionId, version_number: 1, content: publishedContent,
       content_hash: sha256(JSON.stringify(publishedContent)), created_by: owner.userId,
-      published_at: new Date().toISOString(), source_snapshot: { private: "submission-internal" },
+      created_at: seededAt, published_at: new Date().toISOString(),
+      source_snapshot: { private: "submission-internal" },
     }).select("id").single();
     if (pvErr || !publishedVersion) throw new Error(`seed published version: ${pvErr?.message}`);
 

@@ -193,9 +193,11 @@ before(async () => {
   if (solErr) throw new Error(`seed solution: ${solErr.message}`);
 
   const publishedContent = { formalProofs: { lean: { source: LEAN_OK } } };
+  // created_at strictly before published_at so CHECK (published_at >= created_at) can't race.
+  const seededAt = new Date(Date.now() - 60_000).toISOString();
   const { data: pv, error: pvErr } = await service.from("solution_versions").insert({
     solution_id: solutionId, version_number: 1, content: publishedContent,
-    content_hash: "a".repeat(64), created_by: owner.userId, published_at: new Date().toISOString(),
+    content_hash: "a".repeat(64), created_by: owner.userId, created_at: seededAt, published_at: new Date().toISOString(),
   }).select("id").single();
   if (pvErr || !pv) throw new Error(`seed published version: ${pvErr?.message}`);
   publishedVersionId = pv.id;
